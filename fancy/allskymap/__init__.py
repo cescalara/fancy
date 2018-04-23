@@ -1,0 +1,1 @@
+from .allskymap import *

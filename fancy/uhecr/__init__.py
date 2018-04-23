@@ -1,1 +1,1 @@
-from .uhecr import Uhecr
+from .uhecr import *
