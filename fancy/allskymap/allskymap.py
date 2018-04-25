@@ -238,12 +238,12 @@ class AllSkyMap(Basemap):
         Add the standard labels for parallels and meridians to the map
         """
 
-        patch_collection = self.drawmapboundary(fill_color = cmap(0), linewidth = 0., color = None)
-        #patch = patch_collection[0]
-        patch_collection.set_edgecolor(None)
-        self.drawparallels(np.arange(-75, 76, 15), linewidth = 1, #dashes = [1,2],
-                             labels=[1, 0, 0, 0], textcolor = textcolor, fontsize = 14, alpha = 0.7);
-        self.drawmeridians(np.arange(-150, 151, 30), linewidth = 1, alpha = 0.7);#, dashes = [1,2]);
+        patch = self.drawmapboundary(fill_color = cmap(0), linewidth = 0., color = None)
+        patch.set_edgecolor(None)
+        patch.set_lw(0.)
+        self.drawparallels(np.arange(-75, 76, 15), linewidth = 2, #dashes = [1,2],
+                             labels = [1, 0, 0, 0], textcolor = textcolor, fontsize = 14, alpha = 0.4);
+        self.drawmeridians(np.arange(-150, 151, 30), linewidth = 2, alpha = 0.4);#, dashes = [1,2]);
         lons = np.arange(-150, 151, 30)
         self.label_meridians(lons, fontsize = 14, vnudge = 1,
                                halign = 'left', hnudge = -1)  
