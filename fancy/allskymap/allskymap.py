@@ -238,7 +238,7 @@ class AllSkyMap(Basemap):
         Add the standard labels for parallels and meridians to the map
         """
 
-        self.drawmapboundary(fill_color = cmap(0))
+        self.drawmapboundary(fill_color = cmap(0), linewidth = 0)
         self.drawparallels(np.arange(-75, 76, 15), linewidth = 1, dashes = [1,2],
                              labels=[1, 0, 0, 0], textcolor = textcolor, fontsize = 14);
         self.drawmeridians(np.arange(-150, 151, 30), linewidth = 1, dashes = [1,2]);
