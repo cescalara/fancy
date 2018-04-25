@@ -114,11 +114,13 @@ class Data():
         bar.set_label('UHECR Energy [EeV]', color = style.textcolor)
 
         
-    def show(self):
+    def show(self, save = False, savename = None):
         """
         Plot the data on a map of the sky. 
-
-        :return: the figure and AllSkyMap instance for further editing.
+        
+        :param save: boolean input, saves figure if True
+        :param savename: location to save to, required if 
+                         save == True
         """
 
         # plot style
@@ -157,21 +159,24 @@ class Data():
         frame.set_facecolor('None')
         for text in leg.get_texts():
             plt.setp(text, color = style.textcolor)
+        self._leg = leg
         
         # add a colorbar
         self._uhecr_colorbar(style)
 
+        if save:
+            self.savefig(savename)
 
-    def save(self, filename):
+        
+    def savefig(self, filename):
         """
         Save the most recently plotted figure.
         
         :param filename: location to save to.
         """
         
-        plt.gcf()
         plt.savefig(filename, dpi = 1000,
-                    bbox_extra_artists = [leg],
+                    bbox_extra_artists = [self._leg],
                     bbox_inches = 'tight', pad_inches = 0.5)
         
 
