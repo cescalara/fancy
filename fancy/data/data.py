@@ -106,7 +106,7 @@ class Data():
         cmap = style.cmap
 
         # colorbar
-        cb_ax = plt.axes([0.35, 0, .5, .03], frameon = False)  
+        cb_ax = plt.axes([0.25, 0, .5, .03], frameon = False)  
         vals = np.linspace(min_energy, max_energy, 100)
         bar = matplotlib.colorbar.ColorbarBase(cb_ax, values = vals, norm = norm_E, cmap = cmap, 
                                                orientation = 'horizontal', drawedges = False, alpha = 1)
