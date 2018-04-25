@@ -31,15 +31,15 @@ class PlotStyle():
         except:
             self.has_vapeplot = False
             try: 
-                self.cmap = plt.cmap(cmap_name)
+                self.cmap = plt.get_cmap(cmap_name)
             except:
-                self.cmap = plt.cmap('viridis')
+                self.cmap = plt.get_cmap('viridis')
         else:
             self.has_vapeplot = True
             try:
                 self.cmap = vapeplot.cmap(cmap_name)
             except:
-                self.cmap = plt.cmap(cmap_name)
+                self.cmap = plt.get_cmap(cmap_name)
                 
         try:
             plt.style.use(stylesheet_name)
