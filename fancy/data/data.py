@@ -111,7 +111,7 @@ class Data():
         bar = matplotlib.colorbar.ColorbarBase(cb_ax, values = vals, norm = norm_E, cmap = cmap, 
                                                orientation = 'horizontal', drawedges = False, alpha = 1)
         bar.ax.get_children()[1].set_linewidth(0)
-        bar.set_label('UHECR Energy [EeV]')
+        bar.set_label('UHECR Energy [EeV]', color = style.textcolor)
 
         
     def show(self):
@@ -150,9 +150,11 @@ class Data():
         # legend
         plt.legend(bbox_to_anchor=(0.85, 0.85))
         leg = ax.get_legend()
-        #leg.legendHandles[0].set_color(style.cmap(0.4))
+        frame = leg.get_frame()
+        frame.set_linewidth(0)
+        frame.set_facecolor('None')
         for text in leg.get_texts():
-            plt.setp(text, color = style.textcolor, alpha = 0.7)
+            plt.setp(text, color = style.textcolor)
         
         # add a colorbar
         self._uhecr_colorbar(style)
@@ -614,5 +616,5 @@ class Detector():
                                                orientation = 'horizontal', drawedges = False, alpha = 1)
 
         bar.ax.get_children()[1].set_linewidth(0)
-        bar.set_label('Relative exposure', color = style.textcolor, alpha = 0.7)
+        bar.set_label('Relative exposure', color = style.textcolor)
         
