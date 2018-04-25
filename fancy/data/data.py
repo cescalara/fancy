@@ -142,8 +142,10 @@ class Data():
                 source.plot(style, label, skymap)
 
         # iterate over the detector objects
-        # add this
-        
+        if self.detector != {}:
+            for label, detector in self.detector.items():
+                detector.draw_exposure_lim(skymap, label = label)
+                
         # standard labels and background
         skymap.draw_standard_labels(style.cmap, style.textcolor)
     
@@ -159,6 +161,19 @@ class Data():
         # add a colorbar
         self._uhecr_colorbar(style)
 
+
+    def save(self, filename):
+        """
+        Save the most recently plotted figure.
+        
+        :param filename: location to save to.
+        """
+        
+        plt.gcf()
+        plt.savefig(filename, dpi = 1000,
+                    bbox_extra_artists = [leg],
+                    bbox_inches = 'tight', pad_inches = 0.5)
+        
 
         
 class RawData():
@@ -569,15 +584,8 @@ class Detector():
                              color = cmap(norm_proj(proj)), alpha = 0.7)
 
             # plot exposure boundary
-            limiting_dec = self.limiting_dec.deg
-            boundary_decs = np.tile(limiting_dec, num_points)
-            c = SkyCoord(ra = rightascensions * u.degree,
-                         dec = boundary_decs * u.degree, frame = 'icrs')
-            lon = c.galactic.l.deg
-            lat = c.galactic.b.deg
-            skymap.scatter(lon, lat, latlon = True, linewidth = 3, 
-                         color = 'k', alpha = 0.5)
-
+            self.draw_exposure_lim(skymap)
+            
             # add labels
             skymap.draw_standard_labels(style.cmap, style.textcolor)
 
@@ -618,3 +626,27 @@ class Detector():
         bar.ax.get_children()[1].set_linewidth(0)
         bar.set_label('Relative exposure', color = style.textcolor)
         
+
+    def draw_exposure_lim(self, skymap, label = None):
+        """
+        Draw a line marking the edge of the detector's exposure.
+        
+        :param skymap: an AllSkyMap instance.
+        :param label: a label for the limit.
+        """
+
+        if label == None:
+            label = 'detector'
+
+        num_points = 500
+        rightascensions = np.linspace(-180, 180, num_points)  
+        limiting_dec = self.limiting_dec.deg
+        boundary_decs = np.tile(limiting_dec, num_points)
+        c = SkyCoord(ra = rightascensions * u.degree,
+                     dec = boundary_decs * u.degree, frame = 'icrs')
+        lon = c.galactic.l.deg
+        lat = c.galactic.b.deg
+
+        skymap.scatter(lon, lat, latlon = True, linewidth = 3, 
+                       color = 'k', alpha = 0.5,
+                       label = 'limit of ' + label + '\'s exposure')
