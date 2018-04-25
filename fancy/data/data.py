@@ -8,6 +8,7 @@ from astropy.coordinates import SkyCoord
 from ..allskymap import AllSkyMap
 from ..utils import PlotStyle
 
+
 __all__ = ['Data', 'Source', 'Uhecr', 'Detector']
 
 
@@ -67,31 +68,21 @@ class Data():
         self.uhecr[label] = new_uhecr
 
 
-    def add_detector(self, label = None):
+    def add_detector(self, coords, label = None):
         """
         Add a detector object to complement the data.
 
         :param name: the name of the detector
         """
-        return 0
 
+        new_detector = Detector(coords)
 
-    def _add_skymap_labels(self, style, skymap):
-        """
-        Add the standard labels for parallels and meridians to the skymap
-        """
-
-        # map background, parallels, meridians and labels
-        skymap.drawmapboundary(fill_color = style.cmap(0))
-        skymap.drawparallels(np.arange(-75, 76, 15), linewidth = 1, dashes = [1,2],
-                             labels=[1, 0, 0, 0], textcolor = 'white', fontsize = 14, alpha = 0.7);
-        # workaround for saving properly
-        plt.gcf().subplots_adjust(left = 0.3)
-        skymap.drawmeridians(np.arange(-150, 151, 30), linewidth = 1, dashes = [1,2]);
-        lons = np.arange(-150, 151, 30)
-        skymap.label_meridians(lons, fontsize = 14, vnudge = 1,
-                             halign = 'left', hnudge = -1,
-                             alpha = 0.7)  
+        # generate numbered labels by default
+        if label == None:
+            label = 'detector#' + str(len(self.detector))
+            
+        # append source object to dictonary with it's label as a key
+        self.detector[label] = new_detector
 
 
     def _add_uhecr_colorbar(self, style):
@@ -123,7 +114,6 @@ class Data():
         obj = children[1]
         obj.set_linewidth(0)
         bar.set_label('UHECR Energy [EeV]', alpha = 0.7)
-
 
         
     def show(self):
@@ -157,8 +147,8 @@ class Data():
         # add this
         
         # standard labels and background
-        self._add_skymap_labels(style, skymap)
-        
+        skymap.draw_standard_labels(style)
+    
         # legend
         plt.legend(bbox_to_anchor=(0.85, 0.85))
         leg = ax.get_legend()
@@ -382,7 +372,8 @@ class Uhecr():
                             alpha = style.alpha_level, label = label)
                 write_label = False
             else:
-                skymap.tissot(lon, lat, self.coord_uncertainty, 30, facecolor = color, alpha = style.alpha_level)
+                skymap.tissot(lon, lat, self.coord_uncertainty, 30, facecolor = color,
+                              alpha = style.alpha_level)
 
 
                 
@@ -391,18 +382,168 @@ class Detector():
     UHECR observatory information and instrument response. 
     """
 
-    def __init__(self):
+    def __init__(self, coords, threshold_zenith_angle):
         """
         UHECR observatory information and instrument response. 
+        
+        :param coords: latitiude and longitude of detector
+                       in deg.
+        :param threshold_zenith_angle: maximum detectable
+                                       zenith angle in deg.
         """
 
-        self.coords = None
-        self.exposure = None
+        self.coords = self._convert_coordinates(coords)
+        self.threshold_zenith_angle = threshold_zenith_angle
 
+        self._view_options = ['map', 'decplot']
+        self.exposure()
 
+        
+    def _convert_coordinates(self, coords):
+        """
+        Convert input coordinates into astropy coord
+        objects for convenience.
+
+        It is assumed that the input coordinates are 
+        standard latitude and longitude of a position
+        on the Earth's surface.
+        
+        :param coords: latitude and longitude of detector
+        :return: astropy coord object
+        """
+        
+        return SkyCoord(l = coords[0] * u.degree,
+                        b = coords[1] * u.degree, frame = 'galactic')
+
+        
     def exposure(self):
         """
         Calculate and plot the exposure for a given detector 
         locaiton.
         """
-        return 0
+
+        # define a range of declination to evaluate the
+        # exposure at
+        num_points = 500
+        declination = np.linspace(-90, 90, num_points)
+        dec_rad = np.deg2rad(declination) # convert to radians
+
+        proj_fac = np.asarry([self._alpha_m(dec) for dec in dec_rad])
+
+        # normalise
+        self._projection_factor = np.nan_to_num(proj_fac / max(proj_fac))
+
+        # find the point at which the pjection factor is 0
+        self.limiting_dec = (declination[proj_fac == 0])[0]
+        
+
+    def _avg_proj_factor(self, dec):
+        """
+        Define the average projection factor as a function
+        of declination.
+
+        :param dec: the values of declination for which the 
+                    projection factor is evaluated.
+        """
+
+        a_0 = self.coord.galactic.l.rad
+        return ( np.cos(a_0) * np.cos(dec) *
+                np.sin(self._alpha_m(dec)) ) 
+
+    
+    def _alpha_m(self, dec):
+        """
+        Calculate a factor needed for the exposure calculation
+        
+        :param dec: an array of declination values for which
+                    this factor is to be evaluated.
+        """
+
+        xi_val = self._xi(dec)
+        if (xi_val > 1):
+            res = 0
+        elif (xi_val < -1):
+            res = np.pi
+        else:
+            res = np.arccos(xi_val)
+        return res
+        
+
+    def _xi(self, dec):
+        """
+        Calculate a factor needed for the exposure calculation
+        
+        :param dec: an array of declination values for which
+                    this factor is to be evaluated.
+        """
+
+        theta_m = self.threshold_zenith_angle
+        a_0 = self.coords.galactic.l.rad
+        
+        numerator = np.cos(theta_m) - np.sin(a_0) * np.sin(dec)
+        denominator = np.cos(a_0) * np.cos(dec)
+        return numerator/denominator
+
+
+    def show(self, view = None):
+        """
+        Make a plot of the detector's exposure
+        
+        :param view: a keyword describing how to show the plot
+                     options are described by self._view_options
+        """
+
+        # default is skymap
+        if view == None:
+            view = self._view_options[0]
+        else:
+            if view not in self._view_options:
+                print ('ERROR:', 'view option', view, 'is not defined')
+            
+
+        # sky map
+        if view == self._view_options[0]:
+
+            # figure
+            fig = plt.figure(figsize = (12, 6))
+            ax = plt.gca()
+            
+            # skymap
+            skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0)
+
+            num_points = 500
+            
+            # define RA and DEC over all coordinates
+            rightascensions = np.linspace(-180, 180, num_points)
+            declinations = np.linspace(-90, 90, num_points)
+
+            # define the style
+            style = PlotStyle(cmap_name = 'macplus')
+            cmap = style.cmap
+
+            # plot the exposure map
+            # NB: use scatter as plot and pcolormesh have bugs in shiftdata methods
+            for dec, proj in np.nditer([declinations, self._projection_factor]):
+                decs = np.tile(dec, num_points)
+                c = SkyCoord(ra = rightascensions * u.degree, 
+                             dec = decs * u.degree, frame = 'icrs')
+                lon = c.galactic.l.deg
+                lat = c.galactic.b.deg
+                skymap.scatter(lon, lat, latlon = True, linewidth = 3, 
+                             color = cmap(norm_proj(proj)), alpha = 0.7)
+
+            # plot exposure boundary
+            boundary_decs = np.tile(self.limiting_dec, num_points)
+            c = SkyCoord(ra = rightascensions * u.degree,
+                         dec = decs * u.degree, frame = 'icrs')
+            lon = c.galactic.l.deg
+            lat = c.galactic.b.deg
+            skymap.scatter(lon, lat, latlon = True, linewidth = 3, 
+                         color = 'k', alpha = 0.5)
+
+            
+            # add labels
+            skymap.draw_standard_labels(style)
+            
+            
+            
