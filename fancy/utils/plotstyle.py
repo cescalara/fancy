@@ -45,7 +45,7 @@ class PlotStyle():
             plt.style.use(stylesheet_name)
         except:
             self.has_custom_styles = False
-            plt.style.use('seaborn-dark')
+            #plt.style.use('seaborn-dark')
         else:
             self.has_custom_styles = True
 

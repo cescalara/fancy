@@ -233,15 +233,14 @@ class AllSkyMap(Basemap):
         return lines
 
 
-    def draw_standard_labels(self, style):
+    def draw_standard_labels(self, cmap, textcolor):
         """
         Add the standard labels for parallels and meridians to the map
         """
 
-        # map background, parallels, meridians and labels
-        self.drawmapboundary(fill_color = style.cmap(0))
+        self.drawmapboundary(fill_color = cmap(0))
         self.drawparallels(np.arange(-75, 76, 15), linewidth = 1, dashes = [1,2],
-                             labels=[1, 0, 0, 0], textcolor = 'white', fontsize = 14, alpha = 0.7);
+                             labels=[1, 0, 0, 0], textcolor = textcolor, fontsize = 14, alpha = 0.7);
         self.drawmeridians(np.arange(-150, 151, 30), linewidth = 1, dashes = [1,2]);
         lons = np.arange(-150, 151, 30)
         self.label_meridians(lons, fontsize = 14, vnudge = 1,
