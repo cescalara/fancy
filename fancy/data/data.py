@@ -159,28 +159,17 @@ class Data():
         frame.set_facecolor('None')
         for text in leg.get_texts():
             plt.setp(text, color = style.textcolor)
-        self._leg = leg
         
         # add a colorbar
         self._uhecr_colorbar(style)
 
         if save:
-            self.savefig(savename)
-
-        
-    def savefig(self, filename):
-        """
-        Save the most recently plotted figure.
-        
-        :param filename: location to save to.
-        """
-        
-        plt.savefig(filename, dpi = 1000,
-                    bbox_extra_artists = [self._leg],
+            plt.savefig(filename, dpi = 1000,
+                    bbox_extra_artists = [leg],
                     bbox_inches = 'tight', pad_inches = 0.5)
         
 
-        
+            
 class RawData():
     """
     Parses information for known data files in txt format. 
@@ -539,12 +528,15 @@ class Detector():
         return numerator/denominator
 
 
-    def show(self, view = None):
+    def show(self, view = None, save = False, savename = None):
         """
         Make a plot of the detector's exposure
         
         :param view: a keyword describing how to show the plot
                      options are described by self._view_options
+        :param save: boolean input, if True, the figure is saved
+        :param savename: location to save to, required if save is 
+                         True
         """
 
         # default is skymap
@@ -611,6 +603,11 @@ class Detector():
             plt.plot(declination, self._projection_factor, linewidth = 5, alpha = 0.7)
             plt.xlabel('$\delta$');
             plt.ylabel('projection factor');
+
+
+        if save:
+            plt.savefig(filename, dpi = 1000,
+                    bbox_inches = 'tight', pad_inches = 0.5)
 
             
     def _exposure_colorbar(self, style):
