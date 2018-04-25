@@ -6,7 +6,7 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 
 from ..allskymap import AllSkyMap
-from ..utils import PlotStyle
+from ..utils import PlotStyle, Solarized
 
 
 __all__ = ['Data', 'Source', 'Uhecr', 'Detector']
@@ -303,12 +303,12 @@ class Source():
         for lon, lat in np.nditer([self.coord.galactic.l.deg, self.coord.galactic.b.deg]):
             if write_label:
                 skymap.tissot(lon, lat, 5., 30, 
-                              facecolor = style.textcolor, 
+                              facecolor = Solarized().base1, 
                               alpha = style.alpha_level, label = label)
                 write_label = False
             else:
                 skymap.tissot(lon, lat, 5., 30, 
-                              facecolor = style.textcolor, alpha = style.alpha_level)
+                              facecolor = Solarized.base1, alpha = style.alpha_level)
             
    
         
