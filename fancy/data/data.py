@@ -85,7 +85,7 @@ class Data():
         self.detector[label] = new_detector
 
 
-    def _add_uhecr_colorbar(self, style):
+    def _uhecr_colorbar(self, style):
         """
         Add a colorbar normalised over all the Uhecr energies.
 
@@ -111,7 +111,7 @@ class Data():
         bar = matplotlib.colorbar.ColorbarBase(cb_ax, values = vals, norm = norm_E, cmap = cmap, 
                                                orientation = 'horizontal', drawedges = False, alpha = 1)
         bar.ax.get_children()[1].set_linewidth(0)
-        bar.set_label('UHECR Energy [EeV]', alpha = 0.7)
+        bar.set_label('UHECR Energy [EeV]')
 
         
     def show(self):
@@ -150,12 +150,12 @@ class Data():
         # legend
         plt.legend(bbox_to_anchor=(0.85, 0.85))
         leg = ax.get_legend()
-        leg.legendHandles[0].set_color(style.cmap(0.4))
+        #leg.legendHandles[0].set_color(style.cmap(0.4))
         for text in leg.get_texts():
             plt.setp(text, color = style.textcolor, alpha = 0.7)
         
         # add a colorbar
-        self._add_uhecr_colorbar(style)
+        self._uhecr_colorbar(style)
 
 
         

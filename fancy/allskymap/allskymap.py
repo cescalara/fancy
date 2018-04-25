@@ -240,12 +240,11 @@ class AllSkyMap(Basemap):
 
         self.drawmapboundary(fill_color = cmap(0))
         self.drawparallels(np.arange(-75, 76, 15), linewidth = 1, dashes = [1,2],
-                             labels=[1, 0, 0, 0], textcolor = textcolor, fontsize = 14, alpha = 0.7);
+                             labels=[1, 0, 0, 0], textcolor = textcolor, fontsize = 14);
         self.drawmeridians(np.arange(-150, 151, 30), linewidth = 1, dashes = [1,2]);
         lons = np.arange(-150, 151, 30)
         self.label_meridians(lons, fontsize = 14, vnudge = 1,
-                               halign = 'left', hnudge = -1,
-                               alpha = 0.7)  
+                               halign = 'left', hnudge = -1)  
 
 
     def tissot(self,lon_0,lat_0,radius_deg,npts,ax=None,**kwargs):
