@@ -114,7 +114,7 @@ class Data():
         bar.set_label('UHECR Energy [EeV]', color = style.textcolor)
 
         
-    def show(self, save = False, savename = None):
+    def show(self, save = False, savename = None, cmap = None):
         """
         Plot the data on a map of the sky. 
         
@@ -124,8 +124,11 @@ class Data():
         """
 
         # plot style
-        style = PlotStyle()
-
+        if cmap == None:
+            style = PlotStyle()
+        else:
+            style = PlotStyle(cmap_name = cmap)
+            
         # figure
         fig = plt.figure(figsize = (12, 6));
         ax = plt.gca()
@@ -164,7 +167,7 @@ class Data():
         self._uhecr_colorbar(style)
 
         if save:
-            plt.savefig(filename, dpi = 1000,
+            plt.savefig(savename, dpi = 1000,
                     bbox_extra_artists = [leg],
                     bbox_inches = 'tight', pad_inches = 0.5)
         
@@ -528,7 +531,7 @@ class Detector():
         return numerator/denominator
 
 
-    def show(self, view = None, save = False, savename = None):
+    def show(self, view = None, save = False, savename = None, cmap = None):
         """
         Make a plot of the detector's exposure
         
@@ -539,6 +542,12 @@ class Detector():
                          True
         """
 
+        # define the style
+        if cmap == None:
+            style = PlotStyle(cmap_name = 'macplus')
+        else:
+            style = PlotStyle(cmap_name = cmap)
+            
         # default is skymap
         if view == None:
             view = self._view_options[0]
@@ -563,8 +572,6 @@ class Detector():
             rightascensions = np.linspace(-180, 180, num_points)
             declinations = np.linspace(-90, 90, num_points)
 
-            # define the style
-            style = PlotStyle(cmap_name = 'macplus')
             cmap = style.cmap
             norm_proj = matplotlib.colors.Normalize(self._projection_factor.min(),
                                                     self._projection_factor.max())
@@ -595,10 +602,7 @@ class Detector():
             # plot for all decs
             num_points = 500
             declination = np.linspace(-90, 90, num_points)
-
-            # define the style
-            style = PlotStyle()
-            
+ 
             plt.figure()
             plt.plot(declination, self._projection_factor, linewidth = 5, alpha = 0.7)
             plt.xlabel('$\delta$');
@@ -606,7 +610,7 @@ class Detector():
 
 
         if save:
-            plt.savefig(filename, dpi = 1000,
+            plt.savefig(savename, dpi = 1000,
                     bbox_inches = 'tight', pad_inches = 0.5)
 
             
