@@ -59,7 +59,7 @@ class Solarized():
     Container for solarized hex colors.
     """
 
-    def __init__():
+    def __init__(self):
         """
         Container for solarized hex colors.
         

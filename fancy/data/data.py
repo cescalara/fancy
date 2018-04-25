@@ -308,7 +308,7 @@ class Source():
                 write_label = False
             else:
                 skymap.tissot(lon, lat, 5., 30, 
-                              facecolor = Solarized.base1, alpha = style.alpha_level)
+                              facecolor = Solarized().base1, alpha = style.alpha_level)
             
    
         
