@@ -6,7 +6,9 @@ from mpl_toolkits.basemap import Basemap
 import pyproj
 from pyproj import Geod
 
+
 __all__ = ['AllSkyMap']
+
 
 def angle_symbol(angle, round_to=1.0):
     """
@@ -49,8 +51,10 @@ class AllSkyMap(Basemap):
       (see: https://www.mail-archive.com/matplotlib-users@lists.sourceforge.net/msg23222.html)
     * extra cuts on using the tissot method to handle other limb cases
     * passing kwargs in label_meridians
+    * add function for skymap label plotting given a certain style
 
     TODO: Fix the Basemap.plot method which plots incorrect declination thresholds
+          (issue in shift_data method)
     """
 
     # Longitudes corresponding to east and west edges, reflecting the
@@ -228,6 +232,23 @@ class AllSkyMap(Basemap):
                     line.set_color(c1)
         return lines
 
+
+    def draw_standard_labels(self, style):
+        """
+        Add the standard labels for parallels and meridians to the map
+        """
+
+        # map background, parallels, meridians and labels
+        self.drawmapboundary(fill_color = style.cmap(0))
+        self.drawparallels(np.arange(-75, 76, 15), linewidth = 1, dashes = [1,2],
+                             labels=[1, 0, 0, 0], textcolor = 'white', fontsize = 14, alpha = 0.7);
+        self.drawmeridians(np.arange(-150, 151, 30), linewidth = 1, dashes = [1,2]);
+        lons = np.arange(-150, 151, 30)
+        self.label_meridians(lons, fontsize = 14, vnudge = 1,
+                               halign = 'left', hnudge = -1,
+                               alpha = 0.7)  
+
+
     def tissot(self,lon_0,lat_0,radius_deg,npts,ax=None,**kwargs):
         """
         Draw a polygon centered at ``lon_0,lat_0``.  The polygon
@@ -367,6 +388,8 @@ class AllSkyMap(Basemap):
             return [poly1]
 
 
+    
+        
 if __name__ == '__main__':
 
     # Note that Hammer & Mollweide projections enforce a 2:1 aspect ratio.
