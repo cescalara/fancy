@@ -8,7 +8,7 @@ from astropy.coordinates import SkyCoord
 from ..allskymap import AllSkyMap
 from ..utils import PlotStyle
 
-__all__ = ['Data', 'Source', 'Uhecr']
+__all__ = ['Data', 'Source', 'Uhecr', 'Detector']
 
 
 class Data():
@@ -24,10 +24,11 @@ class Data():
         self._filename = None
         self._data = None
 
-        # uhecr and source objects are stored in a
+        # uhecr, source and detector objects are stored in a
         # dictionary with keys equal to their labels
         self.uhecr = {}
         self.source = {}        
+        self.detector = {}
 
         
     def add_source(self, filename, label = None):
@@ -66,7 +67,7 @@ class Data():
         self.uhecr[label] = new_uhecr
 
 
-    def add_detector(self, name = None):
+    def add_detector(self, label = None):
         """
         Add a detector object to complement the data.
 
@@ -96,17 +97,26 @@ class Data():
     def _add_uhecr_colorbar(self, style):
         """
         Add a colorbar normalised over all the Uhecr energies.
-        
-        TODO: check all energies, instead of using the first
+
+        :param style: an instance of PlotStyle
         """
 
-        # fix this
-        norm_E = matplotlib.colors.Normalize(self.uhecr[0].energy.min(), self.uhecr[0].max())
+        max_energies = []
+        min_energies = []
+        # find the min and max uhecr energies
+        for label, uhecr in self.uhecr.items():
+            max_energies.append(max(uhecr.energy))
+            min_energies.append(min(uhecr.energy))
+            
+        max_energy = max(max_energies)
+        min_energy = min(min_energies)
+
+        norm_E = matplotlib.colors.Normalize(min_energy, max_energy)
         cmap = style.cmap
 
         # colorbar
         cb_ax = plt.axes([0.35, 0, .5, .03], frameon = False)  
-        vals = np.linspace(self.energy.min(), self.energy.max(), 100)
+        vals = np.linspace(min_energy, max_energy, 100)
         bar = matplotlib.colorbar.ColorbarBase(cb_ax, values = vals, norm = norm_E, cmap = cmap, 
                                                orientation = 'horizontal', drawedges = False, alpha = 1)
         children = bar.ax.get_children()
@@ -138,9 +148,6 @@ class Data():
             for label, uhecr in self.uhecr.items():
                 uhecr.plot(style, label, skymap)
 
-        # add a colorbar
-        #self._add_uhecr_colorbar(style)
-        
         # iterate over the source objects
         if self.source != {}:
             for label, source in self.source.items():
@@ -159,7 +166,11 @@ class Data():
         for text in leg.get_texts():
             plt.setp(text, color = style.textcolor, alpha = 0.7)
         
+        # add a colorbar
+        self._add_uhecr_colorbar(style)
 
+
+        
 class RawData():
     """
     Parses information for known data files in txt format. 
@@ -374,3 +385,24 @@ class Uhecr():
                 skymap.tissot(lon, lat, self.coord_uncertainty, 30, facecolor = color, alpha = style.alpha_level)
 
 
+                
+class Detector():
+    """
+    UHECR observatory information and instrument response. 
+    """
+
+    def __init__(self):
+        """
+        UHECR observatory information and instrument response. 
+        """
+
+        self.coords = None
+        self.exposure = None
+
+
+    def exposure(self):
+        """
+        Calculate and plot the exposure for a given detector 
+        locaiton.
+        """
+        return 0
