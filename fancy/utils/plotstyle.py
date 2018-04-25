@@ -50,4 +50,9 @@ class PlotStyle():
             self.has_custom_styles = True
 
         self.alpha_level = 0.5
-        self.textcolor = '#93a1a1'
+
+        #solarized colors
+        base01 =  '#586e75'
+        base00 = '#657b83'
+        base1 = '#93a1a1'
+        self.textcolor = base01
