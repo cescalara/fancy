@@ -172,7 +172,9 @@ class Data():
                     bbox_extra_artists = [leg],
                     bbox_inches = 'tight', pad_inches = 0.5)
         
+        return fig, skymap
 
+    
             
 class RawData():
     """
