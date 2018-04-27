@@ -1,3 +1,4 @@
+
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -251,13 +252,21 @@ class RawData():
         Get the galactic coordinates from self.data
         and return them as astropy SkyCoord
         
+        Add distance if possible (allows conversion to cartesian coords)
+        
         :return: astropy.coordinates.SkyCoord
         """
 
         glon = np.array( list(self._data['glon'].values()) )
         glat = np.array( list(self._data['glat'].values()) )
 
-        return SkyCoord(l = glon * u.degree, b = glat * u.degree, frame = 'galactic')
+        try:
+            dist = np.array( list(self._data['D'].values()) )
+        except:
+            return SkyCoord(l = glon * u.degree, b = glat * u.degree, frame = 'galactic')
+        else:
+            return SkyCoord(l = glon * u.degree, b = glat * u.degree,
+                            frame = 'galactic', distance = dist * u.mpc)
 
     
     
