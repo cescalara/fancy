@@ -52,6 +52,8 @@ class AllSkyMap(Basemap):
     * extra cuts on using the tissot method to handle other limb cases
     * passing kwargs in label_meridians
     * add function for skymap label plotting given a certain style
+    * force int values for floats being passed to tissot -> npts
+    * update range to python3 compatibility by wrapping it in set()
 
     TODO: Fix the Basemap.plot method which plots incorrect declination thresholds
           (issue in shift_data method)
@@ -247,7 +249,7 @@ class AllSkyMap(Basemap):
                                halign = 'left', hnudge = -1)  
 
 
-    def tissot(self,lon_0,lat_0,radius_deg,npts,ax=None,**kwargs):
+    def tissot(self, lon_0, lat_0, radius_deg, npts, ax = None,**kwargs):
         """
         Draw a polygon centered at ``lon_0,lat_0``.  The polygon
         approximates a circle on the surface of the earth with radius
@@ -286,7 +288,7 @@ class AllSkyMap(Basemap):
         start_hem = self.east_hem(lon_0)
         segs1 = [self(lon_0, lat_0 + radius_deg)]
         over, segs2 = [], []
-        delaz = 360./npts
+        delaz = 360. / npts
         az = az12
         last_lon = lon_0
 
@@ -294,10 +296,10 @@ class AllSkyMap(Basemap):
         if (abs(lat_0) + radius_deg >= 90 ):
             # Use half of the points for the part inside the map, the
             # other half of the points is at the map border
-            lats = zeros(npts/2)
-            lons = zeros(npts/2)
-            for n in range(npts/2):
-              az = az+delaz * 2
+            lats = zeros(int(npts / 2))
+            lons = zeros(int(npts / 2))
+            for n in range(int(npts / 2)):
+              az = az + delaz * 2
               lon, lat, az21 = g.fwd(lon_0, lat_0, az, dist)
               lons[n] = lon
               lats[n] = lat
@@ -309,26 +311,26 @@ class AllSkyMap(Basemap):
 
             # Half of the remaining points are used on eastern and
             # western hemisphere.
-            N = npts/4
+            N = int(npts / 4)
             segs = []
-            dL = (90-abs(lats[0]))/ (N-1)
+            dL = (90 - abs(lats[0])) / (N - 1)
             r = range(N)
 
             # For the south-pole the order of points is changed to plot
             # the correct polygon
             if lat_0 < 0:
-              r.reverse()
+              r = list(reversed(r))
               segs.extend(zip(x1, y1))
            #First Half of the map border
-            x, y = self(-180 * sign(lat_0) *ones(N) , sign(lat_0)* (90 - array(r)* dL))
+            x, y = self(-180 * sign(lat_0) * ones(N) , sign(lat_0) * (90 - array(r)* dL))
             segs.extend(zip(x, y))
 
             if lat_0 > 0:
               segs.extend(zip(x1, y1))
 
             #Second half of the map border
-            r.reverse()
-            x, y = self(180 * sign(lat_0) *ones(N) , sign(lat_0)* (90 - array(r)* dL) )
+            r = list(reversed(r))
+            x, y = self(180 * sign(lat_0) * ones(N) , sign(lat_0) * (90 - array(r)* dL) )
             segs.extend(zip(x, y))
 
             #z = array(segs)
@@ -412,10 +414,10 @@ if __name__ == '__main__':
     rt2 = sqrt(2)
 
     # Draw a slanted green line crossing the map limb.
-    line = plot([rt2, 0], [rt2, 2*rt2], 'g-')
+    line = plot([rt2, 0], [rt2, 2 * rt2], 'g-')
 
     # Draw a slanted magenta line crossing the map limb but clipped.
-    line = plot([rt2+.1, 0+.1], [rt2, 2*rt2], 'm-', clip_path = limb)
+    line = plot([rt2+.1, 0+.1], [rt2, 2 * rt2], 'm-', clip_path = limb)
     
     # Draw some geodesics.
     # First a transparent thick blue geodesic crossing the limb but not clipped,
