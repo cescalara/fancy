@@ -163,8 +163,9 @@ class Data():
         for text in leg.get_texts():
             plt.setp(text, color = style.textcolor)
         
-        # add a colorbar
-        self._uhecr_colorbar(style)
+        # add a colorbar if uhecr objects plotted
+        if self.uhecr != {}:
+            self._uhecr_colorbar(style)
 
         if save:
             plt.savefig(savename, dpi = 1000,
