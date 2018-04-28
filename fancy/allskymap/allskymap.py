@@ -54,6 +54,7 @@ class AllSkyMap(Basemap):
     * add function for skymap label plotting given a certain style
     * force int values for floats being passed to tissot -> npts
     * update range to python3 compatibility by wrapping it in set()
+    * catch errors in pyproj inv() methodand print warning
 
     TODO: Fix the Basemap.plot method which plots incorrect declination thresholds
           (issue in shift_data method)
@@ -187,7 +188,7 @@ class AllSkyMap(Basemap):
 
         gc = pyproj.Geod(a = self.rmajor, b = self.rminor)
         az12, az21, dist = gc.inv(lon1, lat1, lon2, lat2)
-        npoints = int( (dist + 0.5**del_s)/del_s )
+        npoints = int( (dist + 0.5 ** del_s) / del_s )
         
         # Calculate lon & lat for points on the arc.
         lonlats = gc.npts(lon1, lat1, lon2, lat2, npoints)
@@ -249,7 +250,7 @@ class AllSkyMap(Basemap):
                                halign = 'left', hnudge = -1)  
 
 
-    def tissot(self, lon_0, lat_0, radius_deg, npts, ax = None,**kwargs):
+    def tissot(self, lon_0, lat_0, radius_deg, npts, ax = None, **kwargs):
         """
         Draw a polygon centered at ``lon_0,lat_0``.  The polygon
         approximates a circle on the surface of the earth with radius
@@ -284,7 +285,14 @@ class AllSkyMap(Basemap):
         # the tissot.
         ax = kwargs.pop('ax', None) or self._check_ax()
         g = pyproj.Geod(a = self.rmajor, b = self.rminor)
-        az12, az21, dist = g.inv(lon_0, lat_0, lon_0, lat_0 + radius_deg)
+        try:
+            az12, az21, dist = g.inv(lon_0, lat_0, lon_0, lat_0 + radius_deg)
+        except ValueError:
+            print ('WARNING:'
+                   'Error plotting coords', '[' + lon_0, lat_0 + ']',
+                   'with radius', radius_deg)
+            return
+                
         start_hem = self.east_hem(lon_0)
         segs1 = [self(lon_0, lat_0 + radius_deg)]
         over, segs2 = [], []
