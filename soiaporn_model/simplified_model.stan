@@ -1,33 +1,39 @@
 data {
-  //int<lower=0> N_A;
+  int<lower=1> N_A; // number of sources 
+  int<lower=1> N; // number of data points
   
-  unit_vector[3] varpi; 
-  unit_vector[3] omega; 
-  real w;
-}
-
-transformed data {
-  real s = 0.01;
-  int a = 1;
-  int b = 10;
+  unit_vector[3] varpi[N_A]; // source locations
+  unit_vector[3] omega[N]; // UHECR locations
+  real w[N_A]; // weights
 }
 
 parameters {
+  //simplex[N_A] lambda; // mixing proportions
+  //unit_vector[3] mu[N_A]; // source centres
+  
   real F_T; 
- 
   real<lower=0> kappa; 
 }
 
 transformed parameters {
-  real F_A;
+  real F_A[N_A];
 
-  //for (i in 1:N_A) 
-  F_A = w * F_T;
+  for (i in 1:N_A) { 
+    F_A[i] = w[i] * F_T;
+  }
 }
 
 model {
-  F_T ~ exponential(s);
-  kappa ~ uniform(a, b);
+  real log_w[N_A] = log(w); 
 
-  target += kappa * dot_product(omega, varpi) + log(kappa) - log(4 * pi() * sinh(kappa));
+  F_T ~ normal(500, 20);
+  kappa ~ uniform(1, 10);
+
+  for (n in 1:N) {
+    real lps[N_A] = log_w;
+    for (n_a in 1:N_A) {
+      lps[n_a] += kappa * dot_product(omega[n], varpi[n_a]) + log(kappa) - log(4 * pi() * sinh(kappa));
+    }
+    target += log_sum_exp(lps);
+  }   
 }
