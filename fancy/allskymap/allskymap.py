@@ -289,7 +289,7 @@ class AllSkyMap(Basemap):
             az12, az21, dist = g.inv(lon_0, lat_0, lon_0, lat_0 + radius_deg)
         except ValueError:
             print ('WARNING:'
-                   'Error plotting coords', '[' + lon_0, lat_0 + ']',
+                   'Error plotting coords', '[' + str(lon_0), str(lat_0) + ']',
                    'with radius', radius_deg)
             return
                 
