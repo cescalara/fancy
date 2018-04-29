@@ -1,33 +1,33 @@
-/* simplified model for the UHECR model of Soiaporn et al. (2012)
- * Francesca Capel April 2018
- */
-
 data {
-  int<lower=0> N_A; // number of AGN
-  real varpi[J][J]; // coordinates of AGN
-  real D[j]; // distance to AGN
-  real omega[J][J]; // coordinates of observed UHECR
+  //int<lower=0> N_A;
+  
+  unit_vector[3] varpi; 
+  unit_vector[3] omega; 
+  real w;
 }
 
-parameters {
-  real F_T; // total flux
-  //real f; // associated fraction
-  real kappa<lower=1, upper=10>; // concentration parameter
-
-  /* hyperparameters */
+transformed data {
   real s = 0.01;
   int a = 1;
   int b = 10;
 }
 
+parameters {
+  real F_T; 
+ 
+  real<lower=0> kappa; 
+}
+
 transformed parameters {
+  real F_A;
+
+  //for (i in 1:N_A) 
+  F_A = w * F_T;
 }
 
 model {
-  // prior on F_T
-  F_T ~ exponential(s)
-  // prior on f
-  // prior on kappa
-  kappa ~ uniform(a, b)
-  omega ~ von_mises(mu, kappa)
+  F_T ~ exponential(s);
+  kappa ~ uniform(a, b);
+
+  target += kappa * dot_product(omega, varpi) + log(kappa) - log(4 * pi() * sinh(kappa));
 }
