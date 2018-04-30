@@ -11,7 +11,7 @@ parameters {
   //simplex[N_A] lambda; // mixing proportions
   //unit_vector[3] mu[N_A]; // source centres
   
-  real F_T; 
+  real<lower=0> F_T; 
   real<lower=0> kappa; 
 }
 
@@ -26,7 +26,7 @@ transformed parameters {
 model {
   real log_w[N_A] = log(w); 
 
-  F_T ~ normal(500, 20);
+  F_T ~ normal(1000, 500);
   kappa ~ uniform(1, 10);
 
   for (n in 1:N) {
