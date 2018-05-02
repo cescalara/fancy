@@ -5,17 +5,19 @@ data {
   unit_vector[3] varpi[N_A]; /* source locations */
   unit_vector[3] omega[N]; /* uhecr locations */
   simplex[N_A] w;
+  real<lower=0> kappa;
 }
 
 parameters { 
   real<lower=0> F_T; 
-  real<lower=0> kappa;
+  //real<lower=0> kappa;
 
-  simplex[2] f;
+  real<lower=0, upper=1> f;
+  // simplex[2] f;
 }
 
 transformed parameters {
-  real F = f[1] * F_T;
+  real F = f * F_T;
   real F_A[N_A];
 
   for (i in 1:N_A) { 
@@ -26,15 +28,14 @@ transformed parameters {
 model {
   vector[N_A] log_w = log(w);
 
-  /*  */
-  real lpb = log(f[2]) + log( 1 / (4 * pi()) );
+  /* isotropic component */
+  real lpb = log(1 - f) + log( 1 / (4 * pi()) );
   real lps_sum = 0;
  
   /* priors */
-  F_T ~ normal(500, 200);
-  f[1] ~ uniform(0.5, 1);
-  f[2] ~ uniform(0, 0.5);
-  kappa ~ uniform(1, 20);
+  F_T ~ normal(N, 200);
+  f ~ uniform(0.7, 1);
+  //kappa ~ uniform(1, 20);
   
   /* mixture of source components */
   for (n in 1:N) {
@@ -44,7 +45,7 @@ model {
     }
     lps_sum += log_sum_exp(lps);
   }
-  lps_sum += log(f[1]);
+  lps_sum += log(f);
 
   /* target */
   target += log_sum_exp(lpb, lps_sum);
