@@ -4,20 +4,18 @@ data {
   
   unit_vector[3] varpi[N_A]; /* source locations */
   unit_vector[3] omega[N]; /* uhecr locations */
-  real w[N_A]; /* weights */
+  simplex[N_A] w;
 }
 
-parameters {
-  //simplex[N_A] lambda; // mixing proportions (weights)
-  //unit_vector[3] mu[N_A]; // source centres
-
-  real<lower=0> f;
+parameters { 
   real<lower=0> F_T; 
-  real<lower=0> kappa; 
+  real<lower=0> kappa;
+
+  simplex[2] f;
 }
 
 transformed parameters {
-  real F = f * F_T;
+  real F = f[1] * F_T;
   real F_A[N_A];
 
   for (i in 1:N_A) { 
@@ -26,23 +24,28 @@ transformed parameters {
 }
 
 model {
-  /* cache the weights */
-  real log_w[N_A] = log(w); 
+  vector[N_A] log_w = log(w);
 
+  /*  */
+  real lpb = log(f[2]) + log( 1 / (4 * pi()) );
+  real lps_sum = 0;
+ 
   /* priors */
   F_T ~ normal(500, 200);
-  f ~ uniform(0, 1);
-  kappa ~ uniform(1, 10);
+  f[1] ~ uniform(0.5, 1);
+  f[2] ~ uniform(0, 0.5);
+  kappa ~ uniform(1, 20);
   
-  /* isotropic component */
-  target += log (1 / (4 * pi()));
-
   /* mixture of source components */
   for (n in 1:N) {
-    real lps[N_A] = log_w;
+    vector[N_A] lps = log_w;
     for (n_a in 1:N_A) {
       lps[n_a] += kappa * dot_product(omega[n], varpi[n_a]) + log(kappa) - log(4 * pi() * sinh(kappa));
     }
-    target += log_sum_exp(lps);
-  }   
+    lps_sum += log_sum_exp(lps);
+  }
+  lps_sum += log(f[1]);
+
+  /* target */
+  target += log_sum_exp(lpb, lps_sum);
 }
