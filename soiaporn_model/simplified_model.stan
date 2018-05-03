@@ -28,25 +28,27 @@ transformed parameters {
 model {
   vector[N_A] log_w = log(w);
 
+  real lpb = log(1 - f) + log( 1 / (4 * pi()) );
   real lps_sum = 0;
  
   /* priors */
   F_T ~ normal(N, 200);
-  f ~ uniform(0.7, 1);
+  f ~ uniform(0.6, 1);
   //kappa ~ uniform(1, 20);
   
   /* mixture of source components */
   for (n in 1:N) {
     vector[N_A] lps = log_w;
-    real lpb = log(1 - f) + log( 1 / (4 * pi()) );
 
     for (n_a in 1:N_A) {
       lps[n_a] += kappa * dot_product(omega[n], varpi[n_a]) + log(kappa) - log(4 * pi() * sinh(kappa));
     }
     lps_sum += log_sum_exp(lps);
-    lps_sum += log(f);
-    target += log_sum_exp(lpb, lps_sum);
   }
 
+  lps_sum += log(f);
+ 
   /* target */
+  target += log_sum_exp(lpb, lps_sum);
+
 }
