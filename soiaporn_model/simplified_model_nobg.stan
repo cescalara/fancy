@@ -1,30 +1,27 @@
 data {
 
-  /* sources */
   int<lower=1> N_A;
-  unit_vector[3] varpi[N_A]; 
-
-  /* uhecr */
   int<lower=1> N; 
+ 
+  unit_vector[3] varpi[N_A]; 
   unit_vector[3] omega[N]; 
 
-  simplex[N_A] w;
 }
 
 parameters { 
 
   real<lower=0> F_T; 
   real<lower=0> kappa;
+  simplex[N_A] w;
 
 }
 
 transformed parameters {
 
-  real F = f * F_T;
   real F_A[N_A];
 
   for (i in 1:N_A) { 
-    F_A[i] = w[i] * F;
+    F_A[i] = w[i] * F_T;
   }
 
 }
@@ -34,7 +31,7 @@ model {
  
   /* priors */
   F_T ~ normal(N, 200);
-  kappa ~ uniform(1, 20);
+  kappa ~ normal(100, 10);
   
   /* FMM of vMF */
   for (n in 1:N) {
