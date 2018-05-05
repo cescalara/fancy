@@ -1,3 +1,7 @@
+functions {
+
+}
+
 data {
 
   int<lower=1> N_A;
