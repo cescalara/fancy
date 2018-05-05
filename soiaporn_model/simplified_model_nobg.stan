@@ -31,7 +31,7 @@ model {
  
   /* priors */
   F_T ~ normal(N, 200);
-  kappa ~ uniform(50, 150);
+  kappa ~ normal(100, 10);
   
   /* FMM of vMF */
   for (n in 1:N) {
