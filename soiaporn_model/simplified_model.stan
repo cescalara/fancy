@@ -1,7 +1,3 @@
-functions {
-
-
-}
 
 data {
 
@@ -18,16 +14,15 @@ data {
 parameters { 
 
   real<lower=0> F_T; 
-  real<lower=0, upper=1> f;
 
-  real<lower=0> kappa;
-  
+  real<lower=0> kappa;  
   simplex[N_A + 1] w;
 
 }
 
 transformed parameters {
 
+  real<lower=0, upper=1> f = 1 - w[N_A + 1];
   real F = f * F_T;
   real F_A[N_A];
 
@@ -41,7 +36,7 @@ model {
 
   /* priors */
   F_T ~ normal(N, 200);
-  f ~ normal(0.9, 0.1);
+  f ~ uniform(0, 1);
   kappa ~ normal(100, 20);
   
   /* FMM of vMF */
