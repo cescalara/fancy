@@ -35,11 +35,11 @@ model {
   vector[N_A + 1] log_w = log(w);
 
   /* priors */
-  F_T ~ exponential(0.01);
+  F_T ~ normal(N, 10);
   f ~ beta(1, 1);
   kappa ~ normal(100, 20);
   
-  /* FMM of vMF */
+  /* FMM of vMF with isotropic component */
   for (n in 1:N) {
     vector[N_A + 1] lps = log_w;
 
