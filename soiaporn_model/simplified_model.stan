@@ -1,3 +1,7 @@
+functions {
+
+
+}
 
 data {
 
@@ -14,11 +18,12 @@ data {
 parameters { 
 
   real<lower=0> F_T; 
-  real<lower=0> kappa;
-
-  simplex[N_A + 1] w;
   real<lower=0, upper=1> f;
-  // simplex[2] f;
+
+  real<lower=0> kappa;
+  
+  simplex[N_A + 1] w;
+
 }
 
 transformed parameters {
@@ -26,7 +31,7 @@ transformed parameters {
   real F = f * F_T;
   real F_A[N_A];
 
-  for (i in 2:N_A + 1) { 
+  for (i in 1:N_A) { 
     F_A[i] = w[i] * F;
   }
 }
@@ -34,9 +39,6 @@ transformed parameters {
 model {
   vector[N_A + 1] log_w = log(w);
 
-  //real lpb = log(1 - f) + log( 1 / (4 * pi()) );
-  //real lps_sum = 0;
- 
   /* priors */
   F_T ~ normal(N, 200);
   f ~ normal(0.9, 0.1);
@@ -48,21 +50,16 @@ model {
 
     for (n_a in 1:(N_A + 1)) {
       
-      if (n_a == 1) {
-	lps[n_a] += log(1 / ( 4 * pi() ))
+      if (n_a < N_A + 1) {
+	lps[n_a] += kappa * dot_product(omega[n], varpi[n_a]) + log(kappa) - log(4 * pi() * sinh(kappa));	
       }
       else {
-	lps[n_a] += kappa * dot_product(omega[n], varpi[n_a]) + log(kappa) - log(4 * pi() * sinh(kappa));	
+	lps[n_a] += log(1 / ( 4 * pi() ));
       }
       
     }
     
     target += log_sum_exp(lps);
   }
-
-  //lps_sum += log(f);
- 
-  /* target */
-  //target += log_sum_exp(lpb, lps_sum);
 
 }
