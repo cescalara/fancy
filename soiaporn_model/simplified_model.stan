@@ -35,8 +35,8 @@ model {
   vector[N_A + 1] log_w = log(w);
 
   /* priors */
-  F_T ~ normal(N, 200);
-  f ~ uniform(0, 1);
+  F_T ~ exponential(0.01);
+  f ~ beta(1, 1);
   kappa ~ normal(100, 20);
   
   /* FMM of vMF */
