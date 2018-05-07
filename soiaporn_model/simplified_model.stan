@@ -23,11 +23,10 @@ parameters {
 transformed parameters {
 
   real<lower=0, upper=1> f = 1 - w[N_A + 1];
-  real F = f * F_T;
   real F_A[N_A];
 
   for (i in 1:N_A) { 
-    F_A[i] = w[i] * F;
+    F_A[i] = w[i] * F_T;
   }
 }
 
