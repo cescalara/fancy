@@ -1,3 +1,14 @@
+functions {
+  /* vMF RNG */
+  // vector vMF_rng(vector varpi, real kappa) {
+
+    
+  //  return omega;
+  //}
+
+}
+
+
 data {
 
   /* sources */

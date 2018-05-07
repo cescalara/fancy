@@ -1,29 +1,3 @@
-functions {
-
-  /* FMM of vMF with isotropic component */
-  real vMFmix_lpdf(vector omega[], real kappa, unit_vector[3] varpi[], w) {
-    real lprob;
-    vector[N_A + 1] log_w = log(w);
-    
-    for (n in 1:N) {
-      vector[N_A + 1] lps = log_w;
-
-      for (n_a in 1:(N_A + 1)) {
-	if (n_a < N_A + 1) {
-	  lps[n_a] += kappa * dot_product(omega[n], varpi[n_a]) + log(kappa) - log(4 * pi() * sinh(kappa));	
-	}
-	else {
-	  lps[n_a] += log(1 / ( 4 * pi() ));
-	}	
-      }
-      
-      lprob += log_sum_exp(lps);
-    }
-
-    return lprob;
-  }
-
-}
 
 data {
 
