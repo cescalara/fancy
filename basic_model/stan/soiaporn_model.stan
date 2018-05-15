@@ -1,55 +1,49 @@
-// hiearchical model for UHECR arrival directions
-// Paper: Soiaporn, K. et al., 2012. Multilevel Bayesian framework for modeling the production,
-// propagation and detection of ultra-high energy cosmic rays. arXiv.org, astro-ph.HE(3), pp.1249–1285.
-// Data: https://www.auger.org/index.php/document-centre/viewdownload/115-data/
-// 2354-list-of-ultra-high-energy-cosmic-ray-events-2014
-
 
 data {
-  // UHECRs
-  int<lower=0> i; // number of detected UHECR events
-  real d[i, i]; // glon and glat of the detected UHECR events
 
-  // sources
-  int<lower=0> k; // number of potential sources
-  real D[k]; // distance to the sources in Mpc
-  real varpi[k, k]; // glon and glat of the sources
-}
+  /* sources */
+  int<lower=1> N_A;
+  unit_vector[3] varpi[N_A]; 
 
-transformed data {
-
+  /* uhecr */
+  int<lower=1> N; 
+  unit_vector[3] omega[N]; 
 
 }
 
-parameters {
-  real F_t; // total flux
-  real f; // fraction associated with sources
-  //real kappa[i]; // concentration parameter of defelction
-  int<lower=0> lamda[i]; // source label
+parameters { 
 
-  // hyperparameters
-  real s; // scale of exponential prior for F_T
-  int a, b; //shape parameters of the beta prior for f
+  real<lower=0> F_T; 
+
+  real<lower=0> kappa;  
+  simplex[N_A + 1] w;
+
+  int<lower=0> lambda[i];
+}
+
+transformed parameters {
+
+  //real<lower=0, upper=1> f;
+  real F_A[N_A] + 1;
+
+  for (i in 1:N_A + 1) { 
+    F_A[i] = w[i] * F_T;
+  }
 }
 
 model {
+  vector[N_A + 1] log_w = log(w);
 
-  // priors
-  s = 0.01 * 4 * 3.14;
-  F_t ~ exponential(s);
+  /* priors */
+  F_T ~ normal(N, 10);
+  f ~ beta(1, 1);
+  kappa ~ normal(100, 20);
 
-  a = 1;
-  b = 1;
-  f ~ beta(a, b)
+  /* model */
+  /* rough idea, need to handle lambda properly */
+  lambda ~ categorial(w);
+  F ~ poisson(F_A);
 
-  //lambda = 
-
-  // likelihood
-  
-  
-}
-
-generated quantities {
-
-
+  /* */
+  //f_ik
 }
