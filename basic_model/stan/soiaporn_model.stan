@@ -37,27 +37,26 @@ data {
 
 parameters { 
 
-  /* associated fraction */
-  real<lower=0, upper=1> f;
-  
   /* sources */
   real<lower=0> F_T; 
   simplex[N_A + 1] w;
   
   /* deflection */
   real<lower=0> kappa;  
-  real<lower=0> kappa_c;  
+  //real<lower=0> kappa_c;  
 
 }
 
 transformed parameters {
 
+  /* associated fraction */
+  real<lower=0, upper=1> f = 1 - w[N_A + 1];
+  
   /* source flux */
-  real F = F_T * f;
-  real F_A[N_A];
+  real F_A[N_A + 1];
 
-  for (k in 1:N_A) { 
-    F_A[k] = w[k] * F;
+  for (k in 1:N_A + 1) {
+    F_A[k] = w[k] * F_T;
   }
 
 }
@@ -69,12 +68,14 @@ model {
   real f_ki_inner;
   real f_ki;
   real sum_F_A;
+  int kappa_c = 1000;
   
   /* priors */
   F_T ~ normal(N, 10);
   f ~ beta(1, 1);
+  f ~ normal(0.7, 0.1);
   kappa ~ normal(100, 20);
-  kappa_c ~ normal(1000, 10);
+  //kappa_c ~ normal(1000, 10);
 
   /* labels */
   //lambda ~ categorical(w);
@@ -83,10 +84,9 @@ model {
   sum_F_A = sum(F_A);
   target += log(-sum_F_A) + (N * log(sum_F_A)); 
 
-  f_ki = 1;
-  for (k in 1:N_A) {
+  for (k in 1:N_A + 1) {
     for (i in 1:N) {
-      if (k > 0) {
+      if (k < N_A + 1) {
 	f_ki_factor = (kappa_c * kappa) / (4 * pi() * sinh(kappa_c) * sinh(kappa));
 	f_ki_inner = abs_val( (kappa_c * detected[i]) + (kappa * varpi[k]) );
 	f_ki = sinh(f_ki_inner) / f_ki_inner;
