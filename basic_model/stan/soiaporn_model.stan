@@ -72,7 +72,7 @@ model {
   
   /* priors */
   F_T ~ normal(N, 10);
-  f ~ beta(1, 1);
+  //f ~ beta(1, 1);
   f ~ normal(0.7, 0.1);
   kappa ~ normal(100, 20);
   //kappa_c ~ normal(1000, 10);
@@ -100,3 +100,4 @@ model {
   
   
 }
+a
