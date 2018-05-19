@@ -1,5 +1,5 @@
 /**
- * Hierarchcial model for UHECR 
+ * Experimental model for UHECR 
  * Based on the work by Soiaporn et al. (2012)
  * @author Francesca Capel
  * @date May 2018
@@ -53,46 +53,40 @@ transformed parameters {
   real<lower=0, upper=1> f = 1 - w[N_A + 1];
   
   /* source flux */
-  vector[N_A + 1] F_k;
+  vector[N_A + 1] F_A;
 
   for (k in 1:N_A + 1) {
-    F_k[k] = w[k] * F_T;
+    F_A[k] = w[k] * F_T;
   }
 
 }
 
 model {
 
-  real f_ki_inner;
-  real f_ki;
-  real sum_F_k;
-  vector[N_A + 1] log_F_k = log(F_k);
-  real f_ki_factor = (kappa_c * kappa) / (4 * pi() * sinh(kappa_c) * sinh(kappa));
+  vector[N_A + 1] log_w = log(w);
 
   /* priors */
   F_T ~ normal(N, 10);
   f ~ beta(1, 1);
   kappa ~ normal(100, 20);
-  kappa_c ~ normal(1000, 10);
+  
+  /* FMM of vMF with isotropic component */
+  for (n in 1:N) {
+    vector[N_A + 1] lps = log_w;
 
-  /* likelihood */
-  //sum_F_A = sum(F_k);
-  //target += log(-sum_F_A); 
-
-  for (i in 1:N) {
-     vector[N_A + 1] lps = log_F_k;
-   
-     for (k in 1:N_A + 1) {
-       if (k < N_A + 1) {
-	 f_ki_inner = abs_val( (kappa_c * detected[i]) + (kappa * varpi[k]) );
-	 f_ki = f_ki_factor * (sinh(f_ki_inner) / f_ki_inner);
-       }
-       else {
-	 f_ki = 1 / (4 * pi());
-       }
-       lps[k] += log(f_ki);
-     }
-     target += log_sum_exp(lps);
+    for (n_a in 1:(N_A + 1)) {
+      
+      if (n_a < N_A + 1) {
+	lps[n_a] += kappa * dot_product(omega[n], varpi[n_a]) + log(kappa) - log(4 * pi() * sinh(kappa));	
+      }
+      else {
+	lps[n_a] += log(1 / ( 4 * pi() ));
+      }
+      
+    }
+    
+    target += log_sum_exp(lps);
   }
+
  
 }
