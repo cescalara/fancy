@@ -67,7 +67,7 @@ model {
   real f_ki;
   real sum_F_k;
   vector[N_A + 1] log_F_k = log(F_k);
-  real f_ki_factor = (kappa_c * kappa) / (4 * pi() * sinh(kappa_c) * sinh(kappa));
+  real lf_ki_factor = log(kappa_c * kappa) + log( 1 / (4 * pi() * sinh(kappa_c) * sinh(kappa)) );
 
   /* priors */
   F_T ~ normal(N, 10);
@@ -85,12 +85,11 @@ model {
      for (k in 1:N_A + 1) {
        if (k < N_A + 1) {
 	 f_ki_inner = abs_val( (kappa_c * detected[i]) + (kappa * varpi[k]) );
-	 f_ki = f_ki_factor * (sinh(f_ki_inner) / f_ki_inner);
+	 lps[k] += lf_ki_factor + log(sinh(f_ki_inner)) + log(1 / f_ki_inner);
        }
        else {
-	 f_ki = 1 / (4 * pi());
+	 lps[k] += log(1 / (4 * pi()));
        }
-       lps[k] += log(f_ki);
      }
      target += log_sum_exp(lps);
   }
