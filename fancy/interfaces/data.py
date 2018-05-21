@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
-from ..allskymap import AllSkyMap
+from ..plotting import AllSkyMap
 from ..utils import PlotStyle, Solarized
 
 

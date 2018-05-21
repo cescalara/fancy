@@ -1,2 +1,2 @@
 name = "fancy"
-__all__ = ['data']
+from .interfaces.data import *
