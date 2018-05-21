@@ -2,7 +2,7 @@ from distutils.core import setup
 setup(
 
     name = 'fancy',
-    packages = setuptools.find_packages(),, 
+    packages = setuptools.find_packages(), 
     version = 'v0.2',
     description = 'Framework for the Analysis of Cosmic raYs',
     author = 'Francesca Capel',
