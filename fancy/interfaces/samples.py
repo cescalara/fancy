@@ -30,7 +30,7 @@ class Direction():
         self.d = SkyCoord(self.x, self.y, self.z, 
                           unit = 'mpc', 
                           representation_type = 'cartesian', 
-                          frame = 'galactic')
+                          frame = 'icrs')
         self.d.representation_type = 'spherical'
         self.lons = self.d.galactic.l.wrap_at(360 * u.deg).deg
         self.lats = self.d.galactic.b.wrap_at(180 * u.deg).deg
