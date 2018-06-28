@@ -35,26 +35,24 @@ class Detector():
         
         self.exposure(self.location.lat.rad, self.threshold_zenith_angle.rad)
 
-               
+        
+        
     def exposure(self, a_0, theta_m):
         """
         Calculate and plot the exposure for a given detector 
         location.
         """
 
-        params = []
-        params.append(np.cos(a_0))
-        params.append(np.sin(a_0))
-        params.append(np.cos(theta_m))
+        self.params = [np.cos(a_0), np.sin(a_0), np.cos(theta_m)]
         
         # define a range of declination to evaluate the
         # exposure at
         self.declination = np.linspace(-np.pi/2, np.pi/2, self.num_points)
 
-        m = np.asarray([m_dec(d, params) for d in self.declination])
+        m = np.asarray([m_dec(d, self.params) for d in self.declination])
         
         # normalise to a maximum at 1
-        self.exposure_factor = (m / m_dec(-np.pi/2, params))
+        self.exposure_factor = (m / m_dec(-np.pi/2, self.params))
 
         # find the point at which the exposure factor is 0
         self.limiting_dec = Angle((self.declination[m == 0])[0], 'rad')
