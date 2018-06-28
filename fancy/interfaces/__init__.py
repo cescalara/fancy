@@ -1,2 +1,2 @@
 from .data import *
-from .samples import *
+from .integration import *
