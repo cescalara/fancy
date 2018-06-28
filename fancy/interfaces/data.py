@@ -6,11 +6,12 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 
 from .stan import coord_to_uv
+from ..detector.detector import Detector
 from ..plotting import AllSkyMap
 from ..utils import PlotStyle, Solarized
 
 
-__all__ = ['Data', 'Source', 'Uhecr', 'Detector', 'coord_to_uv']
+__all__ = ['Data', 'Source', 'Uhecr']
 
 
 class Data():
@@ -48,7 +49,7 @@ class Data():
             label = 'source#' + str(len(self.source))
             
         # append source object to dictonary with it's label as a key
-        self.source[label] = new_source
+        self.source = new_source
 
 
     def add_uhecr(self, filename, label = None):
@@ -66,24 +67,24 @@ class Data():
             label = 'uhecr#' + str(len(self.uhecr))
             
         # append source object to dictonary with it's label as a key
-        self.uhecr[label] = new_uhecr
+        self.uhecr = new_uhecr
 
 
-    def add_detector(self, coords, threshold_zenith_angle, label = None):
+    def add_detector(self, location, threshold_zenith_angle, area, total_exposure, label = None):
         """
         Add a detector object to complement the data.
 
         :param name: the name of the detector
         """
 
-        new_detector = Detector(coords, threshold_zenith_angle)
+        new_detector = Detector(location, threshold_zenith_angle, area, total_exposure)
 
         # generate numbered labels by default
         if label == None:
             label = 'detector#' + str(len(self.detector))
             
         # append source object to dictonary with it's label as a key
-        self.detector[label] = new_detector
+        self.detector = new_detector
 
 
     def _uhecr_colorbar(self, style):
@@ -403,273 +404,4 @@ class Uhecr():
                 skymap.tissot(lon, lat, self.coord_uncertainty, 30, facecolor = color,
                               alpha = style.alpha_level)
 
-
-class Angle():
-    """
-    Store angles as degree or radian for convenience.
-    """
-
-    def __init__(self, angle, type = None):
-        """
-        Store angles as degree or radian for convenience.
-       
-        :param angle: a single angle or 
-        """
-
-        self._defined_types = ['deg', 'rad']
-
-        # default: pass arguments in degrees
-        if type == None:
-            type = self._defined_types[0]
-
-        if type == self._defined_types[0]:
-            self.deg = angle
-            if isinstance(angle, int) or isinstance(angle, float):
-                self.rad = np.deg2rad(angle)
-            else:
-                self.rad = [np.deg2rad(a) for a in angle]
-        elif type == self.defined_types[1]:
-            if isinstance(angle, int) or isinstance(angle, float):
-                self.deg = np.rad2deg(angle)
-            else:
-                self.deg = [np.rad2deg(a) for a in angle]
-            self.rad = angle
-
-
-            
-class Detector():
-    """
-    UHECR observatory information and instrument response. 
-    """
-
-    def __init__(self, coords, threshold_zenith_angle):
-        """
-        UHECR observatory information and instrument response. 
-        
-        :param coords: latitiude and longitude of detector
-                       in deg.
-        :param threshold_zenith_angle: maximum detectable
-                                       zenith angle in deg.
-        """
-
-        # stroed in radians
-        self.coords = self._convert_coordinates(coords)
-        self.threshold_zenith_angle = Angle(threshold_zenith_angle)
-
-        self._view_options = ['map', 'decplot']
-        self.exposure()
-
-        
-    def _convert_coordinates(self, coords):
-        """
-        Convert input coordinates into astropy coord
-        objects for convenience.
-
-        It is assumed that the input coordinates are 
-        standard latitude and longitude of a position
-        on the Earth's surface.
-        
-        :param coords: latitude and longitude of detector
-        :return: astropy coord object
-        """
-
-        #return np.asarray([np.deg2rad(c) for c in coords])
-        return SkyCoord(l = coords[1] * u.degree,
-                        b = coords[0] * u.degree, frame = 'galactic')
-
-        
-    def exposure(self):
-        """
-        Calculate and plot the exposure for a given detector 
-        locaiton.
-        """
-
-        # define a range of declination to evaluate the
-        # exposure at
-        num_points = 500
-        declination = np.linspace(-90, 90, num_points)
-        dec_rad = np.deg2rad(declination) # convert to radians
-
-        proj_fac = np.asarray([self._alpha_m(dec) for dec in dec_rad])
-
-        # normalise
-        self._projection_factor = np.nan_to_num(proj_fac / max(proj_fac))
-
-        # find the point at which the pjection factor is 0
-        self.limiting_dec = Angle((declination[proj_fac == 0])[0], 'deg')
-        
-
-    def _avg_proj_factor(self, dec):
-        """
-        Define the average projection factor as a function
-        of declination.
-
-        :param dec: the values of declination for which the 
-                    projection factor is evaluated.
-        """
-
-        a_0 = self.coords.galactic.b.rad
-        return ( np.cos(a_0) * np.cos(dec) *
-                np.sin(self._alpha_m(dec)) ) 
-
-    
-    def _alpha_m(self, dec):
-        """
-        Calculate a factor needed for the exposure calculation
-        
-        :param dec: an array of declination values for which
-                    this factor is to be evaluated.
-        """
-
-        xi_val = self._xi(dec)
-        if (xi_val > 1):
-            res = 0
-        elif (xi_val < -1):
-            res = np.pi
-        else:
-            res = np.arccos(xi_val)
-        return res
-        
-
-    def _xi(self, dec):
-        """
-        Calculate a factor needed for the exposure calculation
-        
-        :param dec: an array of declination values for which
-                    this factor is to be evaluated.
-        """
-
-        theta_m = self.threshold_zenith_angle.rad
-        a_0 = self.coords.galactic.b.rad
-        
-        numerator = np.cos(theta_m) - np.sin(a_0) * np.sin(dec)
-        denominator = np.cos(a_0) * np.cos(dec)
-        return numerator/denominator
-
-
-    def show(self, view = None, save = False, savename = None, cmap = None):
-        """
-        Make a plot of the detector's exposure
-        
-        :param view: a keyword describing how to show the plot
-                     options are described by self._view_options
-        :param save: boolean input, if True, the figure is saved
-        :param savename: location to save to, required if save is 
-                         True
-        """
-
-        # define the style
-        if cmap == None:
-            style = PlotStyle(cmap_name = 'macplus')
-        else:
-            style = PlotStyle(cmap_name = cmap)
-            
-        # default is skymap
-        if view == None:
-            view = self._view_options[0]
-        else:
-            if view not in self._view_options:
-                print ('ERROR:', 'view option', view, 'is not defined')
-                return
-
-        # sky map
-        if view == self._view_options[0]:
-
-            # figure
-            fig = plt.figure(figsize = (12, 6))
-            ax = plt.gca()
-            
-            # skymap
-            skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0)
-
-            num_points = 500
-            
-            # define RA and DEC over all coordinates
-            rightascensions = np.linspace(-180, 180, num_points)
-            declinations = np.linspace(-90, 90, num_points)
-
-            cmap = style.cmap
-            norm_proj = matplotlib.colors.Normalize(self._projection_factor.min(),
-                                                    self._projection_factor.max())
-
-            # plot the exposure map
-            # NB: use scatter as plot and pcolormesh have bugs in shiftdata methods
-            for dec, proj in np.nditer([declinations, self._projection_factor]):
-                decs = np.tile(dec, num_points)
-                c = SkyCoord(ra = rightascensions * u.degree, 
-                             dec = decs * u.degree, frame = 'icrs')
-                lon = c.galactic.l.deg
-                lat = c.galactic.b.deg
-                skymap.scatter(lon, lat, latlon = True, linewidth = 3, 
-                             color = cmap(norm_proj(proj)), alpha = 0.7)
-
-            # plot exposure boundary
-            self.draw_exposure_lim(skymap)
-            
-            # add labels
-            skymap.draw_standard_labels(style.cmap, style.textcolor)
-
-            # add colorbar
-            self._exposure_colorbar(style)
-
-        # decplot
-        elif view == self._view_options[1]:
-
-            # plot for all decs
-            num_points = 500
-            declination = np.linspace(-90, 90, num_points)
- 
-            plt.figure()
-            plt.plot(declination, self._projection_factor, linewidth = 5, alpha = 0.7)
-            plt.xlabel('$\delta$');
-            plt.ylabel('projection factor');
-
-
-        if save:
-            plt.savefig(savename, dpi = 1000,
-                    bbox_inches = 'tight', pad_inches = 0.5)
-
-            
-    def _exposure_colorbar(self, style):
-        """
-        Plot a colorbar for the exposure map
-        """
-            
-        cb_ax = plt.axes([0.25, 0, .5, .03], frameon = False)  
-        vals = np.linspace(self._projection_factor.min(),
-                           self._projection_factor.max(), 100)
-        
-        norm_proj = matplotlib.colors.Normalize(self._projection_factor.min(),
-                                                self._projection_factor.max())
-    
-        bar = matplotlib.colorbar.ColorbarBase(cb_ax, values = vals, norm = norm_proj, cmap = style.cmap, 
-                                               orientation = 'horizontal', drawedges = False, alpha = 1)
-
-        bar.ax.get_children()[1].set_linewidth(0)
-        bar.set_label('Relative exposure', color = style.textcolor)
-        
-
-    def draw_exposure_lim(self, skymap, label = None):
-        """
-        Draw a line marking the edge of the detector's exposure.
-        
-        :param skymap: an AllSkyMap instance.
-        :param label: a label for the limit.
-        """
-
-        if label == None:
-            label = 'detector'
-
-        num_points = 500
-        rightascensions = np.linspace(-180, 180, num_points)  
-        limiting_dec = self.limiting_dec.deg
-        boundary_decs = np.tile(limiting_dec, num_points)
-        c = SkyCoord(ra = rightascensions * u.degree,
-                     dec = boundary_decs * u.degree, frame = 'icrs')
-        lon = c.galactic.l.deg
-        lat = c.galactic.b.deg
-
-        skymap.scatter(lon, lat, latlon = True, linewidth = 3, 
-                       color = 'k', alpha = 0.5,
-                       label = 'limit of ' + label + '\'s exposure')
 

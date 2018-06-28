@@ -133,4 +133,6 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+
+# cached stan models
 *.pkl
