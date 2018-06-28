@@ -46,11 +46,11 @@ class Analysis():
         
         kappa = np.linspace(10, 1000, num_points)
 
-        params = self.data.detector['Auger'].params
+        params = self.data.detector.params
 
         kappa_true = self.model.kappa
 
-        varpi = self.data.source['AGN'].unit_vector
+        varpi = self.data.source.unit_vector
 
         # kappa_true table for simulation
         self.sim_table = ExposureIntegralTable(kappa_true, varpi, params, self.sim_table_filename)
@@ -96,17 +96,17 @@ class Analysis():
         for d in c_icrs:
             za = 99
             i = 0
-            while (za > self.data.detector['Auger'].threshold_zenith_angle.rad):
+            while (za > self.data.detector.threshold_zenith_angle.rad):
                 dt = np.random.exponential(1 / self.Nex_sim)
                 if (first):
                     t = start_time + dt
                 else:
                     t = time[-1] + dt
                 tdy = Time(t, format = 'decimalyear')
-                za = self._get_zenith_angle(d, self.data.detector['Auger'].location, tdy)
+                za = self._get_zenith_angle(d, self.data.detector.location, tdy)
                 i += 1
                 if (i > 100):
-                    za = self.data.detector['Auger'].threshold_zenith_angle.rad
+                    za = self.data.detector.threshold_zenith_angle.rad
                     stuck.append(1)
             time.append(t)
             first = False
@@ -134,14 +134,14 @@ class Analysis():
                        'f' : self.model.f,
                        'kappa' : self.model.kappa,
                        'kappa_c' : self.model.kappa_c, 
-                       'N_A' : len(self.data.source['AGN'].distance),
-                       'varpi' : self.data.source['AGN'].unit_vector, 
-                       'D' : self.data.source['AGN'].distance,
-                       'A' : self.data.detector['Auger'].area,
-                       'a_0' : self.data.detector['Auger'].a_0,
-                       'theta_m' : self.data.detector['Auger'].theta_m, 
-                       'alpha_T' : self.data.detector['Auger'].alpha_T,
-                       'M' : self.data.detector['Auger'].M,
+                       'N_A' : len(self.data.source.distance),
+                       'varpi' : self.data.source.unit_vector, 
+                       'D' : self.data.source.distance,
+                       'A' : self.data.detector.area,
+                       'a_0' : self.data.detector.a_0,
+                       'theta_m' : self.data.detector.theta_m, 
+                       'alpha_T' : self.data.detector.alpha_T,
+                       'M' : self.data.detector.M,
                        'eps' : eps}
 
         # run simulation
@@ -161,16 +161,16 @@ class Analysis():
         kappa_grid = pystan.read_rdump(self.table_filename)['kappa']
         
         # prepare fit inputs
-        self.fit_input = {'N_A' : len(self.data.source['AGN'].distance), 
-                          'varpi' :self.data.source['AGN'].unit_vector,
-                          'D' : self.data.source['AGN'].distance, 
+        self.fit_input = {'N_A' : len(self.data.source.distance), 
+                          'varpi' :self.data.source.unit_vector,
+                          'D' : self.data.source.distance, 
                           'N' : len(self.event), 
                           'detected' : self.event, 
-                          'A' : self.data.detector['Auger'].area,
-                          'a_0' : self.data.detector['Auger'].a_0,
-                          'theta_m' : self.data.detector['Auger'].theta_m, 
-                          'alpha_T' : self.data.detector['Auger'].alpha_T, 
-                          'M' : self.data.detector['Auger'].M, 
+                          'A' : self.data.detector.area,
+                          'a_0' : self.data.detector.a_0,
+                          'theta_m' : self.data.detector.theta_m, 
+                          'alpha_T' : self.data.detector.alpha_T, 
+                          'M' : self.data.detector.M, 
                           'Ngrid' : len(kappa_grid), 
                           'eps' : eps_fit, 
                           'kappa_grid' : kappa_grid,

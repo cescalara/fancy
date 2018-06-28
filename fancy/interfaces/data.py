@@ -49,7 +49,7 @@ class Data():
             label = 'source#' + str(len(self.source))
             
         # append source object to dictonary with it's label as a key
-        self.source[label] = new_source
+        self.source = new_source
 
 
     def add_uhecr(self, filename, label = None):
@@ -67,7 +67,7 @@ class Data():
             label = 'uhecr#' + str(len(self.uhecr))
             
         # append source object to dictonary with it's label as a key
-        self.uhecr[label] = new_uhecr
+        self.uhecr = new_uhecr
 
 
     def add_detector(self, location, threshold_zenith_angle, area, total_exposure, label = None):
@@ -84,7 +84,7 @@ class Data():
             label = 'detector#' + str(len(self.detector))
             
         # append source object to dictonary with it's label as a key
-        self.detector[label] = new_detector
+        self.detector = new_detector
 
 
     def _uhecr_colorbar(self, style):
