@@ -6,6 +6,7 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 
 from .stan import coord_to_uv
+from ..detector import *
 from ..plotting import AllSkyMap
 from ..utils import PlotStyle, Solarized
 
