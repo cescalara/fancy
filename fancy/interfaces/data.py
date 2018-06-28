@@ -5,11 +5,12 @@ from matplotlib import pyplot as plt
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
+from .stan import coord_to_uv
 from ..plotting import AllSkyMap
 from ..utils import PlotStyle, Solarized
 
 
-__all__ = ['Data', 'Source', 'Uhecr', 'Detector']
+__all__ = ['Data', 'Source', 'Uhecr', 'Detector', 'coord_to_uv']
 
 
 class Data():
@@ -289,7 +290,7 @@ class RawData():
         
 class Source():
     """
-    Stores the data and parameters for sources
+    Stores the data and parameters for sources.
     """
 
     
@@ -297,7 +298,7 @@ class Source():
         """
         Stores the data and parameters for sources.
         
-        :param data: data passed as an instance of Data
+        :param raw_data: data passed as an instance of RawData
         """
 
         self.N = raw_data.get_len()
@@ -309,6 +310,8 @@ class Source():
         self.name = raw_data.get_by_name('name')
 
         self.label = 'Source'
+
+        self.unit_vector = coord_to_uv(self.coord)
 
         
     def plot(self, style, label, skymap):
@@ -333,7 +336,7 @@ class Source():
                 skymap.tissot(lon, lat, 5., 30, 
                               facecolor = Solarized().base1, alpha = style.alpha_level)
             
-   
+
         
 class Uhecr():
     """
@@ -363,6 +366,8 @@ class Uhecr():
         self.coord_uncertainty = 4.0 # uncertainty in degrees
 
         self.label = 'UHECR'
+
+        self.unit_vector = coord_to_uv(self.coord)
 
 
     def plot(self, style, label, skymap):
@@ -667,3 +672,4 @@ class Detector():
         skymap.scatter(lon, lat, latlon = True, linewidth = 3, 
                        color = 'k', alpha = 0.5,
                        label = 'limit of ' + label + '\'s exposure')
+
