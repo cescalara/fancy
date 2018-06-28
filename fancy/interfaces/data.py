@@ -70,14 +70,14 @@ class Data():
         self.uhecr[label] = new_uhecr
 
 
-    def add_detector(self, location, threshold_zenith_angle, label = None):
+    def add_detector(self, location, threshold_zenith_angle, area, total_exposure, label = None):
         """
         Add a detector object to complement the data.
 
         :param name: the name of the detector
         """
 
-        new_detector = Detector(location, threshold_zenith_angle)
+        new_detector = Detector(location, threshold_zenith_angle, area, total_exposure)
 
         # generate numbered labels by default
         if label == None:

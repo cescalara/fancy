@@ -1,4 +1,5 @@
 name = "fancy"
 
 from .interfaces.data import *
-from .interfaces.integration import *
+from .analysis import *
+from .interfaces.stan import Model

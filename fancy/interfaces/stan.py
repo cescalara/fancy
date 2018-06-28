@@ -2,10 +2,53 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
+from .stan_utility import *
 
-__all__ = ['Direction', 'uv_to_coord', 'coord_to_uv']
+__all__ = ['Model', 'Direction', 'uv_to_coord', 'coord_to_uv']
+        
 
+class Model():
+    """
+    Simple wrapper for models defined in Stan.
+    """
 
+    def __init__(self, model_filename, sim_filename):
+        """
+        Simple wrapper for models defined in Stan.
+       
+        :param model_filename: location of the stan code for model
+        :param sim_filename: locaiton of the stan code for simulation
+        """
+
+        self.model_filename = model_filename
+        self.sim_filename = sim_filename
+
+        self.simulation = None
+        self.fit_input = None
+        
+        
+    def compile(self):
+        """
+        Compile the models if not already done.
+        """
+        self.model = compile_model(self.model_filename)
+        self.simulation = compile_model(self.sim_filename)
+
+    def simulation_inputs(self, F_T, f, kappa, kappa_c):
+        """
+        Get simulation inputs.
+
+        :param F_T: total flux
+        :param f: associated fraction
+        :param kappa: deflection parameter
+        :param kappa_c: reconstruction parameter
+        """
+        self.F_T = F_T
+        self.f = f
+        self.kappa = kappa
+        self.kappa_c = kappa_c
+        
+        
 class Direction():
     """
     Input the unit vector vMF samples and 

@@ -68,7 +68,8 @@ class ExposureIntegralTable():
                     results.append(result)
                 self.table.append(np.asarray(results))
                 print()
+            self.table = np.asarray(self.table).transpose()
             
         # save to file
-        pystan.stan_rdump({'table' : self.table}, self.filename)
+        pystan.stan_rdump({'table' : self.table, 'kappa' : self.kappa}, self.filename)
         

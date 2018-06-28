@@ -3,6 +3,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 from astropy import units as u
 from astropy.coordinates import SkyCoord, EarthLocation
+from scipy import integrate
 
 from .exposure import *
 from ..plotting import AllSkyMap
@@ -15,7 +16,7 @@ class Detector():
     UHECR observatory information and instrument response. 
     """
 
-    def __init__(self, location, threshold_zenith_angle):
+    def __init__(self, location, threshold_zenith_angle, area, total_exposure):
         """
         UHECR observatory information and instrument response. 
         
@@ -23,18 +24,29 @@ class Detector():
                         of detector in deg.
         :param threshold_zenith_angle: maximum detectable
                                        zenith angle in deg.
+        :param area: effective area in [km^2]
+        :param total_exposure: in [km^2 sr year]
         """
 
         self.location = EarthLocation(lat = location[0] * u.deg, lon = location[1] * u.deg,
                                       height = 1400 * u.m)
+        
         self.threshold_zenith_angle = Angle(threshold_zenith_angle)
 
         self._view_options = ['map', 'decplot']
 
         self.num_points = 500
+
+        self.a_0 = self.location.lat.rad
+        self.theta_m = self.threshold_zenith_angle.rad
         
         self.exposure(self.location.lat.rad, self.threshold_zenith_angle.rad)
 
+        self.area = area
+
+        self.alpha_T = total_exposure
+        
+        self.M, err = integrate.quad(m_integrand, 0, np.pi, args = self.params)
         
         
     def exposure(self, a_0, theta_m):
