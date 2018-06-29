@@ -16,7 +16,7 @@ class Detector():
     UHECR observatory information and instrument response. 
     """
 
-    def __init__(self, location, threshold_zenith_angle, area, total_exposure):
+    def __init__(self, location, threshold_zenith_angle, area, total_exposure, label):
         """
         UHECR observatory information and instrument response. 
         
@@ -26,8 +26,11 @@ class Detector():
                                        zenith angle in deg.
         :param area: effective area in [km^2]
         :param total_exposure: in [km^2 sr year]
+        :param label: identifier
         """
 
+        self.label = label
+        
         self.location = EarthLocation(lat = location[0] * u.deg, lon = location[1] * u.deg,
                                       height = 1400 * u.m)
         
@@ -169,16 +172,13 @@ class Detector():
         bar.set_label('Relative exposure', color = style.textcolor)
         
 
-    def draw_exposure_lim(self, skymap, label = None):
+    def draw_exposure_lim(self, skymap):
         """
         Draw a line marking the edge of the detector's exposure.
         
         :param skymap: an AllSkyMap instance.
         :param label: a label for the limit.
         """
-
-        if label == None:
-            label = 'detector'
 
         rightascensions = np.linspace(-180, 180, self.num_points)  
         limiting_dec = self.limiting_dec.deg
@@ -190,7 +190,7 @@ class Detector():
 
         skymap.scatter(lon, lat, latlon = True, linewidth = 3, 
                        color = 'k', alpha = 0.5,
-                       label = 'limit of ' + label + '\'s exposure')
+                       label = 'limit of ' + self.label + '\'s exposure')
 
             
 class Angle():

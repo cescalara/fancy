@@ -41,14 +41,14 @@ class Data():
         :param filename: name of the file containing the object's data
         :param label: reference label for the source object
         """
-        raw_data = RawData(filename)
-        new_source = Source(raw_data)
 
-        # generate numbered labels by default
         if label == None:
-            label = 'source#' + str(len(self.source))
-            
-        # append source object to dictonary with it's label as a key
+            label = 'source'
+        
+        raw_data = RawData(filename)
+        new_source = Source(raw_data, label)
+    
+        # define source object
         self.source = new_source
 
 
@@ -59,14 +59,14 @@ class Data():
         :param filename: name of the file containing the object's data
         :param label: reference label for the source object
         """
-        raw_data = RawData(filename)
-        new_uhecr = Uhecr(raw_data)
 
-        # generate numbered labels by default
         if label == None:
-            label = 'uhecr#' + str(len(self.uhecr))
-            
-        # append source object to dictonary with it's label as a key
+            label = 'uhecr'  
+    
+        raw_data = RawData(filename)
+        new_uhecr = Uhecr(raw_data, label)
+
+        # define uhecr object
         self.uhecr = new_uhecr
 
 
@@ -77,13 +77,12 @@ class Data():
         :param name: the name of the detector
         """
 
-        new_detector = Detector(location, threshold_zenith_angle, area, total_exposure)
-
-        # generate numbered labels by default
         if label == None:
             label = 'detector#' + str(len(self.detector))
             
-        # append source object to dictonary with it's label as a key
+        new_detector = Detector(location, threshold_zenith_angle, area, total_exposure, label)
+        
+        # define detector
         self.detector = new_detector
 
 
@@ -97,9 +96,8 @@ class Data():
         max_energies = []
         min_energies = []
         # find the min and max uhecr energies
-        for label, uhecr in self.uhecr.items():
-            max_energies.append(max(uhecr.energy))
-            min_energies.append(min(uhecr.energy))
+        max_energies.append(max(self.uhecr.energy))
+        min_energies.append(min(self.uhecr.energy))
             
         max_energy = max(max_energies)
         min_energy = min(min_energies)
@@ -138,20 +136,17 @@ class Data():
         # skymap
         skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0);
 
-        # iterate over the uhecr objects
+        # uhecr objects
         if self.uhecr != {}:
-            for label, uhecr in self.uhecr.items():
-                uhecr.plot(style, label, skymap)
+                self.uhecr.plot(style, skymap)
 
-        # iterate over the source objects
+        # source objects
         if self.source != {}:
-            for label, source in self.source.items():
-                source.plot(style, label, skymap)
+            self.source.plot(style, skymap)
 
-        # iterate over the detector objects
+        # detector objects
         if self.detector != {}:
-            for label, detector in self.detector.items():
-                detector.draw_exposure_lim(skymap, label = label)
+            self.detector.draw_exposure_lim(skymap)
                 
         # standard labels and background
         skymap.draw_standard_labels(style.cmap, style.textcolor)
@@ -295,13 +290,16 @@ class Source():
     """
 
     
-    def __init__(self, raw_data):
+    def __init__(self, raw_data, label):
         """
         Stores the data and parameters for sources.
         
         :param raw_data: data passed as an instance of RawData
+        :param label: identifier
         """
 
+        self.label = label
+        
         self.N = raw_data.get_len()
         
         self.coord = raw_data.get_coordinates()
@@ -315,7 +313,7 @@ class Source():
         self.unit_vector = coord_to_uv(self.coord)
 
         
-    def plot(self, style, label, skymap):
+    def plot(self, style, skymap):
         """
         Plot the sources on a map of the sky. 
 
@@ -331,7 +329,7 @@ class Source():
             if write_label:
                 skymap.tissot(lon, lat, 5., 30, 
                               facecolor = Solarized().base1, 
-                              alpha = style.alpha_level, label = label)
+                              alpha = style.alpha_level, label = self.label)
                 write_label = False
             else:
                 skymap.tissot(lon, lat, 5., 30, 
@@ -345,13 +343,16 @@ class Uhecr():
     """
 
     
-    def __init__(self, raw_data):
+    def __init__(self, raw_data, label):
         """
         Stores the data and parameters for UHECRs.
         
         :param data: data passed as an instance of Data
+        :param label: identifier
         """
 
+        self.label = label
+        
         self.N = raw_data.get_len()
         
         self.coord = raw_data.get_coordinates()
@@ -371,7 +372,7 @@ class Uhecr():
         self.unit_vector = coord_to_uv(self.coord)
 
 
-    def plot(self, style, label, skymap):
+    def plot(self, style, skymap):
         """
         Plot the Uhecr instance on a skymap.
 
@@ -398,7 +399,7 @@ class Uhecr():
             # just label once
             if write_label:
                 skymap.tissot(lon, lat, self.coord_uncertainty, 30, facecolor = color, 
-                            alpha = style.alpha_level, label = label)
+                            alpha = style.alpha_level, label = self.label)
                 write_label = False
             else:
                 skymap.tissot(lon, lat, self.coord_uncertainty, 30, facecolor = color,
