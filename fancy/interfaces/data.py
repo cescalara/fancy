@@ -4,12 +4,13 @@ import matplotlib
 from matplotlib import pyplot as plt
 from astropy import units as u
 from astropy.coordinates import SkyCoord
+from datetime import date, timedelta
 
 from .stan import coord_to_uv
 from ..detector.detector import Detector
 from ..plotting import AllSkyMap
 from ..utils import PlotStyle, Solarized
-
+from ..detector.auger import *
 
 __all__ = ['Data', 'Source', 'Uhecr']
 
@@ -371,7 +372,12 @@ class Uhecr():
 
         self.unit_vector = coord_to_uv(self.coord)
 
+        self.period = self._find_period()
 
+        self.A = self._find_area()
+        
+
+        
     def plot(self, style, skymap):
         """
         Plot the Uhecr instance on a skymap.
@@ -405,4 +411,47 @@ class Uhecr():
                 skymap.tissot(lon, lat, self.coord_uncertainty, 30, facecolor = color,
                               alpha = style.alpha_level)
 
+                
+    def _find_area(self):
+        """
+        Find the effective area of the observatory at 
+        the time of detection.
 
+        Possible areas are calculated from the exposure reported
+        in Abreu et al. (2010).
+
+        :param period: list of periods defining the time of detection
+        """
+    
+        possible_areas = [A1, A2, A3]
+        
+        area = [possible_areas[i-1] for i in self.period]
+
+        return area
+
+                
+    def _find_period(self):
+        """
+        For a given year or day, find UHECR period based on dates
+        in table 1 in Abreu et al. (2010).
+        
+        :param year: a list of years 
+        :param day: a list of julian days
+        """
+
+        # check dates
+        period = []
+        for y, d in np.nditer([self.year, self.day]):
+            d = int(d)
+            test_date = date(y, 1, 1) + timedelta(d)
+
+            if period_1_start <= test_date <= period_1_end:
+                period.append(1)
+            elif period_2_start <= test_date <= period_2_end:
+                period.append(2)
+            elif period_3_start <= test_date <= period_3_end:
+                period.append(3)
+            else:
+                print('Error: cannot determine period for year', year, 'and day', day)
+        
+        return period
