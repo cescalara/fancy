@@ -1,6 +1,7 @@
 import numpy as np
 from datetime import date
 from scipy import integrate
+from astropy.coordinates import EarthLocation
 
 from .exposure import m_integrand
 
@@ -21,6 +22,8 @@ NB: theta_m is up to 80 in later papers.
 # position of the PAO [rad]
 lat = np.deg2rad(-35.2)
 lon = np.deg2rad(-69.4)
+auger_location = EarthLocation(lat = lat * u.rad, lon = lon * u.rad,
+                               height = 1400 * u.m)
 
 # threshold incidence angle [rad]
 theta_m = np.deg2rad(60)

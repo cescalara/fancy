@@ -31,8 +31,7 @@ class Detector():
 
         self.label = label
         
-        self.location = EarthLocation(lat = location[0] * u.deg, lon = location[1] * u.deg,
-                                      height = 1400 * u.m)
+        self.location = location
         
         self.threshold_zenith_angle = Angle(threshold_zenith_angle)
 
