@@ -54,7 +54,8 @@ class ExposureIntegralTable():
                 print(k, result, err)
                 results.append(result)
             self.table.append(np.asarray(results))
-
+            print()
+            
         else:
         
             for k in self.kappa:
