@@ -18,12 +18,12 @@ NB: theta_m is up to 80 in later papers.
 @date July 2018
 """
 
-# position of the PAO [deg]
-lat = -35.2
-lon = -69.4
+# position of the PAO [rad]
+lat = np.deg2rad(-35.2)
+lon = np.deg2rad(-69.4)
 
-# threshold incidence angle [deg]
-theta_m = 60
+# threshold incidence angle [rad]
+theta_m = np.deg2rad(60)
 
 # define periods based on Abreu et al. 2010.
 period_1_start = date(2004, 1, 1)
@@ -37,6 +37,7 @@ period_3_end = date(2009, 12, 31)
 deltat1 = (period_1_end - period_1_start).days / 365.25
 deltat2 = (period_2_end - period_2_start).days / 365.25
 deltat3 = (period_3_end - period_3_start).days / 365.25
+deltat3 = (period_3_end - period_1_start).days / 365.25
 
 # define total exposures [km^2 sr year]
 alpha_T_1 = 4390
@@ -46,9 +47,9 @@ alpha_T = 20370
 
 # calculate M (integral over exposure factor) [sr]
 auger_params = []
-auger_params.append(np.cos(np.deg2rad(lat)))
-auger_params.append(np.sin(np.deg2rad(lat)))
-auger_params.append(np.cos(np.deg2rad(theta_m)))
+auger_params.append(np.cos(lat))
+auger_params.append(np.sin(lat))
+auger_params.append(np.cos(theta_m))
 
 M, Merr = integrate.quad(m_integrand, 0, np.pi, args = auger_params)
 
@@ -56,3 +57,4 @@ M, Merr = integrate.quad(m_integrand, 0, np.pi, args = auger_params)
 A1 = alpha_T_1 / (M * deltat1)
 A2 = alpha_T_2 / (M * deltat2)
 A3 = alpha_T_3 / (M * deltat3)
+A = alpha_T / (M * deltat)
