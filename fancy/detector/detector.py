@@ -20,10 +20,9 @@ class Detector():
         """
         UHECR observatory information and instrument response. 
         
-        :param location: array contraining latitiude and longitude 
-                        of detector in deg.
+        :param location: EarthLocation object
         :param threshold_zenith_angle: maximum detectable
-                                       zenith angle in deg.
+                                       zenith angle in rad.
         :param area: effective area in [km^2]
         :param total_exposure: in [km^2 sr year]
         :param label: identifier
@@ -33,16 +32,17 @@ class Detector():
         
         self.location = location
         
-        self.threshold_zenith_angle = Angle(threshold_zenith_angle)
+        self.threshold_zenith_angle = Angle(threshold_zenith_angle, 'rad')
 
         self._view_options = ['map', 'decplot']
 
         self.num_points = 500
 
-        self.a_0 = self.location.lat.rad
-        self.theta_m = self.threshold_zenith_angle.rad
-        
-        self.exposure(self.location.lat.rad, self.threshold_zenith_angle.rad)
+        self.params = [np.cos(self.location.lat.rad),
+                       np.sin(self.location.lat.rad),
+                       np.cos(self.threshold_zenith_angle.rad)]
+
+        self.exposure()
 
         self.area = area
 
@@ -50,15 +50,16 @@ class Detector():
         
         self.M, err = integrate.quad(m_integrand, 0, np.pi, args = self.params)
         
+        self.params.append(self.alpha_T)
+        self.params.append(self.M)
         
-    def exposure(self, a_0, theta_m):
+        
+    def exposure(self):
         """
         Calculate and plot the exposure for a given detector 
         location.
         """
 
-        self.params = [np.cos(a_0), np.sin(a_0), np.cos(theta_m)]
-        
         # define a range of declination to evaluate the
         # exposure at
         self.declination = np.linspace(-np.pi/2, np.pi/2, self.num_points)

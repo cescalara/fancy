@@ -11,6 +11,8 @@ from ..interfaces import stan_utility
 
 __all__ = ['Analysis']
 
+MAX_KAPPA = 1000
+MIN_KAPPA = 1
 
 class Analysis():
     """
@@ -43,9 +45,13 @@ class Analysis():
 
         self.sim_table_filename = sim_table_filename
         self.table_filename = table_filename 
-        
-        kappa = np.linspace(10, 1000, num_points)
 
+        # logarithmically spcaed array with 80% of points between KAPPA_MIN and 100
+        kappa_first = np.logspace(np.log(MIN_KAPPA), np.log(100), int(num_points * 0.8), base = np.e)
+        kappa_second = np.logspace(np.log(MIN_KAPPA), np.log(100), int(num_points * 0.2), base = np.e)
+
+        kappa = np.concatenate((kappa_first, kappa_second), axis = 0)
+        
         params = self.data.detector.params
 
         kappa_true = self.model.kappa
@@ -128,7 +134,7 @@ class Analysis():
         """
 
         eps = pystan.read_rdump(self.sim_table_filename)['table'][0]
-        
+
         # compile inputs from Model and Data
         self.simulation_input = {'F_T' : self.model.F_T,
                        'f' : self.model.f,
@@ -138,28 +144,35 @@ class Analysis():
                        'varpi' : self.data.source.unit_vector, 
                        'D' : self.data.source.distance,
                        'A' : self.data.detector.area,
-                       'a_0' : self.data.detector.a_0,
-                       'theta_m' : self.data.detector.theta_m, 
+                       'a_0' : self.data.detector.location.lat.rad,
+                       'theta_m' : self.data.detector.threshold_zenith_angle.rad, 
                        'alpha_T' : self.data.detector.alpha_T,
-                       'M' : self.data.detector.M,
                        'eps' : eps}
 
+        print('running stan simulation...')
         # run simulation
         self.simulation = self.model.simulation.sampling(data = self.simulation_input, iter = 1,
                                                                 chains = 1, algorithm = "Fixed_param", seed = seed)
+
+        print('done')
+        print('extracting output...')
         # extract output
         self.pdet = self.simulation.extract(['pdet'])['pdet'][0]
         self.theta = self.simulation.extract(['theta'])['theta'][0]
         self.event = self.simulation.extract(['event'])['event'][0]
         self.Nex_sim = self.simulation.extract(['Nex_sim'])['Nex_sim']
         self.detected = Direction(self.event)
-        
+        print('done')
+
+        print('simulating zenith angles...')
         # simulate the zenith angles
         self.zenith_angles = self._simulate_zenith_angles()
-
+        print('done')
+        
         eps_fit = pystan.read_rdump(self.table_filename)['table']
         kappa_grid = pystan.read_rdump(self.table_filename)['kappa']
-        
+
+        print('preparing fit inputs...')
         # prepare fit inputs
         self.fit_input = {'N_A' : len(self.data.source.distance), 
                           'varpi' :self.data.source.unit_vector,
@@ -167,15 +180,16 @@ class Analysis():
                           'N' : len(self.event), 
                           'detected' : self.event, 
                           'A' : self.data.detector.area,
-                          'a_0' : self.data.detector.a_0,
-                          'theta_m' : self.data.detector.theta_m, 
+                          'a_0' : self.data.detector.location.lat.rad,
+                          'theta_m' : self.data.detector.threshold_zenith_angle.rad, 
                           'alpha_T' : self.data.detector.alpha_T, 
                           'M' : self.data.detector.M, 
                           'Ngrid' : len(kappa_grid), 
                           'eps' : eps_fit, 
                           'kappa_grid' : kappa_grid,
                           'zenith_angle' : self.zenith_angles}
-
+        print('done')
+        
         
     def save_simulated_data(self, filename):
         """

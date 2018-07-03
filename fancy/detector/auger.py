@@ -1,6 +1,7 @@
 import numpy as np
 from datetime import date
 from scipy import integrate
+from astropy import units as u
 from astropy.coordinates import EarthLocation
 
 from .exposure import m_integrand
@@ -53,8 +54,9 @@ auger_params = []
 auger_params.append(np.cos(lat))
 auger_params.append(np.sin(lat))
 auger_params.append(np.cos(theta_m))
-
+auger_params.append(alpha_T)
 M, Merr = integrate.quad(m_integrand, 0, np.pi, args = auger_params)
+auger_params.append(M)
 
 # calculate areas for each period [km^2]
 A1 = alpha_T_1 / (M * deltat1)

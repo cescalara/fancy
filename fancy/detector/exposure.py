@@ -41,15 +41,18 @@ def integrand(phi, theta, varpi, kappa, p):
     Expressed as an integral in spherical coordinates for 
     theta [0, pi] and phi [0, 2pi]. For use with 
     scipy.integrate.dblquad
+
+    NB: the alpha_T / M factor from eps(omega) is included 
+    NB: the kappa / 4pi*sinh(kappa) from the vMF is included 
     """
     omega = [np.sin(theta) * np.cos(phi),
              np.sin(theta) * np.sin(phi),
              np.cos(theta)]
     if kappa > 100:
-        integ = np.exp( kappa * np.dot(omega, varpi) + np.log(kappa) - np.log(4 * np.pi / 2)
-                        - kappa ) * m(theta, p) * np.sin(theta)    
+        integ = (p[3] / p[4]) * np.exp( kappa * np.dot(omega, varpi) + np.log(kappa) - np.log(4 * np.pi / 2)
+                                        - kappa ) * m(theta, p) * np.sin(theta)    
     else:    
-        integ = constant_val(kappa) * np.exp(kappa * np.dot(omega, varpi)) * m(theta, p) * np.sin(theta)
+        integ = (p[3] / p[4]) * constant_val(kappa) * np.exp(kappa * np.dot(omega, varpi)) * m(theta, p) * np.sin(theta)
     return integ
 
 def integrand_vMF(phi, theta, varpi, kappa):
