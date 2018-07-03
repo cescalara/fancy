@@ -45,12 +45,12 @@ alpha_T_3 = 11480
 alpha_T = 20370
 
 # calculate M (integral over exposure factor) [sr]
-auger_params_for_M_calc = []
-auger_params_for_M_calc.append(np.cos(np.deg2rad(lat)))
-auger_params_for_M_calc.append(np.sin(np.deg2rad(lat)))
-auger_params_for_M_calc.append(np.cos(np.deg2rad(theta_m)))
+auger_params = []
+auger_params.append(np.cos(np.deg2rad(lat)))
+auger_params.append(np.sin(np.deg2rad(lat)))
+auger_params.append(np.cos(np.deg2rad(theta_m)))
 
-M, Merr = integrate.quad(m_integrand, 0, np.pi, args = auger_params_for_M_calc)
+M, Merr = integrate.quad(m_integrand, 0, np.pi, args = auger_params)
 
 # calculate areas for each period [km^2]
 A1 = alpha_T_1 / (M * deltat1)
