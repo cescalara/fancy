@@ -37,6 +37,7 @@ period_3_end = date(2009, 12, 31)
 deltat1 = (period_1_end - period_1_start).days / 365.25
 deltat2 = (period_2_end - period_2_start).days / 365.25
 deltat3 = (period_3_end - period_3_start).days / 365.25
+deltat3 = (period_3_end - period_1_start).days / 365.25
 
 # define total exposures [km^2 sr year]
 alpha_T_1 = 4390
@@ -56,3 +57,4 @@ M, Merr = integrate.quad(m_integrand, 0, np.pi, args = auger_params)
 A1 = alpha_T_1 / (M * deltat1)
 A2 = alpha_T_2 / (M * deltat2)
 A3 = alpha_T_3 / (M * deltat3)
+A = alpha_T / (M * deltat)
