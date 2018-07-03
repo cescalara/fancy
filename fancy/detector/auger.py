@@ -18,12 +18,12 @@ NB: theta_m is up to 80 in later papers.
 @date July 2018
 """
 
-# position of the PAO [deg]
-lat = -35.2
-lon = -69.4
+# position of the PAO [rad]
+lat = np.deg2rad(-35.2)
+lon = np.deg2rad(-69.4)
 
-# threshold incidence angle [deg]
-theta_m = 60
+# threshold incidence angle [rad]
+theta_m = np.deg2rad(60)
 
 # define periods based on Abreu et al. 2010.
 period_1_start = date(2004, 1, 1)
@@ -46,9 +46,9 @@ alpha_T = 20370
 
 # calculate M (integral over exposure factor) [sr]
 auger_params = []
-auger_params.append(np.cos(np.deg2rad(lat)))
-auger_params.append(np.sin(np.deg2rad(lat)))
-auger_params.append(np.cos(np.deg2rad(theta_m)))
+auger_params.append(np.cos(lat))
+auger_params.append(np.sin(lat))
+auger_params.append(np.cos(theta_m))
 
 M, Merr = integrate.quad(m_integrand, 0, np.pi, args = auger_params)
 
