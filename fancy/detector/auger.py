@@ -37,7 +37,7 @@ period_3_end = date(2009, 12, 31)
 deltat1 = (period_1_end - period_1_start).days / 365.25
 deltat2 = (period_2_end - period_2_start).days / 365.25
 deltat3 = (period_3_end - period_3_start).days / 365.25
-deltat3 = (period_3_end - period_1_start).days / 365.25
+deltat = (period_3_end - period_1_start).days / 365.25
 
 # define total exposures [km^2 sr year]
 alpha_T_1 = 4390
