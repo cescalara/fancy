@@ -16,7 +16,7 @@ class Detector():
     UHECR observatory information and instrument response. 
     """
 
-    def __init__(self, location, threshold_zenith_angle, area, total_exposure, label):
+    def __init__(self, location, threshold_zenith_angle, area, total_exposure, kappa_c, label):
         """
         UHECR observatory information and instrument response. 
         
@@ -36,6 +36,8 @@ class Detector():
 
         self._view_options = ['map', 'decplot']
 
+        self.kappa_c = kappa_c
+        
         self.num_points = 500
 
         self.params = [np.cos(self.location.lat.rad),

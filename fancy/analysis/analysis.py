@@ -8,6 +8,8 @@ from matplotlib import pyplot as plt
 from ..interfaces.integration import ExposureIntegralTable
 from ..interfaces.stan import Direction
 from ..interfaces import stan_utility
+from ..utils import PlotStyle
+from ..plotting import AllSkyMap
 
 __all__ = ['Analysis']
 
@@ -36,7 +38,11 @@ class Analysis():
         
         self.simulation = None
         self.fit = None
-        
+
+        self.arr_dir_type = 'arrival direction'
+        self.energy_type = 'energy'
+        self.analysis_type = self.arr_dir_type
+
         
     def build_tables(self, num_points, table_filename, sim_table_filename):
         """
@@ -46,11 +52,11 @@ class Analysis():
         self.sim_table_filename = sim_table_filename
         self.table_filename = table_filename 
 
-        # logarithmically spcaed array with 80% of points between KAPPA_MIN and 100
-        kappa_first = np.logspace(np.log(MIN_KAPPA), np.log(100), int(num_points * 0.8), base = np.e)
-        kappa_second = np.logspace(np.log(MIN_KAPPA), np.log(100), int(num_points * 0.2), base = np.e)
-
-        kappa = np.concatenate((kappa_first, kappa_second), axis = 0)
+        # logarithmically spcaed array with 60% of points between KAPPA_MIN and 100
+        kappa_first = np.logspace(np.log(1), np.log(10), int(num_points * 0.7), base = np.e)
+        kappa_second = np.logspace(np.log(10), np.log(100), int(num_points * 0.2) + 1, base = np.e)
+        kappa_third = np.logspace(np.log(100), np.log(1000), int(num_points * 0.1) + 1, base = np.e)
+        kappa = np.concatenate((kappa_first, kappa_second[1:], kappa_third[1:]), axis = 0)
         
         params = self.data.detector.params
 
@@ -118,7 +124,7 @@ class Analysis():
             first = False
             zenith_angles.append(za)
             j += 1
-            print(j , za)
+            #print(j , za)
             
         if (len(stuck) > 1):
             print('Warning: % of zenith angles stuck is', len(stuck)/len(zenith_angles) * 100)
@@ -149,6 +155,12 @@ class Analysis():
                        'alpha_T' : self.data.detector.alpha_T,
                        'eps' : eps}
 
+        if self.analysis_type == self.energy_type:
+            self.simulation_input['alpha'] = self.model.alpha
+            self.simulation_input['Eth'] = self.model.Eth
+            self.simulation_input['Eerr'] = self.model.Eerr
+            
+
         print('running stan simulation...')
         # run simulation
         self.simulation = self.model.simulation.sampling(data = self.simulation_input, iter = 1,
@@ -162,6 +174,12 @@ class Analysis():
         self.event = self.simulation.extract(['event'])['event'][0]
         self.Nex_sim = self.simulation.extract(['Nex_sim'])['Nex_sim']
         self.detected = Direction(self.event)
+
+        if self.analysis_type == self.energy_type:
+            self.Edet = self.simulation.extract(['Edet'])['Edet'][0]
+            self.Earr = self.simulation.extract(['Earr'])['Earr'][0]
+            self.E = self.simulation.extract(['E'])['E'][0]
+        
         print('done')
 
         print('simulating zenith angles...')
@@ -179,11 +197,9 @@ class Analysis():
                           'D' : self.data.source.distance, 
                           'N' : len(self.event), 
                           'detected' : self.event, 
-                          'A' : self.data.detector.area,
-                          'a_0' : self.data.detector.location.lat.rad,
-                          'theta_m' : self.data.detector.threshold_zenith_angle.rad, 
+                          'A' : np.tile(self.data.detector.area, len(self.event)),
+                          'kappa_c' : self.data.detector.kappa_c,
                           'alpha_T' : self.data.detector.alpha_T, 
-                          'M' : self.data.detector.M, 
                           'Ngrid' : len(kappa_grid), 
                           'eps' : eps_fit, 
                           'kappa_grid' : kappa_grid,
@@ -201,13 +217,28 @@ class Analysis():
             print("Error: nothing to save!")
 
             
-    def plot_simulation(self):
+    def plot_simulation(self, cmap = None):
         """
         Plot the simulated data on a skymap
         """
-        labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
+        
+        # plot style
+        if cmap == None:
+            style = PlotStyle()
+        else:
+            style = PlotStyle(cmap_name = cmap)
+            
+        # figure
+        fig = plt.figure(figsize = (12, 6));
+        ax = plt.gca()
 
-        fig, skymap = self.data.show()
+        # skymap
+        skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0);
+
+        self.data.source.plot(style, skymap)
+        self.data.detector.draw_exposure_lim(skymap)
+       
+        labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
 
         cmap = plt.cm.get_cmap('plasma', 17) 
         label = True
@@ -217,29 +248,68 @@ class Analysis():
             else:
                 color = cmap(lab)
             if label:
-                skymap.tissot(lon, lat, 2, npts = 30, facecolor = color,
+                skymap.tissot(lon, lat, 5, npts = 30, facecolor = color,
                               alpha = 0.5, label = 'simulated data')
                 label = False
             else:
-                skymap.tissot(lon, lat, 2, npts = 30, facecolor = color, alpha = 0.5)   
+                skymap.tissot(lon, lat, 5, npts = 30, facecolor = color, alpha = 0.5)
 
+        # standard labels and background
+        skymap.draw_standard_labels(style.cmap, style.textcolor)
 
+        # legend
+        plt.legend(bbox_to_anchor = (0.85, 0.85))
+        leg = ax.get_legend()
+        frame = leg.get_frame()
+        frame.set_linewidth(0)
+        frame.set_facecolor('None')
+        for text in leg.get_texts():
+            plt.setp(text, color = style.textcolor)
+
+        
     def use_simulated_data(self, filename):
         """
         Read in simulated data from a file.
         """
 
         self.fit_input = pystan.read_rdump(filename)
-                
-    def fit_model(self, seed = None):
+
+        
+    def use_uhecr_data(self):
+        """
+        Build fit inputs from the UHECR dataset.
+        """
+
+        eps_fit = pystan.read_rdump(self.table_filename)['table']
+        kappa_grid = pystan.read_rdump(self.table_filename)['kappa']
+
+        print('preparing fit inputs...')
+        self.fit_input = {'N_A' : len(self.data.source.distance),
+                          'varpi' :self.data.source.unit_vector,
+                          'D' : self.data.source.distance,
+                          'N' : len(self.data.uhecr.energy),
+                          'detected' : self.data.uhecr.unit_vector,
+                          'A' : self.data.uhecr.A,
+                          'kappa_c' : self.data.detector.kappa_c,
+                          'alpha_T' : self.data.detector.alpha_T,
+                          'Ngrid' : len(kappa_grid),
+                          'eps' : eps_fit,
+                          'kappa_grid' : kappa_grid,
+                          'zenith_angle' : self.data.uhecr.incidence_angle}
+        print('done')
+
+        
+    def fit_model(self, iterations = 1000, chains = 4, seed = None):
         """
         Fit a model.
 
+        :param iterations: number of iterations
+        :param chains: number of chains
         :param seed: seed for RNG
         """
 
         # fit
-        self.fit = self.model.model.sampling(data = self.fit_input, iter = 1000, chains = 4, seed = seed)
+        self.fit = self.model.model.sampling(data = self.fit_input, iter = iterations, chains = chains, seed = seed)
 
         # Diagnositics
         stan_utility.check_treedepth(self.fit)

@@ -63,3 +63,6 @@ A1 = alpha_T_1 / (M * deltat1)
 A2 = alpha_T_2 / (M * deltat2)
 A3 = alpha_T_3 / (M * deltat3)
 A = alpha_T / (M * deltat)
+
+# reconstruction uncertainty for arrival direction
+kappa_c = 9323

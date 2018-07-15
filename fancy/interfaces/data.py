@@ -71,7 +71,7 @@ class Data():
         self.uhecr = new_uhecr
 
 
-    def add_detector(self, location, threshold_zenith_angle, area, total_exposure, label = None):
+    def add_detector(self, location, threshold_zenith_angle, area, total_exposure, kappa_c, label = None):
         """
         Add a detector object to complement the data.
 
@@ -81,7 +81,7 @@ class Data():
         if label == None:
             label = 'detector#' + str(len(self.detector))
             
-        new_detector = Detector(location, threshold_zenith_angle, area, total_exposure, label)
+        new_detector = Detector(location, threshold_zenith_angle, area, total_exposure, kappa_c, label)
         
         # define detector
         self.detector = new_detector
@@ -139,7 +139,7 @@ class Data():
 
         # uhecr objects
         if self.uhecr != {}:
-                self.uhecr.plot(style, skymap)
+            self.uhecr.plot(style, skymap)
 
         # source objects
         if self.source != {}:
@@ -455,3 +455,33 @@ class Uhecr():
                 print('Error: cannot determine period for year', year, 'and day', day)
         
         return period
+
+    def select_period(self, period):
+        """
+        Select certain periods for analysis, other periods will be discarded. 
+        """
+
+        # find selected periods
+        if len(period) == 1:
+            selection = np.where(np.asarray(self.period) == period[0])
+        if len(period) == 2:
+            selection = np.concatenate([np.where(np.asarray(self.period) == period[0]),
+                                        np.where(np.asarray(self.period) == period[1])], axis = 1)
+
+        # keep things as lists
+        selection = selection[0].tolist()
+            
+        # make selection
+        self.A = [self.A[i] for i in selection]
+        self.period = [self.period[i] for i in selection]
+        self.energy = [self.energy[i] for i in selection]
+        self.incidence_angle = [self.incidence_angle[i] for i in selection]
+        self.unit_vector = [self.unit_vector[i] for i in selection] 
+
+        self.N = len(self.period)
+
+        self.day = [self.day[i] for i in selection]
+        self.year = [self.year[i] for i in selection]
+
+        self.coord = [self.coord[i] for i in selection]
+        

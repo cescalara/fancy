@@ -34,7 +34,7 @@ class Model():
         self.model = compile_model(self.model_filename)
         self.simulation = compile_model(self.sim_filename)
 
-    def simulation_inputs(self, F_T, f, kappa, kappa_c):
+    def simulation_inputs(self, F_T, f, kappa, kappa_c, alpha = None, Eth = None, Eerr = None):
         """
         Get simulation inputs.
 
@@ -42,11 +42,17 @@ class Model():
         :param f: associated fraction
         :param kappa: deflection parameter
         :param kappa_c: reconstruction parameter
+        :param alpha: source spectral index
+        :param Eth: threshold energy of study
+        :param Eerr: energy reconstruction uncertainty (%)
         """
         self.F_T = F_T
         self.f = f
         self.kappa = kappa
         self.kappa_c = kappa_c
+        self.alpha = alpha
+        self.Eth = Eth
+        self.Eerr = Eerr
         
         
 class Direction():
