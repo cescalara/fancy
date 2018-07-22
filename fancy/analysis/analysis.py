@@ -221,6 +221,13 @@ class Analysis():
                           'eps' : eps_fit, 
                           'kappa_grid' : kappa_grid,
                           'zenith_angle' : self.zenith_angles}
+
+        if self.analysis_type == self.energy_type or self.analysis_type == self.energy_reparam_type:
+            self.fit_input['Edet'] = self.Edet
+            self.fit_input['Eth'] = self.model.Eth
+            self.fit_input['Emax'] = self.model.Emax
+            self.fit_input['Eerr'] = self.model.Eerr
+            
         print('done')
         
         
@@ -317,6 +324,13 @@ class Analysis():
                           'eps' : eps_fit,
                           'kappa_grid' : kappa_grid,
                           'zenith_angle' : self.data.uhecr.incidence_angle}
+
+        if self.analysis_type == self.energy_type or self.analysis_type == self.energy_reparam_type:
+            self.fit_input['Edet'] = self.Edet
+            self.fit_input['Eth'] = self.model.Eth
+            self.fit_input['Emax'] = self.model.Emax
+            self.fit_input['Eerr'] = self.model.Eerr
+            
         print('done')
 
         
