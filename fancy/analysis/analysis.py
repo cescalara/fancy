@@ -164,7 +164,7 @@ class Analysis():
             self.simulation_input['F_T'] = self.model.F_T
             self.simulation_input['f'] = self.model.f
         
-        if self.analysis_type == self.reparam_type or self.analyis_type == self.energy_reparam_type:
+        if self.analysis_type == self.reparam_type or self.analysis_type == self.energy_reparam_type:
             self.simulation_input['L'] = self.model.L
             self.simulation_input['F0'] = self.model.F0
         
@@ -173,7 +173,7 @@ class Analysis():
             self.simulation_input['Eth'] = self.model.Eth
             self.simulation_input['Emax'] = self.model.Emax
             self.simulation_input['Eerr'] = self.model.Eerr
-            
+  
         print('running stan simulation...')
         # run simulation
         self.simulation = self.model.simulation.sampling(data = self.simulation_input, iter = 1,
@@ -188,7 +188,7 @@ class Analysis():
         self.Nex_sim = self.simulation.extract(['Nex_sim'])['Nex_sim']
         self.detected = Direction(self.event)
 
-        if self.analysis_type == self.energy_type:
+        if self.analysis_type == self.energy_type or self.analysis_type == self.energy_reparam_type:
             self.Edet = self.simulation.extract(['Edet'])['Edet'][0]
             self.Earr = self.simulation.extract(['Earr'])['Earr'][0]
             self.E = self.simulation.extract(['E'])['E'][0]
