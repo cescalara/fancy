@@ -34,7 +34,7 @@ class Model():
         self.model = compile_model(self.model_filename)
         self.simulation = compile_model(self.sim_filename)
 
-    def simulation_inputs(self, F_T, f, kappa, kappa_c, alpha = None, Eth = None, Eerr = None):
+    def simulation_inputs(self, kappa, kappa_c, F_T = None, f = None, L = None, F0 = None, alpha = None, Eth = None, Emax = None, Eerr = None):
         """
         Get simulation inputs.
 
@@ -50,8 +50,11 @@ class Model():
         self.f = f
         self.kappa = kappa
         self.kappa_c = kappa_c
+        self.L = L
+        self.F0 = F0
         self.alpha = alpha
         self.Eth = Eth
+        self.Emax = Emax
         self.Eerr = Eerr
         
         

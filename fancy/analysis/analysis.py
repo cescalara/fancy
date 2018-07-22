@@ -41,6 +41,7 @@ class Analysis():
 
         self.arr_dir_type = 'arrival direction'
         self.energy_type = 'energy'
+        self.reparam_type = 'reparam'
         self.analysis_type = self.arr_dir_type
 
         
@@ -141,9 +142,12 @@ class Analysis():
 
         eps = pystan.read_rdump(self.sim_table_filename)['table'][0]
 
+        # handle selected sources
+        if (self.data.source.N < len(eps)):
+            eps = [eps[i] for i in self.data.source.selection]
+            
         # compile inputs from Model and Data
-        self.simulation_input = {'F_T' : self.model.F_T,
-                       'f' : self.model.f,
+        self.simulation_input = {
                        'kappa' : self.model.kappa,
                        'kappa_c' : self.model.kappa_c, 
                        'N_A' : len(self.data.source.distance),
@@ -155,12 +159,20 @@ class Analysis():
                        'alpha_T' : self.data.detector.alpha_T,
                        'eps' : eps}
 
+        if self.analysis_type == self.arr_dir_type:
+            self.simulation_input['F_T'] = self.model.F_T
+            self.simulation_input['f'] = self.model.f
+        
+        if self.analysis_type == self.reparam_type:
+            self.simulation_input['L'] = self.model.L
+            self.simulation_input['F0'] = self.model.F0
+        
         if self.analysis_type == self.energy_type:
             self.simulation_input['alpha'] = self.model.alpha
             self.simulation_input['Eth'] = self.model.Eth
+            self.simulation_input['Emax'] = self.model.Emax
             self.simulation_input['Eerr'] = self.model.Eerr
             
-
         print('running stan simulation...')
         # run simulation
         self.simulation = self.model.simulation.sampling(data = self.simulation_input, iter = 1,
@@ -190,6 +202,10 @@ class Analysis():
         eps_fit = pystan.read_rdump(self.table_filename)['table']
         kappa_grid = pystan.read_rdump(self.table_filename)['kappa']
 
+        # handle selected sources
+        if (self.data.source.N < len(eps_fit)):
+            eps_fit = [eps_fit[i] for i in self.data.source.selection]
+        
         print('preparing fit inputs...')
         # prepare fit inputs
         self.fit_input = {'N_A' : len(self.data.source.distance), 
@@ -283,6 +299,10 @@ class Analysis():
         eps_fit = pystan.read_rdump(self.table_filename)['table']
         kappa_grid = pystan.read_rdump(self.table_filename)['kappa']
 
+        # handle selected sources
+        if (self.data.source.N < len(eps_fit)):
+            eps_fit = [eps_fit[i] for i in self.data.source.selection]
+        
         print('preparing fit inputs...')
         self.fit_input = {'N_A' : len(self.data.source.distance),
                           'varpi' :self.data.source.unit_vector,

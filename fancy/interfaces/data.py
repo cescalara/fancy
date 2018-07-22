@@ -336,7 +336,22 @@ class Source():
                 skymap.tissot(lon, lat, 5., 30, 
                               facecolor = Solarized().base1, alpha = style.alpha_level)
             
+    def select_sources(self, selection):
+        """
+        Select sources by providing certain indices from a list.
+        """
 
+        # store selection
+        self.selection = selection
+        
+        # make selection
+        self.unit_vector = [self.unit_vector[i] for i in selection]
+        self.distance = [self.distance[i] for i in selection]
+
+        self.N = len(self.distance)
+
+        self.coord = self.coord[selection]
+       
         
 class Uhecr():
     """
@@ -483,5 +498,5 @@ class Uhecr():
         self.day = [self.day[i] for i in selection]
         self.year = [self.year[i] for i in selection]
 
-        self.coord = [self.coord[i] for i in selection]
+        self.coord = self.coord[selection]
         
