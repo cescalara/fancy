@@ -42,6 +42,7 @@ class Analysis():
         self.arr_dir_type = 'arrival direction'
         self.energy_type = 'energy'
         self.reparam_type = 'reparam'
+        self.energy_reparam_type = 'energy_reparam'
         self.analysis_type = self.arr_dir_type
 
         
@@ -163,11 +164,11 @@ class Analysis():
             self.simulation_input['F_T'] = self.model.F_T
             self.simulation_input['f'] = self.model.f
         
-        if self.analysis_type == self.reparam_type:
+        if self.analysis_type == self.reparam_type or self.analyis_type == self.energy_reparam_type:
             self.simulation_input['L'] = self.model.L
             self.simulation_input['F0'] = self.model.F0
         
-        if self.analysis_type == self.energy_type:
+        if self.analysis_type == self.energy_type or self.analysis_type == self.energy_reparam_type:
             self.simulation_input['alpha'] = self.model.alpha
             self.simulation_input['Eth'] = self.model.Eth
             self.simulation_input['Emax'] = self.model.Emax
