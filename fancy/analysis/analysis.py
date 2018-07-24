@@ -71,8 +71,12 @@ class Analysis():
         self.sim_table.build()
         
         # full table for fit
-        self.table = ExposureIntegralTable(kappa, varpi, params, self.table_filename)
-        self.table.build()
+        self.table_to_build = ExposureIntegralTable(kappa, varpi, params, self.table_filename)
+        self.table_to_build.build()
+
+        # store
+        self.sim_table = pystan.read_rdump(self.sim_table_filename)
+        self.table = pystan.read_rdump(self.table_filename)
         
 
     def use_tables(self, table_filename, sim_table_filename):
@@ -82,7 +86,10 @@ class Analysis():
         self.sim_table_filename = sim_table_filename
         self.table_filename = table_filename 
         
-
+        self.sim_table = pystan.read_rdump(self.sim_table_filename)
+        self.table = pystan.read_rdump(self.table_filename)
+        
+        
     def _get_zenith_angle(self, c_icrs, loc, time):
         """
         Calculate the zenith angle of a known point 
@@ -141,7 +148,7 @@ class Analysis():
         :param seed: seed for RNG
         """
 
-        eps = pystan.read_rdump(self.sim_table_filename)['table'][0]
+        eps = self.sim_table['table'][0]
 
         # handle selected sources
         if (self.data.source.N < len(eps)):
@@ -200,8 +207,8 @@ class Analysis():
         self.zenith_angles = self._simulate_zenith_angles()
         print('done')
         
-        eps_fit = pystan.read_rdump(self.table_filename)['table']
-        kappa_grid = pystan.read_rdump(self.table_filename)['kappa']
+        eps_fit = self.table['table']
+        kappa_grid = self.table['kappa']
 
         # handle selected sources
         if (self.data.source.N < len(eps_fit)):
@@ -304,8 +311,8 @@ class Analysis():
         Build fit inputs from the UHECR dataset.
         """
 
-        eps_fit = pystan.read_rdump(self.table_filename)['table']
-        kappa_grid = pystan.read_rdump(self.table_filename)['kappa']
+        eps_fit = self.table['table']
+        kappa_grid = self.table['kappa']
 
         # handle selected sources
         if (self.data.source.N < len(eps_fit)):
