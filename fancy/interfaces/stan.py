@@ -34,28 +34,32 @@ class Model():
         self.model = compile_model(self.model_filename)
         self.simulation = compile_model(self.sim_filename)
 
-    def simulation_inputs(self, kappa, kappa_c, F_T = None, f = None, L = None, F0 = None, alpha = None, Eth = None, Emax = None, Eerr = None):
+    def simulation_inputs(self, B = None, kappa = None,
+                          F_T = None, f = None, L = None, F0 = None,
+                          alpha = None, Eth = None, Eerr = None, Dbg = None):
         """
         Get simulation inputs.
 
         :param F_T: total flux
         :param f: associated fraction
         :param kappa: deflection parameter
+        :param B: rms B field strength in nG
         :param kappa_c: reconstruction parameter
         :param alpha: source spectral index
-        :param Eth: threshold energy of study
-        :param Eerr: energy reconstruction uncertainty (%)
+        :param Eth: threshold energy of study in EeV
+        :param Eerr: energy reconstruction uncertainty = Eerr * E 
+        :param Dbg: background component distance in Mpc
         """
         self.F_T = F_T
         self.f = f
         self.kappa = kappa
-        self.kappa_c = kappa_c
+        self.B = B
         self.L = L
         self.F0 = F0
         self.alpha = alpha
         self.Eth = Eth
-        self.Emax = Emax
         self.Eerr = Eerr
+        
         
         
 class Direction():

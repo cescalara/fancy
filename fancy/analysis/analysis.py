@@ -21,12 +21,13 @@ class Analysis():
     To manage the running of simulations and fits based on Data and Model objects.
     """
 
-    def __init__(self, data, model):
+    def __init__(self, data, model, analysis_type = None):
         """
         To manage the running of simulations and fits based on Data and Model objects.
         
         :param data: a Data object
         :param model: a Model object
+        :param analysis_type: type of analysis
         """
 
         self.data = data
@@ -40,13 +41,19 @@ class Analysis():
         self.fit = None
 
         self.arr_dir_type = 'arrival direction'
-        self.energy_type = 'energy'
-        self.reparam_type = 'reparam'
-        self.energy_reparam_type = 'energy_reparam'
-        self.analysis_type = self.arr_dir_type
+        self.joint_type = 'joint'
 
+        if analysis_type == None:
+            analysis_type = self.arr_dir_type
+        self.analysis_type = analysis_type
+
+        if self.analysis_type == self.joint_type:
+            self.Eth_src = get_source_threshold_energy(self.model.Eth, self.data.source.distance)
+            self.Eex = 2**(1 / (self.model.alpha))
+            self.kappa_ex = get_kappa_ex(self.Eex, self.model.B, self.data.source.distance)
         
-    def build_tables(self, num_points, table_filename, sim_table_filename):
+        
+    def build_tables(self, num_points, sim_table_filename, table_filename = None, sim_only = False):
         """
         Build the necessary integral tables.
         """
@@ -62,21 +69,24 @@ class Analysis():
         
         params = self.data.detector.params
 
-        kappa_true = self.model.kappa
+        if self.analysis_type = self.arr_dir_type:
+            kappa_true = self.model.kappa
+            
+        if self.analysis_type = self.joint_type:
+            kappa_true = self.kappa_ex
 
         varpi = self.data.source.unit_vector
 
         # kappa_true table for simulation
         self.sim_table = ExposureIntegralTable(kappa_true, varpi, params, self.sim_table_filename)
-        self.sim_table.build()
-        
-        # full table for fit
-        self.table_to_build = ExposureIntegralTable(kappa, varpi, params, self.table_filename)
-        self.table_to_build.build()
-
-        # store
+        self.sim_table.build_for_sim()
         self.sim_table = pystan.read_rdump(self.sim_table_filename)
-        self.table = pystan.read_rdump(self.table_filename)
+        
+        if (!sim_only):
+            # full table for fit
+            self.table_to_build = ExposureIntegralTable(kappa, varpi, params, self.table_filename)
+            self.table_to_build.build_for_fit()
+            self.table = pystan.read_rdump(self.table_filename)
         
 
     def use_tables(self, table_filename, sim_table_filename):
@@ -106,7 +116,7 @@ class Analysis():
         """
 
         start_time = 2004
-        c_icrs = self.detected.d.icrs 
+        c_icrs = self.arrival_direction.d.icrs 
 
         time = []
         zenith_angles = []
@@ -156,54 +166,58 @@ class Analysis():
             
         # compile inputs from Model and Data
         self.simulation_input = {
-                       'kappa' : self.model.kappa,
-                       'kappa_c' : self.model.kappa_c, 
-                       'N_A' : len(self.data.source.distance),
+                       'kappa_c' : self.data.detector.kappa_c, 
+                       'Ns' : len(self.data.source.distance),
                        'varpi' : self.data.source.unit_vector, 
                        'D' : self.data.source.distance,
                        'A' : self.data.detector.area,
-                       'a_0' : self.data.detector.location.lat.rad,
+                       'a0' : self.data.detector.location.lat.rad,
                        'theta_m' : self.data.detector.threshold_zenith_angle.rad, 
                        'alpha_T' : self.data.detector.alpha_T,
                        'eps' : eps}
 
         if self.analysis_type == self.arr_dir_type:
+
             self.simulation_input['F_T'] = self.model.F_T
             self.simulation_input['f'] = self.model.f
-        
-        if self.analysis_type == self.reparam_type or self.analysis_type == self.energy_reparam_type:
+            self.simulation_input['kappa'] = self.model.kappa
+            
+        if self.analysis_type == self.joint_type:
+            
+            self.simulation_input['B'] = self.model.B
+            
             self.simulation_input['L'] = self.model.L
             self.simulation_input['F0'] = self.model.F0
-        
-        if self.analysis_type == self.energy_type or self.analysis_type == self.energy_reparam_type:
+            
             self.simulation_input['alpha'] = self.model.alpha
             self.simulation_input['Eth'] = self.model.Eth
-            self.simulation_input['Emax'] = self.model.Emax
             self.simulation_input['Eerr'] = self.model.Eerr
-  
-        print('running stan simulation...')
+
+            self.simulation_input['Dbg'] = self.model.Dbg
+        
         # run simulation
+        print('running stan simulation...')
         self.simulation = self.model.simulation.sampling(data = self.simulation_input, iter = 1,
-                                                                chains = 1, algorithm = "Fixed_param", seed = seed)
+                                                         chains = 1, algorithm = "Fixed_param", seed = seed)
 
         print('done')
-        print('extracting output...')
-        # extract output
-        self.pdet = self.simulation.extract(['pdet'])['pdet'][0]
-        self.theta = self.simulation.extract(['theta'])['theta'][0]
-        self.event = self.simulation.extract(['event'])['event'][0]
-        self.Nex_sim = self.simulation.extract(['Nex_sim'])['Nex_sim']
-        self.detected = Direction(self.event)
 
-        if self.analysis_type == self.energy_type or self.analysis_type == self.energy_reparam_type:
+        # extract output
+        print('extracting output...')
+        self.Nex_sim = self.simulation.extract(['Nex_sim'])['Nex_sim']
+        arrival_direction = self.simulation.extract(['arrival_direction'])['arrival_direction'][0]
+        self.arrival_direction = Direction(arrival_direction)
+
+        if self.analysis_type == self.joint_type:
+            
             self.Edet = self.simulation.extract(['Edet'])['Edet'][0]
             self.Earr = self.simulation.extract(['Earr'])['Earr'][0]
             self.E = self.simulation.extract(['E'])['E'][0]
         
         print('done')
 
-        print('simulating zenith angles...')
         # simulate the zenith angles
+        print('simulating zenith angles...')
         self.zenith_angles = self._simulate_zenith_angles()
         print('done')
         
@@ -214,14 +228,14 @@ class Analysis():
         if (self.data.source.N < len(eps_fit)):
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
         
-        print('preparing fit inputs...')
         # prepare fit inputs
-        self.fit_input = {'N_A' : len(self.data.source.distance), 
+        print('preparing fit inputs...')
+        self.fit_input = {'Ns' : len(self.data.source.distance), 
                           'varpi' :self.data.source.unit_vector,
                           'D' : self.data.source.distance, 
-                          'N' : len(self.event), 
-                          'detected' : self.event, 
-                          'A' : np.tile(self.data.detector.area, len(self.event)),
+                          'N' : len(self.arrival_direction.unit_vector), 
+                          'arrival_direction' : self.arrival_direction.unit_vector, 
+                          'A' : np.tile(self.data.detector.area, len(self.arrival_direction.unit_vector)),
                           'kappa_c' : self.data.detector.kappa_c,
                           'alpha_T' : self.data.detector.alpha_T, 
                           'Ngrid' : len(kappa_grid), 
@@ -229,11 +243,12 @@ class Analysis():
                           'kappa_grid' : kappa_grid,
                           'zenith_angle' : self.zenith_angles}
 
-        if self.analysis_type == self.energy_type or self.analysis_type == self.energy_reparam_type:
+        if self.analysis_type == self.joint_type:
+            
             self.fit_input['Edet'] = self.Edet
             self.fit_input['Eth'] = self.model.Eth
-            self.fit_input['Emax'] = self.model.Emax
             self.fit_input['Eerr'] = self.model.Eerr
+            self.fit_input['Dbg'] = self.model.Dbg
             
         print('done')
         
@@ -273,7 +288,7 @@ class Analysis():
 
         cmap = plt.cm.get_cmap('plasma', 17) 
         label = True
-        for lon, lat, lab in np.nditer([self.detected.lons, self.detected.lats, labels]):
+        for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, labels]):
             if (lab == 17):
                 color = 'k'
             else:
@@ -319,11 +334,11 @@ class Analysis():
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
         
         print('preparing fit inputs...')
-        self.fit_input = {'N_A' : len(self.data.source.distance),
+        self.fit_input = {'Ns' : len(self.data.source.distance),
                           'varpi' :self.data.source.unit_vector,
                           'D' : self.data.source.distance,
                           'N' : len(self.data.uhecr.energy),
-                          'detected' : self.data.uhecr.unit_vector,
+                          'arrival_direction' : self.data.uhecr.unit_vector,
                           'A' : self.data.uhecr.A,
                           'kappa_c' : self.data.detector.kappa_c,
                           'alpha_T' : self.data.detector.alpha_T,
@@ -332,11 +347,12 @@ class Analysis():
                           'kappa_grid' : kappa_grid,
                           'zenith_angle' : self.data.uhecr.incidence_angle}
 
-        if self.analysis_type == self.energy_type or self.analysis_type == self.energy_reparam_type:
+        if self.analysis_type == self.joint_type:
+
             self.fit_input['Edet'] = self.Edet
             self.fit_input['Eth'] = self.model.Eth
-            self.fit_input['Emax'] = self.model.Emax
             self.fit_input['Eerr'] = self.model.Eerr
+            self.fit_input['Dbg'] = self.model.Dbg
             
         print('done')
 
