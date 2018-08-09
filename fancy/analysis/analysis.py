@@ -10,11 +10,11 @@ from ..interfaces.stan import Direction
 from ..interfaces import stan_utility
 from ..utils import PlotStyle
 from ..plotting import AllSkyMap
+from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex
+
 
 __all__ = ['Analysis']
 
-MAX_KAPPA = 1000
-MIN_KAPPA = 1
 
 class Analysis():
     """
@@ -48,12 +48,12 @@ class Analysis():
         self.analysis_type = analysis_type
 
         if self.analysis_type == self.joint_type:
-            self.Eth_src = get_source_threshold_energy(self.model.Eth, self.data.source.distance)
-            self.Eex = 2**(1 / (self.model.alpha))
+            self.Eth_src = get_Eth_src(self.model.Eth, self.data.source.distance)
+            self.Eex = get_Eex(self.Eth_src, self.model.alpha)
             self.kappa_ex = get_kappa_ex(self.Eex, self.model.B, self.data.source.distance)
         
         
-    def build_tables(self, num_points, sim_table_filename, table_filename = None, sim_only = False):
+    def build_tables(self, sim_table_filename, num_points = None, table_filename = None, sim_only = False):
         """
         Build the necessary integral tables.
         """
@@ -61,28 +61,28 @@ class Analysis():
         self.sim_table_filename = sim_table_filename
         self.table_filename = table_filename 
 
-        # logarithmically spcaed array with 60% of points between KAPPA_MIN and 100
-        kappa_first = np.logspace(np.log(1), np.log(10), int(num_points * 0.7), base = np.e)
-        kappa_second = np.logspace(np.log(10), np.log(100), int(num_points * 0.2) + 1, base = np.e)
-        kappa_third = np.logspace(np.log(100), np.log(1000), int(num_points * 0.1) + 1, base = np.e)
-        kappa = np.concatenate((kappa_first, kappa_second[1:], kappa_third[1:]), axis = 0)
-        
         params = self.data.detector.params
+        varpi = self.data.source.unit_vector
 
-        if self.analysis_type = self.arr_dir_type:
+        if self.analysis_type == self.arr_dir_type:
             kappa_true = self.model.kappa
             
-        if self.analysis_type = self.joint_type:
+        if self.analysis_type == self.joint_type:
             kappa_true = self.kappa_ex
 
-        varpi = self.data.source.unit_vector
 
         # kappa_true table for simulation
         self.sim_table = ExposureIntegralTable(kappa_true, varpi, params, self.sim_table_filename)
         self.sim_table.build_for_sim()
         self.sim_table = pystan.read_rdump(self.sim_table_filename)
         
-        if (!sim_only):
+        if not sim_only:
+            # logarithmically spcaed array with 60% of points between KAPPA_MIN and 100
+            kappa_first = np.logspace(np.log(1), np.log(10), int(num_points * 0.7), base = np.e)
+            kappa_second = np.logspace(np.log(10), np.log(100), int(num_points * 0.2) + 1, base = np.e)
+            kappa_third = np.logspace(np.log(100), np.log(1000), int(num_points * 0.1) + 1, base = np.e)
+            kappa = np.concatenate((kappa_first, kappa_second[1:], kappa_third[1:]), axis = 0)
+        
             # full table for fit
             self.table_to_build = ExposureIntegralTable(kappa, varpi, params, self.table_filename)
             self.table_to_build.build_for_fit()

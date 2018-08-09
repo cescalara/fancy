@@ -69,7 +69,7 @@ class ExposureIntegralTable():
                                                 lambda phi : 0, lambda phi : 2 * np.pi,
                                                 args = (v, self.kappa[i], self.params))
 
-                print(k, result, err)
+                print(self.kappa[i], result, err)
                 results.append(result)
 
             self.table.append(np.asarray(results))
