@@ -34,8 +34,8 @@ class Analysis():
 
         self.model = model
 
+        self.simulation_input = None
         self.fit_input = None
-        self.sim_input = None
         
         self.simulation = None
         self.fit = None
@@ -47,11 +47,8 @@ class Analysis():
             analysis_type = self.arr_dir_type
         self.analysis_type = analysis_type
 
-        if self.analysis_type == self.joint_type:
+        if self.analysis_type == 'joint':
             self.Eth_src = get_Eth_src(self.model.Eth, self.data.source.distance)
-            self.Eex = get_Eex(self.Eth_src, self.model.alpha)
-            self.kappa_ex = get_kappa_ex(self.Eex, self.model.B, self.data.source.distance)
-        
         
     def build_tables(self, sim_table_filename, num_points = None, table_filename = None, sim_only = False):
         """
@@ -68,12 +65,13 @@ class Analysis():
             kappa_true = self.model.kappa
             
         if self.analysis_type == self.joint_type:
+            self.Eex = get_Eex(self.Eth_src, self.model.alpha)
+            self.kappa_ex = get_kappa_ex(self.Eex, self.model.B, self.data.source.distance)        
             kappa_true = self.kappa_ex
-
-
+            
         # kappa_true table for simulation
-        self.sim_table = ExposureIntegralTable(kappa_true, varpi, params, self.sim_table_filename)
-        self.sim_table.build_for_sim()
+        self.sim_table_to_build = ExposureIntegralTable(kappa_true, varpi, params, self.sim_table_filename)
+        self.sim_table_to_build.build_for_sim()
         self.sim_table = pystan.read_rdump(self.sim_table_filename)
         
         if not sim_only:
@@ -249,6 +247,7 @@ class Analysis():
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
             self.fit_input['Dbg'] = self.model.Dbg
+            self.fit_input['Ltrue'] = self.model.L
             
         print('done')
         
@@ -263,55 +262,82 @@ class Analysis():
             print("Error: nothing to save!")
 
             
-    def plot_simulation(self, cmap = None):
+    def plot_simulation(self, type = None, cmap = None):
         """
-        Plot the simulated data on a skymap
-        """
+        Plot the simulated data.
         
-        # plot style
-        if cmap == None:
-            style = PlotStyle()
-        else:
-            style = PlotStyle(cmap_name = cmap)
+        type == 'arrival direction':
+        Plot the arrival directions on a skymap, 
+        with a colour scale describing which source 
+        the UHECR is from (background in black).
+
+        type == 'energy'
+        Plot the simulated energy spectrum from the 
+        source, to after propagation (arrival) and 
+        detection
+        """
+
+        # plot arrival directions by default
+        if type == None:
+            type == 'arrival direction'
+        
+        if type == 'arrival direction':
+
+            # plot style
+            if cmap == None:
+                style = PlotStyle()
+            else:
+                style = PlotStyle(cmap_name = cmap)
             
-        # figure
-        fig = plt.figure(figsize = (12, 6));
-        ax = plt.gca()
+            # figure
+            fig = plt.figure(figsize = (12, 6));
+            ax = plt.gca()
 
-        # skymap
-        skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0);
+            # skymap
+            skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0);
 
-        self.data.source.plot(style, skymap)
-        self.data.detector.draw_exposure_lim(skymap)
+            self.data.source.plot(style, skymap)
+            self.data.detector.draw_exposure_lim(skymap)
        
-        labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
+            labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
 
-        cmap = plt.cm.get_cmap('plasma', 17) 
-        label = True
-        for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, labels]):
-            if (lab == 17):
-                color = 'k'
-            else:
-                color = cmap(lab)
-            if label:
-                skymap.tissot(lon, lat, 5, npts = 30, facecolor = color,
-                              alpha = 0.5, label = 'simulated data')
-                label = False
-            else:
-                skymap.tissot(lon, lat, 5, npts = 30, facecolor = color, alpha = 0.5)
+            Ns = self.data.source.N
+            cmap = plt.cm.get_cmap('plasma', Ns - 1) 
+            label = True
+            for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, labels]):
+                if (lab == Ns):
+                    color = 'k'
+                else:
+                    color = cmap(lab)
+                if label:
+                    skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, facecolor = color,
+                                  alpha = 0.5, label = 'simulated data')
+                    label = False
+                else:
+                    skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, facecolor = color, alpha = 0.5)
 
-        # standard labels and background
-        skymap.draw_standard_labels(style.cmap, style.textcolor)
+            # standard labels and background
+            skymap.draw_standard_labels(style.cmap, style.textcolor)
 
-        # legend
-        plt.legend(bbox_to_anchor = (0.85, 0.85))
-        leg = ax.get_legend()
-        frame = leg.get_frame()
-        frame.set_linewidth(0)
-        frame.set_facecolor('None')
-        for text in leg.get_texts():
-            plt.setp(text, color = style.textcolor)
+            # legend
+            plt.legend(bbox_to_anchor = (0.85, 0.85))
+            leg = ax.get_legend()
+            frame = leg.get_frame()
+            frame.set_linewidth(0)
+            frame.set_facecolor('None')
+            for text in leg.get_texts():
+                plt.setp(text, color = style.textcolor)
 
+        if type == 'energy':
+
+            bins = np.logspace(np.log(self.model.Eth), np.log(1e4), base = np.e)
+            plt.hist(self.E, bins = bins, alpha = 0.7, label = 'source')
+            plt.hist(self.Earr, bins = bins, alpha = 0.7, label = 'arrival')
+            plt.hist(self.Edet, bins = bins, alpha = 0.7, label = 'detection')
+            plt.xscale('log')
+            plt.yscale('log')
+            plt.legend()
+    
         
     def use_simulated_data(self, filename):
         """
@@ -353,6 +379,7 @@ class Analysis():
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
             self.fit_input['Dbg'] = self.model.Dbg
+            self.fit_input['Ltrue'] = self.model.L
             
         print('done')
 
@@ -375,3 +402,159 @@ class Analysis():
         stan_utility.check_energy(self.fit)
 
         return self.fit
+
+    def ppc_input(self, filename):
+        """
+        Use data from the file provided to proved inputs
+        to the ppc check.
+        """
+
+        inputs = pystan.read_rdump(filename)
+        self.B_fit = inputs['B_fit']
+        self.alpha_fit = inputs['alpha_fit']
+        self.F0_fit = inputs['F0_fit']
+        self.L_fit = inputs['L_fit']
+
+    
+    def ppc(self, ppc_table_filename, seed = None):
+        """
+        Run a posterior predictive check.
+        Use the fit parameters to simulate a dataset.
+        """
+
+        self.ppc_table_filename = ppc_table_filename
+        
+        if self.analysis_type == 'arrival direction':
+            print('No PPC implemented for arrival direction only analysis :( ')
+
+        if self.analysis_type == 'joint':
+
+            # extract fitted parameters
+            chain = self.fit.extract(permuted = True)
+            self.B_fit = np.mean(chain['B'])
+            self.alpha_fit = np.mean(chain['alpha'])
+            self.F0_fit = np.mean(chain['F0'])
+            self.L_fit = np.mean(np.transpose(chain['L']), axis = 1)
+        
+            # calculate eps integral
+            print('precomputing exposure integrals...')
+            self.Eex = get_Eex(self.Eth_src, alpha_fit)
+            self.kappa_ex = get_kappa_ex(self.Eex, B_fit, self.data.source.distance)        
+            kappa_true = self.kappa_ex
+            varpi = self.data.source.unit_vector
+            params = self.data.detector.params
+            self.ppc_table_to_build = ExposureIntegralTable(kappa_true, varpi, params, self.ppc_table_filename)
+            self.ppc_table_to_build.build_for_sim()
+            self.ppc_table = pystan.read_rdump(self.ppc_table_filename)
+            
+            eps = self.ppc_table['table'][0]
+            
+            # compile inputs from Model, Data and self.fit
+            self.ppc_input = {
+                'kappa_c' : self.data.detector.kappa_c,
+                'Ns' : self.data.source.N,
+                'varpi' : self.data.source.unit_vector,
+                'D' : self.data.source.distance,
+                'A' : self.data.detector.area,
+                'a0' : self.data.detector.location.lat.rad,
+                'theta_m' : self.data.detector.threshold_zenith_angle.rad,
+                'alpha_T' : self.data.detector.alpha_T,
+                'eps' : eps}
+
+            self.ppc_input['B'] = B_fit
+            self.ppc_input['L'] = L_fit
+            self.ppc_input['F0'] = F0_fit
+            self.ppc_input['alpha'] = alpha_fit
+            
+            self.ppc_input['Eth'] = self.model.Eth
+            self.ppc_input['Eerr'] = self.model.Eerr
+            self.ppc_input['Dbg'] = self.model.Dbg
+
+            # run simulation
+            print('running posterior predictive simulation...')
+            self.posterior_predictive = self.model.simulation.sampling(data = self.ppc_input, iter = 1,
+                                                                       chains = 1, algorithm = "Fixed_param", seed = seed)
+            print('done')
+
+            # extract output
+            print('extracting output...')
+            arrival_direction = self.posterior_predictive.extract(['arrival_direction'])['arrival_direction'][0]
+            self.arrival_direction_pred = Direction(arrival_direction)
+            self.Edet_pred = self.posterior_predictive.extract(['Edet'])['Edet'][0]
+            print('done')
+
+        return self.arrival_direction_pred, self.Edet_pred
+        
+    def plot_ppc(self, ppc_type = None, cmap = None, use_sim_data = False):
+        """
+        Plot the posterior predictive check against the data 
+        (or original simulation) for ppc_type == 'arrival direction' 
+        or ppc_type == 'energy'.
+        """
+
+        if ppc_type == None:
+            ppc_type = 'arrival direction'
+
+        if ppc_type == 'arrival direction':
+
+            # plot style
+            if cmap == None:
+                style = PlotStyle()
+            else:
+                style = PlotStyle(cmap_name = cmap)
+            
+            # figure
+            fig = plt.figure(figsize = (12, 6));
+            ax = plt.gca()
+
+            # skymap
+            skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0);
+
+            self.data.source.plot(style, skymap)
+            self.data.detector.draw_exposure_lim(skymap)
+       
+            label = True
+            if use_sim_data:
+                for lon, lat in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats]):
+                    if label:
+                        skymap.tissot(lon, lat, 4.0, npts = 30, alpha = 0.5, label = 'data')
+                        label = False
+                    else:
+                        skymap.tissot(lon, lat, 4.0, npts = 30, alpha = 0.5)
+            else:
+                for lon, lat in np.nditer([self.coord.galactic.l.deg, self.uhecr.coord.galactic.b.deg]):
+                    if label:
+                        skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, alpha = 0.5, label = 'data')
+                        label = False
+                    else:
+                        skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, alpha = 0.5)
+                
+            label = True
+            for lon, lat in np.nditer([self.arrival_direction_pred.lons, self.arrival_direction_pred.lats]):
+                if label: 
+                    skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, alpha = 0.5,
+                                  color = 'g', label = 'predicted')
+                    label = False
+                else:
+                    skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, alpha = 0.5, color = 'g')
+
+            # standard labels and background
+            skymap.draw_standard_labels(style.cmap, style.textcolor)
+
+            # legend
+            plt.legend(bbox_to_anchor = (0.85, 0.85))
+            leg = ax.get_legend()
+            frame = leg.get_frame()
+            frame.set_linewidth(0)
+            frame.set_facecolor('None')
+            for text in leg.get_texts():
+                plt.setp(text, color = style.textcolor)
+
+        if ppc_type == 'energy':
+
+            bins = np.logspace(np.log(self.model.Eth), np.log(1e4), base = np.e)
+            plt.hist(self.Edet, bins = bins, alpha = 0.7, label = 'data')
+            plt.hist(self.Edet_pred, bins = bins, alpha = 0.7, label = 'predicted')
+            plt.xscale('log')
+            plt.yscale('log')
+            plt.legend()

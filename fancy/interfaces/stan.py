@@ -59,7 +59,7 @@ class Model():
         self.alpha = alpha
         self.Eth = Eth
         self.Eerr = Eerr
-        
+        self.Dbg = Dbg
         
         
 class Direction():
