@@ -54,8 +54,8 @@ class Model():
         self.f = f
         self.kappa = kappa
         self.B = B
-        self.L = L
-        self.F0 = F0
+        self.L = L 
+        self.F0 = F0 
         self.alpha = alpha
         self.Eth = Eth
         self.Eerr = Eerr
@@ -124,3 +124,23 @@ def coord_to_uv(coord):
     uv = [d / np.linalg.norm(d) for d in np.transpose(ds)]
 
     return uv
+
+def convert_scale(D, Dbg, alpha_T, eps, F0, L):
+    """
+    Convenience function to convert parameters 
+    to O(1) scale for sampling in Stan.
+    D [Mpc] -> D / 100
+    alpha_T [km^2 yr] -> alpha_T / 1000
+    eps [km^2 yr] -> eps / 1000
+    F [# km^-2 yr^-1] -> F * 1000
+    L [# yr^-1] -> L / 1e40
+    """
+
+    D = [d / 100 for d in D]
+    Dbg = Dbg / 100
+    alpha_T = alpha_T / 1000
+    eps = [e / 1000 for e in eps]
+    F0 = F0 * 1000
+    L = L / 1e40
+
+    return D, Dbg, alpha_T, eps, F0, L

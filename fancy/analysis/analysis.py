@@ -6,7 +6,7 @@ from astropy import units as u
 from matplotlib import pyplot as plt
 
 from ..interfaces.integration import ExposureIntegralTable
-from ..interfaces.stan import Direction
+from ..interfaces.stan import Direction, convert_scale
 from ..interfaces import stan_utility
 from ..utils import PlotStyle
 from ..plotting import AllSkyMap
@@ -161,17 +161,25 @@ class Analysis():
         # handle selected sources
         if (self.data.source.N < len(eps)):
             eps = [eps[i] for i in self.data.source.selection]
+
+        # convert scale for sampling
+        D = self.data.source.distance
+        alpha_T = self.data.detector.alpha_T
+        L = self.model.L
+        F0 = self.model.F0
+        Dbg = self.model.Dbg
+        D, Dbg, alpha_T, eps, F0, L = convert_scale(D, Dbg, alpha_T, eps, F0, L)
             
         # compile inputs from Model and Data
         self.simulation_input = {
                        'kappa_c' : self.data.detector.kappa_c, 
                        'Ns' : len(self.data.source.distance),
                        'varpi' : self.data.source.unit_vector, 
-                       'D' : self.data.source.distance,
+                       'D' : D,
                        'A' : self.data.detector.area,
                        'a0' : self.data.detector.location.lat.rad,
                        'theta_m' : self.data.detector.threshold_zenith_angle.rad, 
-                       'alpha_T' : self.data.detector.alpha_T,
+                       'alpha_T' : alpha_T,
                        'eps' : eps}
 
         if self.analysis_type == self.arr_dir_type:
@@ -184,14 +192,14 @@ class Analysis():
             
             self.simulation_input['B'] = self.model.B
             
-            self.simulation_input['L'] = self.model.L
-            self.simulation_input['F0'] = self.model.F0
+            self.simulation_input['L'] = L
+            self.simulation_input['F0'] = F0
             
             self.simulation_input['alpha'] = self.model.alpha
             self.simulation_input['Eth'] = self.model.Eth
             self.simulation_input['Eerr'] = self.model.Eerr
 
-            self.simulation_input['Dbg'] = self.model.Dbg
+            self.simulation_input['Dbg'] = Dbg
         
         # run simulation
         print('running stan simulation...')
@@ -225,17 +233,25 @@ class Analysis():
         # handle selected sources
         if (self.data.source.N < len(eps_fit)):
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
-        
+
+        # convert scale for sampling
+        D = self.data.source.distance
+        alpha_T = self.data.detector.alpha_T
+        L = self.model.L
+        F0 = self.model.F0
+        Dbg = self.model.Dbg
+        D, Dbg, alpha_T, eps_fit, F0, L = convert_scale(D, Dbg, alpha_T, eps_fit, F0, L)
+            
         # prepare fit inputs
         print('preparing fit inputs...')
-        self.fit_input = {'Ns' : len(self.data.source.distance), 
+        self.fit_input = {'Ns' : self.data.source.N, 
                           'varpi' :self.data.source.unit_vector,
-                          'D' : self.data.source.distance, 
+                          'D' : D, 
                           'N' : len(self.arrival_direction.unit_vector), 
                           'arrival_direction' : self.arrival_direction.unit_vector, 
                           'A' : np.tile(self.data.detector.area, len(self.arrival_direction.unit_vector)),
                           'kappa_c' : self.data.detector.kappa_c,
-                          'alpha_T' : self.data.detector.alpha_T, 
+                          'alpha_T' : alpha_T, 
                           'Ngrid' : len(kappa_grid), 
                           'eps' : eps_fit, 
                           'kappa_grid' : kappa_grid,
@@ -246,8 +262,8 @@ class Analysis():
             self.fit_input['Edet'] = self.Edet
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
-            self.fit_input['Dbg'] = self.model.Dbg
-            self.fit_input['Ltrue'] = self.model.L
+            self.fit_input['Dbg'] = Dbg
+            self.fit_input['Ltrue'] = L
             
         print('done')
         
@@ -358,16 +374,24 @@ class Analysis():
         # handle selected sources
         if (self.data.source.N < len(eps_fit)):
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
-        
+
+        # convert scale for sampling
+        D = self.data.source.distance
+        alpha_T = self.data.detector.alpha_T
+        L = self.model.L
+        F0 = self.model.F0
+        Dbg = self.model.Dbg
+        D, Dbg, alpha_T, eps_fit, F0, L = convert_scale(D, Dbg, alpha_T, eps_fit, F0, L)
+                
         print('preparing fit inputs...')
-        self.fit_input = {'Ns' : len(self.data.source.distance),
+        self.fit_input = {'Ns' : self.data.source.N,
                           'varpi' :self.data.source.unit_vector,
-                          'D' : self.data.source.distance,
-                          'N' : len(self.data.uhecr.energy),
+                          'D' : D,
+                          'N' : self.data.uhecr.N,
                           'arrival_direction' : self.data.uhecr.unit_vector,
                           'A' : self.data.uhecr.A,
                           'kappa_c' : self.data.detector.kappa_c,
-                          'alpha_T' : self.data.detector.alpha_T,
+                          'alpha_T' : alpha_T,
                           'Ngrid' : len(kappa_grid),
                           'eps' : eps_fit,
                           'kappa_grid' : kappa_grid,
@@ -378,8 +402,8 @@ class Analysis():
             self.fit_input['Edet'] = self.Edet
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
-            self.fit_input['Dbg'] = self.model.Dbg
-            self.fit_input['Ltrue'] = self.model.L
+            self.fit_input['Dbg'] = Dbg
+            self.fit_input['Ltrue'] = L
             
         print('done')
 
@@ -448,17 +472,25 @@ class Analysis():
             self.ppc_table = pystan.read_rdump(self.ppc_table_filename)
             
             eps = self.ppc_table['table'][0]
+
+            # convert scale for sampling
+            D = self.data.source.distance
+            alpha_T = self.data.detector.alpha_T
+            L = self.model.L
+            F0 = self.model.F0
+            Dbg = self.model.Dbg
+            D, Dbg, alpha_T, eps, F0, L = convert_scale(D, Dbg, alpha_T, eps, F0, L)
             
             # compile inputs from Model, Data and self.fit
             self.ppc_input = {
                 'kappa_c' : self.data.detector.kappa_c,
                 'Ns' : self.data.source.N,
                 'varpi' : self.data.source.unit_vector,
-                'D' : self.data.source.distance,
+                'D' : D,
                 'A' : self.data.detector.area,
                 'a0' : self.data.detector.location.lat.rad,
                 'theta_m' : self.data.detector.threshold_zenith_angle.rad,
-                'alpha_T' : self.data.detector.alpha_T,
+                'alpha_T' : alpha_T,
                 'eps' : eps}
 
             self.ppc_input['B'] = self.B_fit

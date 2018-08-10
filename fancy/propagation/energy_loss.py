@@ -194,8 +194,10 @@ def get_arrival_energy(E, D):
     Get the arrival energy for a given initial energy.
     Takes into account all propagation affects.
     Solves the ODE dE/dr = - E / Lloss. 
+    NB: input and output E in EeV!
     """
-    
+
+    E = E * 1.0e18
     integrator = integrate.ode(dEdr).set_integrator('lsoda', method = 'bdf')
     integrator.set_initial_value(E, 0)
     r1 = D
@@ -205,15 +207,18 @@ def get_arrival_energy(E, D):
         integrator.integrate(integrator.t + dr)
         #print("%g %g" % (integrator.t, integrator.y))
 
-    return integrator.y
+    Earr = integrator.y / 1.0e18
+    return Earr
 
 def get_source_threshold_energy(Eth, D):
     """
     Get the equivalent source energy for a given arrival energy.
     Takes into account all propagation affects.
     Solves the ODE dE/dr = E / Lloss. 
+    NB: input Eth and output E in EeV! 
     """
-  
+
+    Eth = Eth * 1.0e18
     integrator = integrate.ode(dEdr_rev).set_integrator('lsoda', method = 'bdf')
     integrator.set_initial_value(Eth, 0).set_f_params(D)
     r1 = D
@@ -223,11 +228,13 @@ def get_source_threshold_energy(Eth, D):
         integrator.integrate(integrator.t + dr)
         #print("%g %g" % (integrator.t, integrator.y))
 
-    return integrator.y
+    Eth_src = integrator.y / 1.0e18 
+    return Eth_src
 
 def get_Eth_src(Eth, D):
     """
     Find the source threshold energies for all sources.
+    NB: input Eth in EeV!
     """
 
     Eth_src = []
