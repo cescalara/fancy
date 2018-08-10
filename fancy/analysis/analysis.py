@@ -438,8 +438,8 @@ class Analysis():
         
             # calculate eps integral
             print('precomputing exposure integrals...')
-            self.Eex = get_Eex(self.Eth_src, alpha_fit)
-            self.kappa_ex = get_kappa_ex(self.Eex, B_fit, self.data.source.distance)        
+            self.Eex = get_Eex(self.Eth_src, self.alpha_fit)
+            self.kappa_ex = get_kappa_ex(self.Eex, self.B_fit, self.data.source.distance)        
             kappa_true = self.kappa_ex
             varpi = self.data.source.unit_vector
             params = self.data.detector.params
@@ -461,10 +461,10 @@ class Analysis():
                 'alpha_T' : self.data.detector.alpha_T,
                 'eps' : eps}
 
-            self.ppc_input['B'] = B_fit
-            self.ppc_input['L'] = L_fit
-            self.ppc_input['F0'] = F0_fit
-            self.ppc_input['alpha'] = alpha_fit
+            self.ppc_input['B'] = self.B_fit
+            self.ppc_input['L'] = self.L_fit
+            self.ppc_input['F0'] = self.F0_fit
+            self.ppc_input['alpha'] = self.alpha_fit
             
             self.ppc_input['Eth'] = self.model.Eth
             self.ppc_input['Eerr'] = self.model.Eerr
@@ -522,7 +522,7 @@ class Analysis():
                     else:
                         skymap.tissot(lon, lat, 4.0, npts = 30, alpha = 0.5)
             else:
-                for lon, lat in np.nditer([self.coord.galactic.l.deg, self.uhecr.coord.galactic.b.deg]):
+                for lon, lat in np.nditer([self.data.uhecr.coord.galactic.l.deg, self.data.uhecr.coord.galactic.b.deg]):
                     if label:
                         skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, alpha = 0.5, label = 'data')
                         label = False
