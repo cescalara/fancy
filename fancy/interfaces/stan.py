@@ -34,28 +34,32 @@ class Model():
         self.model = compile_model(self.model_filename)
         self.simulation = compile_model(self.sim_filename)
 
-    def simulation_inputs(self, kappa, kappa_c, F_T = None, f = None, L = None, F0 = None, alpha = None, Eth = None, Emax = None, Eerr = None):
+    def simulation_inputs(self, B = None, kappa = None,
+                          F_T = None, f = None, L = None, F0 = None,
+                          alpha = None, Eth = None, Eerr = None, Dbg = None):
         """
         Get simulation inputs.
 
-        :param F_T: total flux
+        :param F_T: total flux [# km-^2 yr^-1]
         :param f: associated fraction
-        :param kappa: deflection parameter
+        :param kappa: deflection parameter 
+        :param B: rms B field strength [nG]
         :param kappa_c: reconstruction parameter
         :param alpha: source spectral index
-        :param Eth: threshold energy of study
-        :param Eerr: energy reconstruction uncertainty (%)
+        :param Eth: threshold energy of study [EeV]
+        :param Eerr: energy reconstruction uncertainty = Eerr * E 
+        :param Dbg: background component distance [Mpc]
         """
         self.F_T = F_T
         self.f = f
         self.kappa = kappa
-        self.kappa_c = kappa_c
-        self.L = L
-        self.F0 = F0
+        self.B = B
+        self.L = L 
+        self.F0 = F0 
         self.alpha = alpha
         self.Eth = Eth
-        self.Emax = Emax
         self.Eerr = Eerr
+        self.Dbg = Dbg
         
         
 class Direction():
@@ -120,3 +124,23 @@ def coord_to_uv(coord):
     uv = [d / np.linalg.norm(d) for d in np.transpose(ds)]
 
     return uv
+
+def convert_scale(D, Dbg, alpha_T, eps, F0, L):
+    """
+    Convenience function to convert parameters 
+    to O(1) scale for sampling in Stan.
+    D [Mpc] -> (D * 3.086) / 100
+    alpha_T [km^2 yr] -> alpha_T / 1000
+    eps [km^2 yr] -> eps / 1000
+    F [# km^-2 yr^-1] -> F * 1000
+    L [# yr^-1] -> L / 1e39
+    """
+
+    D = [(d * 3.086) / 100 for d in D]
+    Dbg = (Dbg * 3.086) / 100.0
+    alpha_T = alpha_T / 1000.0
+    eps = [e / 1000.0 for e in eps]
+    F0 = F0 * 1000.0
+    L = L / 1.0e39
+
+    return D, Dbg, alpha_T, eps, F0, L
