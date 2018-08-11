@@ -459,25 +459,44 @@ class Analysis():
         self.fit = self.model.model.sampling(data = self.fit_input, iter = iterations, chains = chains, seed = seed)
 
         # Diagnositics
-        stan_utility.check_treedepth(self.fit)
-        stan_utility.check_div(self.fit)
-        stan_utility.check_energy(self.fit)
-
+        self.fit_treedepth = stan_utility.check_treedepth(self.fit)
+        self.fit_div = stan_utility.check_div(self.fit)
+        self.fit_energy = stan_utility.check_energy(self.fit)
+        self.n_eff = stan_utility.check_n_eff(self.fit)
+        self.rhat = stan_utility.check_rhat(self.fit)
+        
+        self.chain = self.fit.extract(permuted = True)
         return self.fit
 
-    def ppc_input(self, filename):
-        """
-        Use data from the file provided to proved inputs
-        to the ppc check.
-        """
+    def save_fit(self):
 
-        inputs = pystan.read_rdump(filename)
-        self.B_fit = inputs['B_fit']
-        self.alpha_fit = inputs['alpha_fit']
-        self.F0_fit = inputs['F0_fit']
-        self.L_fit = inputs['L_fit']
+        if self.fit:
 
-    
+            with h5py.File(self.filename, 'r+') as f:
+
+                fit_input = f['input'].create_group('fit')
+                for key, value in self.fit_input.items():
+                    fit_input.create_dataset(key, data = value)
+
+                fit_output = f['output'].create_group('fit')
+                diagnostics = fit_output.create_group('diagnostics')
+                diagnostics.create_dataset('treedepth', data = self.fit_treedepth)
+                diagnostics.create_dataset('divergence', data = self.fit_div)
+                diagnostics.create_dataset('energy', data = self.fit_energy)
+                rhat = diagnostics.create_group('rhat')
+                for key, value in self.rhat.items():
+                    rhat.create_dataset(key, data = value)
+                n_eff = diagnostics.create_group('n_eff')
+                for key, value in self.n_eff.items():
+                    n_eff.create_dataset(key, data = value)      
+                samples = fit_output.create_group('samples')
+                for key, value in self.chain.items():
+                    samples.create_dataset(key, data = value)
+                
+        else:
+            print('Error: no fit to save')
+        
+        
     def ppc(self, seed = None):
         """
         Run a posterior predictive check.

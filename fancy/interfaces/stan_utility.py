@@ -2,6 +2,12 @@ import pystan
 import pickle
 import numpy
 
+"""
+Taken from the pystan GitHub. 
+A few small edits made to return useful diagnostics
+to be analysed in a more programmatic way.
+"""
+
 def check_div(fit):
     """Check transitions that ended with a divergence"""
     sampler_params = fit.get_sampler_params(inc_warmup=False)
@@ -12,6 +18,7 @@ def check_div(fit):
             100 * n / N))
     if n > 0:
         print('  Try running with larger adapt_delta to remove the divergences')
+    return n
 
 def check_treedepth(fit, max_depth = 10):
     """Check transitions that ended prematurely due to maximum tree depth limit"""
@@ -23,15 +30,19 @@ def check_treedepth(fit, max_depth = 10):
             + ' ({}%)').format(n, N, max_depth, 100 * n / N))
     if n > 0:
         print('  Run again with max_depth set to a larger value to avoid saturation')
+    return n
 
 def check_energy(fit):
     """Checks the energy Bayesian fraction of missing information (E-BFMI)"""
     sampler_params = fit.get_sampler_params(inc_warmup=False)
     no_warning = True
+
+    out_energy = []
     for chain_num, s in enumerate(sampler_params):
         energies = s['energy__']
         numer = sum((energies[i] - energies[i - 1])**2 for i in range(1, len(energies))) / len(energies)
         denom = numpy.var(energies)
+        out_energy.append(numer / denom)
         if numer / denom < 0.2:
             print('Chain {}: E-BFMI = {}'.format(chain_num, numer / denom))
             no_warning = False
@@ -39,6 +50,7 @@ def check_energy(fit):
         print('E-BFMI indicated no pathological behavior')
     else:
         print('  E-BFMI below 0.2 indicates you may need to reparameterize your model')
+    return out_energy
 
 def check_n_eff(fit):
     """Checks the effective sample size per iteration"""
@@ -57,6 +69,7 @@ def check_n_eff(fit):
         print('n_eff / iter looks reasonable for all parameters')
     else:
         print('  n_eff / iter below 0.001 indicates that the effective sample size has likely been overestimated')
+    return dict(zip(names, n_effs))
 
 def check_rhat(fit):
     """Checks the potential scale reduction factors"""
@@ -77,6 +90,8 @@ def check_rhat(fit):
     else:
         print('  Rhat above 1.1 indicates that the chains very likely have not mixed')
 
+    return dict(zip(names, rhats))
+        
 def check_all_diagnostics(fit):
     """Checks all MCMC diagnostics"""
     check_n_eff(fit)
