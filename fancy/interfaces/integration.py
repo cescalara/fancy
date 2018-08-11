@@ -58,7 +58,7 @@ class ExposureIntegralTable():
 
                 print(k, result, err)
                 results.append(result)
-            self.sim_table.append(np.asarray(results))
+            self.sim_table = results
             print()
 
         # different kappa for each source
@@ -72,7 +72,7 @@ class ExposureIntegralTable():
                 print(self.sim_kappa[i], result, err)
                 results.append(result)
 
-            self.sim_table.append(np.asarray(results))
+            self.sim_table = results
             print()
 
             

@@ -3,6 +3,7 @@ from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
 from astropy import units as u
 from matplotlib import pyplot as plt
+import h5py
 
 from ..interfaces.integration import ExposureIntegralTable
 from ..interfaces.stan import Direction, convert_scale
@@ -32,7 +33,11 @@ class Analysis():
         self.data = data
         self.model = model
         self.filename = filename
-
+        if self.filename:
+            with h5py.File(self.filename, 'r+') as f:
+                f.create_group('input')
+                f.create_group('output')
+            
         self.simulation_input = None
         self.fit_input = None
         
@@ -155,7 +160,7 @@ class Analysis():
         :param seed: seed for RNG
         """
 
-        eps = self.sim_table['table'][0]
+        eps = self.tables.sim_table
 
         # handle selected sources
         if (self.data.source.N < len(eps)):
@@ -226,8 +231,8 @@ class Analysis():
         self.zenith_angles = self._simulate_zenith_angles()
         print('done')
         
-        eps_fit = self.table['table']
-        kappa_grid = self.table['kappa']
+        eps_fit = self.tables.table
+        kappa_grid = self.tables.kappa
 
         # handle selected sources
         if (self.data.source.N < len(eps_fit)):
@@ -267,12 +272,29 @@ class Analysis():
         print('done')
         
         
-    def save_simulated_data(self, filename):
+    def save_simulation(self):
         """
         Write the simulated data to file.
         """
         if self.fit_input != None:
-            pystan.stan_rdump(self.fit_input, filename)
+            
+            with h5py.File(self.filename, 'r+') as f:
+
+                # inputs
+                sim_inputs = f['input'].create_group('simulation')
+                for key, value in self.simulation_input.items():
+                    sim_inputs.create_dataset(key, data = value)
+                sim_inputs.create_dataset('kappa_ex', data = self.kappa_ex)
+
+                # outputs
+                sim_outputs = f['output'].create_group('simulation')
+                sim_outputs.create_dataset('E', data = self.E)
+                sim_outputs.create_dataset('Earr', data = self.Earr)
+                sim_outputs.create_dataset('Edet', data = self.Edet)
+                sim_outputs.create_dataset('Nex_sim', data = self.Nex_sim)                
+                sim_fit_inputs = f['output/simulation'].create_group('fit_input')
+                for key, value in self.fit_input.items():
+                    sim_fit_inputs.create_dataset(key, data = value)
         else:
             print("Error: nothing to save!")
 
@@ -354,21 +376,38 @@ class Analysis():
             plt.legend()
     
         
-    def use_simulated_data(self, filename):
+    def use_simulation(self, input_filename):
         """
-        Read in simulated data from a file.
+        Read in simulated data from a file to create fit_input.
         """
 
-        self.fit_input = pystan.read_rdump(filename)
+        with h5py.File(input_filename, 'r') as f:
+            #try:
 
+            sim_input = f['input/simulation']
+            for key in sim_input:
+                self.simulation_input[key] = sim_input[key].value
+                
+            sim_output = f['output/simulation']
+            self.E = sim_output['E'].value
+            self.Earr = sim_output['Earr'].value
+            self.Edet = sim_output['Edet'].value
+                
+            sim_fit_input = sim_output['fit_input']
+            for key in sim_fit_input:
+                self.fit_input[key] = sim_fit_input[key].value
+
+            #except:
+            #    print('Error: file does not contain simulation data')
+                
         
     def use_uhecr_data(self):
         """
         Build fit inputs from the UHECR dataset.
         """
 
-        eps_fit = self.table['table']
-        kappa_grid = self.table['kappa']
+        eps_fit = self.tables.table
+        kappa_grid = self.tables.kappa
 
         # handle selected sources
         if (self.data.source.N < len(eps_fit)):
@@ -439,14 +478,13 @@ class Analysis():
         self.L_fit = inputs['L_fit']
 
     
-    def ppc(self, ppc_table_filename, seed = None):
+    def ppc(self, seed = None):
         """
         Run a posterior predictive check.
         Use the fit parameters to simulate a dataset.
+        Meant to be a quick check having just run a fit.
         """
 
-        self.ppc_table_filename = ppc_table_filename
-        
         if self.analysis_type == 'arrival direction':
             print('No PPC implemented for arrival direction only analysis :( ')
 
@@ -466,11 +504,10 @@ class Analysis():
             kappa_true = self.kappa_ex
             varpi = self.data.source.unit_vector
             params = self.data.detector.params
-            self.ppc_table_to_build = ExposureIntegralTable(kappa_true, varpi, params, self.ppc_table_filename)
-            self.ppc_table_to_build.build_for_sim()
-            self.ppc_table = pystan.read_rdump(self.ppc_table_filename)
+            self.ppc_table = ExposureIntegralTable(varpi = varpi, params = params)
+            self.ppc_table.build_for_sim(kappa, self.alpha_fit, self.B_fit, self.data.source.distance)
             
-            eps = self.ppc_table['table'][0]
+            eps = self.ppc_table.sim_table
 
             # convert scale for sampling
             D = self.data.source.distance
