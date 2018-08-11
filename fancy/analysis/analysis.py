@@ -500,7 +500,7 @@ class Analysis():
             
             self.ppc_input['Eth'] = self.model.Eth
             self.ppc_input['Eerr'] = self.model.Eerr
-            self.ppc_input['Dbg'] = self.model.Dbg
+            self.ppc_input['Dbg'] = Dbg
 
             # run simulation
             print('running posterior predictive simulation...')

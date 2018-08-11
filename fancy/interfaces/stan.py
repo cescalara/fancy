@@ -40,15 +40,15 @@ class Model():
         """
         Get simulation inputs.
 
-        :param F_T: total flux
+        :param F_T: total flux [# km-^2 yr^-1]
         :param f: associated fraction
-        :param kappa: deflection parameter
-        :param B: rms B field strength in nG
+        :param kappa: deflection parameter 
+        :param B: rms B field strength [nG]
         :param kappa_c: reconstruction parameter
         :param alpha: source spectral index
-        :param Eth: threshold energy of study in EeV
+        :param Eth: threshold energy of study [EeV]
         :param Eerr: energy reconstruction uncertainty = Eerr * E 
-        :param Dbg: background component distance in Mpc
+        :param Dbg: background component distance [Mpc]
         """
         self.F_T = F_T
         self.f = f
@@ -129,18 +129,18 @@ def convert_scale(D, Dbg, alpha_T, eps, F0, L):
     """
     Convenience function to convert parameters 
     to O(1) scale for sampling in Stan.
-    D [Mpc] -> D / 100
+    D [Mpc] -> (D * 3.086) / 100
     alpha_T [km^2 yr] -> alpha_T / 1000
     eps [km^2 yr] -> eps / 1000
     F [# km^-2 yr^-1] -> F * 1000
-    L [# yr^-1] -> L / 1e40
+    L [# yr^-1] -> L / 1e39
     """
 
-    D = [d / 100 for d in D]
-    Dbg = Dbg / 100
-    alpha_T = alpha_T / 1000
-    eps = [e / 1000 for e in eps]
-    F0 = F0 * 1000
-    L = L / 1e40
+    D = [(d * 3.086) / 100 for d in D]
+    Dbg = (Dbg * 3.086) / 100.0
+    alpha_T = alpha_T / 1000.0
+    eps = [e / 1000.0 for e in eps]
+    F0 = F0 * 1000.0
+    L = L / 1.0e39
 
     return D, Dbg, alpha_T, eps, F0, L
