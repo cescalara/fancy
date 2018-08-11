@@ -1,5 +1,4 @@
 import numpy as np
-import pystan
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
 from astropy import units as u
@@ -21,7 +20,7 @@ class Analysis():
     To manage the running of simulations and fits based on Data and Model objects.
     """
 
-    def __init__(self, data, model, analysis_type = None):
+    def __init__(self, data, model, analysis_type = None, filename = None):
         """
         To manage the running of simulations and fits based on Data and Model objects.
         
@@ -31,8 +30,8 @@ class Analysis():
         """
 
         self.data = data
-
         self.model = model
+        self.filename = filename
 
         self.simulation_input = None
         self.fit_input = None
@@ -49,17 +48,16 @@ class Analysis():
 
         if self.analysis_type == 'joint':
             self.Eth_src = get_Eth_src(self.model.Eth, self.data.source.distance)
-        
-    def build_tables(self, sim_table_filename, num_points = None, table_filename = None, sim_only = False):
-        """
-        Build the necessary integral tables.
-        """
-
-        self.sim_table_filename = sim_table_filename
-        self.table_filename = table_filename 
 
         params = self.data.detector.params
         varpi = self.data.source.unit_vector
+        self.tables = ExposureIntegralTable(varpi = varpi, params = params)
+     
+            
+    def build_tables(self, num_points = 50, sim_only = False):
+        """
+        Build the necessary integral tables.
+        """
 
         if self.analysis_type == self.arr_dir_type:
             kappa_true = self.model.kappa
@@ -70,10 +68,8 @@ class Analysis():
             kappa_true = self.kappa_ex
             
         # kappa_true table for simulation
-        self.sim_table_to_build = ExposureIntegralTable(kappa_true, varpi, params, self.sim_table_filename)
-        self.sim_table_to_build.build_for_sim()
-        self.sim_table = pystan.read_rdump(self.sim_table_filename)
-        
+        self.tables.build_for_sim(kappa_true)
+    
         if not sim_only:
             # logarithmically spcaed array with 60% of points between KAPPA_MIN and 100
             kappa_first = np.logspace(np.log(1), np.log(10), int(num_points * 0.7), base = np.e)
@@ -82,21 +78,24 @@ class Analysis():
             kappa = np.concatenate((kappa_first, kappa_second[1:], kappa_third[1:]), axis = 0)
         
             # full table for fit
-            self.table_to_build = ExposureIntegralTable(kappa, varpi, params, self.table_filename)
-            self.table_to_build.build_for_fit()
-            self.table = pystan.read_rdump(self.table_filename)
-        
+            self.tables.build_for_fit(kappa)
 
-    def use_tables(self, table_filename, sim_table_filename):
+
+    def use_tables(self, input_filename, main_only = True):
         """
         Pass in names of integral tables that have already been made.
+        Only the main table is read in by default, the simulation table 
+        must be recalculated every time the simulation parameters are 
+        changed.
         """
-        self.sim_table_filename = sim_table_filename
-        self.table_filename = table_filename 
-        
-        self.sim_table = pystan.read_rdump(self.sim_table_filename)
-        self.table = pystan.read_rdump(self.table_filename)
-        
+
+        if main_only:
+            input_table = ExposureIntegralTable(input_filename = input_filename)
+            self.tables.table = input_table.table
+            self.tables.kappa = input_table.kappa
+        else:
+            self.tables = ExposureIntegralTable(input_filename = input_filename)
+
         
     def _get_zenith_angle(self, c_icrs, loc, time):
         """
@@ -590,3 +589,5 @@ class Analysis():
             plt.xscale('log')
             plt.yscale('log')
             plt.legend()
+
+    
