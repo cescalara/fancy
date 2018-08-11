@@ -68,7 +68,7 @@ class Analysis():
             kappa_true = self.kappa_ex
             
         # kappa_true table for simulation
-        self.tables.build_for_sim(kappa_true)
+        self.tables.build_for_sim(kappa_true, self.model.alpha, self.model.B, self.data.source.distance)
     
         if not sim_only:
             # logarithmically spcaed array with 60% of points between KAPPA_MIN and 100

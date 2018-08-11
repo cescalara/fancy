@@ -33,7 +33,7 @@ class ExposureIntegralTable():
             self.init_from_file(input_filename)
 
 
-    def build_for_sim(self, kappa):
+    def build_for_sim(self, kappa, alpha, B, D):
         """
         Build the tabulated integrals to be used for simulations and posterior predictive checks.
         Save with the filename given.
@@ -43,6 +43,9 @@ class ExposureIntegralTable():
         """
 
         self.sim_kappa = kappa
+        self.sim_alpha = alpha
+        self.sim_B = B
+        self.sim_D = D
         
         # single fixed kappa
         if isinstance(self.sim_kappa, int) or isinstance(self.sim_kappa, float):
@@ -110,7 +113,9 @@ class ExposureIntegralTable():
             self.table = f['main']['table'].value
             self.sim_kappa = f['simulation']['kappa'].value
             self.sim_table = f['simulation']['table'].value
-            
+            self.sim_alpha = f['simulation']['alpha'].value
+            self.sim_B = f['simulation']['B'].value
+            self.sim_D = f['simulation']['D'].value
         
     def save(self, output_filename):
         """
@@ -142,7 +147,13 @@ class ExposureIntegralTable():
             if self.sim_table != []:                
                 sim.create_dataset('kappa', data = self.sim_kappa)
                 sim.create_dataset('table', data = self.sim_table)
+                sim.create_dataset('alpha', data = self.sim_alpha)
+                sim.create_dataset('B', data = self.sim_B)
+                sim.create_dataset('D', data = self.sim_D)
             else:
                 sim.create_dataset('kappa', data = h5py.Empty('f'))
                 sim.create_dataset('table', data = h5py.Empty('f'))
-           
+                sim.create_dataset('alpha', data = self.sim_alpha)
+                sim.create_dataset('B', data = self.sim_B)
+                sim.create_dataset('D', data = self.sim_D)
+         
