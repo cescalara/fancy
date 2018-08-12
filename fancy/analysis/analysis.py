@@ -267,8 +267,7 @@ class Analysis():
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
             self.fit_input['Dbg'] = Dbg
-            self.fit_input['Ltrue'] = L
-            
+
         print('done')
         
         
@@ -382,23 +381,23 @@ class Analysis():
         """
 
         with h5py.File(input_filename, 'r') as f:
-            #try:
+            try:
 
-            sim_input = f['input/simulation']
-            for key in sim_input:
-                self.simulation_input[key] = sim_input[key].value
+                sim_input = f['input/simulation']
+                for key in sim_input:
+                    self.simulation_input[key] = sim_input[key].value
                 
-            sim_output = f['output/simulation']
-            self.E = sim_output['E'].value
-            self.Earr = sim_output['Earr'].value
-            self.Edet = sim_output['Edet'].value
+                sim_output = f['output/simulation']
+                self.E = sim_output['E'].value
+                self.Earr = sim_output['Earr'].value
+                self.Edet = sim_output['Edet'].value
                 
-            sim_fit_input = sim_output['fit_input']
-            for key in sim_fit_input:
-                self.fit_input[key] = sim_fit_input[key].value
+                sim_fit_input = sim_output['fit_input']
+                for key in sim_fit_input:
+                    self.fit_input[key] = sim_fit_input[key].value
 
-            #except:
-            #    print('Error: file does not contain simulation data')
+            except:
+                print('Error: file does not contain simulation data')
                 
         
     def use_uhecr_data(self):
@@ -416,10 +415,8 @@ class Analysis():
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
-        L = self.model.L
-        F0 = self.model.F0
         Dbg = self.model.Dbg
-        D, Dbg, alpha_T, eps_fit, F0, L = convert_scale(D, Dbg, alpha_T, eps_fit, F0, L)
+        D, Dbg, alpha_T, eps_fit = convert_scale(D, Dbg, alpha_T, eps_fit)
                 
         print('preparing fit inputs...')
         self.fit_input = {'Ns' : self.data.source.N,
@@ -433,16 +430,15 @@ class Analysis():
                           'Ngrid' : len(kappa_grid),
                           'eps' : eps_fit,
                           'kappa_grid' : kappa_grid,
-                          'zenith_angle' : self.data.uhecr.incidence_angle}
+                          'zenith_angle' : np.deg2rad(self.data.uhecr.incidence_angle)}
 
         if self.analysis_type == self.joint_type:
 
-            self.fit_input['Edet'] = self.Edet
+            self.fit_input['Edet'] = self.data.uhecr.energy
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
             self.fit_input['Dbg'] = Dbg
-            self.fit_input['Ltrue'] = L
-            
+    
         print('done')
 
         
@@ -477,7 +473,10 @@ class Analysis():
                 fit_input = f['input'].create_group('fit')
                 for key, value in self.fit_input.items():
                     fit_input.create_dataset(key, data = value)
-
+                fit_input.create_dataset('params', data = self.data.detector.params)
+                fit_input.create_dataset('theta_m', data = self.data.detector.threshold_zenith_angle.rad)
+                fit_input.create_dataset('a0', data = self.data.detector.location.lat.rad)
+                
                 fit_output = f['output'].create_group('fit')
                 diagnostics = fit_output.create_group('diagnostics')
                 diagnostics.create_dataset('treedepth', data = self.fit_treedepth)

@@ -34,7 +34,7 @@ class Model():
         self.model = compile_model(self.model_filename)
         self.simulation = compile_model(self.sim_filename)
 
-    def simulation_inputs(self, B = None, kappa = None,
+    def input(self, B = None, kappa = None,
                           F_T = None, f = None, L = None, F0 = None,
                           alpha = None, Eth = None, Eerr = None, Dbg = None):
         """
@@ -125,7 +125,7 @@ def coord_to_uv(coord):
 
     return uv
 
-def convert_scale(D, Dbg, alpha_T, eps, F0, L):
+def convert_scale(D, Dbg, alpha_T, eps, F0 = None, L = None):
     """
     Convenience function to convert parameters 
     to O(1) scale for sampling in Stan.
@@ -140,7 +140,12 @@ def convert_scale(D, Dbg, alpha_T, eps, F0, L):
     Dbg = (Dbg * 3.086) / 100.0
     alpha_T = alpha_T / 1000.0
     eps = [e / 1000.0 for e in eps]
-    F0 = F0 * 1000.0
-    L = L / 1.0e39
+    if F0:
+        F0 = F0 * 1000.0
+    if isinstance(L, (list, np.ndarray)):
+        L = L / 1.0e39
 
-    return D, Dbg, alpha_T, eps, F0, L
+    if F0 and isinstance(L, (list, np.ndarray)):
+        return D, Dbg, alpha_T, eps, F0, L
+    else:
+        return D, Dbg, alpha_T, eps
