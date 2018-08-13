@@ -5,12 +5,12 @@ from matplotlib import pyplot as plt
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from datetime import date, timedelta
+import h5py
 
 from .stan import coord_to_uv
 from ..detector.detector import Detector
 from ..plotting import AllSkyMap
 from ..utils import PlotStyle, Solarized
-from ..detector.auger import *
 
 __all__ = ['Data', 'Source', 'Uhecr']
 
@@ -44,10 +44,9 @@ class Data():
         """
 
         if label == None:
-            label = 'source'
+            label = 'AGN_VCV'
         
-        raw_data = RawData(filename)
-        new_source = Source(raw_data, label)
+        new_source = Source(filename, label)
     
         # define source object
         self.source = new_source
@@ -58,14 +57,13 @@ class Data():
         Add a uhecr object to the data cotainer
 
         :param filename: name of the file containing the object's data
-        :param label: reference label for the source object
+        :param label: reference label for the uhecr dataset
         """
 
         if label == None:
-            label = 'uhecr'  
+            label = 'auger2010'  
     
-        raw_data = RawData(filename)
-        new_uhecr = Uhecr(raw_data, label)
+        new_uhecr = Uhecr(filename, label)
 
         # define uhecr object
         self.uhecr = new_uhecr
@@ -179,37 +177,16 @@ class RawData():
     Parses information for known data files in txt format. 
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, filelayout):
         """
         Parses information for known data files in txt format. 
+        :filename: name of the file to parse
+        :filelayout: list of column names in file
         """
 
         self._filename = filename
-        self._define_type()
+        self._filelayout = filelayout
         self._data = self._parse()
-        
-
-    def _define_type(self):
-        """
-        Determine the file type for parsing.
-        
-        :return: array of names of cols in file
-        """
-        if 'UHECR' in self._filename:
-            self._filetype = 'uhecr'
-            self._filelayout = ['year', 'day', 'incidence angle',
-                                'energy', 'ra', 'dec',
-                                'glon', 'glat']
-
-        elif 'agn' in self._filename:
-            self._filetype = 'agn'
-            self._filelayout = ['name', 'glon', 'glat', 'D']
-            
-        else:
-            print ('File layout not recognised')
-            self._filetype = None 
-            self._filelayout = None
-            
 
     
     def _parse(self):
@@ -228,45 +205,6 @@ class RawData():
         return output_dict
 
 
-    def get_len(self):
-        """
-        Get the length of the data set.
-
-        :return: the length of the data set
-        """
-
-        if self._filetype == 'uhecr':
-            n = len(self._data['year'])
-
-        elif self._filetype == 'agn':
-            n = len(self._data['name'])
-
-        return n
-
-    
-    def get_coordinates(self):
-        """
-        Get the galactic coordinates from self.data
-        and return them as astropy SkyCoord
-        
-        Add distance if possible (allows conversion to cartesian coords)
-        
-        :return: astropy.coordinates.SkyCoord
-        """
-
-        glon = np.array( list(self._data['glon'].values()) )
-        glat = np.array( list(self._data['glat'].values()) )
-
-        try:
-            dist = np.array( list(self._data['D'].values()) )
-        except:
-            return SkyCoord(l = glon * u.degree, b = glat * u.degree, frame = 'galactic')
-        else:
-            return SkyCoord(l = glon * u.degree, b = glat * u.degree,
-                            frame = 'galactic', distance = dist * u.mpc)
-
-    
-    
     def get_by_name(self, name):
         """
         Get data entries by name.
@@ -291,25 +229,23 @@ class Source():
     """
 
     
-    def __init__(self, raw_data, label):
+    def __init__(self, filename, label):
         """
         Stores the data and parameters for sources.
         
-        :param raw_data: data passed as an instance of RawData
+        :param filename: file ocntaining source data
         :param label: identifier
         """
 
         self.label = label
-        
-        self.N = raw_data.get_len()
-        
-        self.coord = raw_data.get_coordinates()
 
-        self.distance = raw_data.get_by_name('D') # in Mpc
-
-        self.name = raw_data.get_by_name('name')
-
-        self.label = 'Source'
+        with h5py.File(filename, 'r') as f:
+            data = f[self.label]
+            self.distance = data['D'].value
+            self.N = len(self.distance)
+            glon = data['glon'].value
+            glat = data['glat'].value
+            self.coord = get_coordinates(glon, glat)
 
         self.unit_vector = coord_to_uv(self.coord)
 
@@ -359,39 +295,33 @@ class Uhecr():
     """
 
     
-    def __init__(self, raw_data, label):
+    def __init__(self, filename, label):
         """
         Stores the data and parameters for UHECRs.
         
-        :param data: data passed as an instance of Data
+        :param filename: name of UHECR data file
         :param label: identifier
         """
 
         self.label = label
-        
-        self.N = raw_data.get_len()
-        
-        self.coord = raw_data.get_coordinates()
 
-        self.year = raw_data.get_by_name('year')
+        with h5py.File(filename, 'r') as f:
+            data = f[self.label]
 
-        self.day = raw_data.get_by_name('day')
-
-        self.incidence_angle = raw_data.get_by_name('incidence angle')
-
-        self.energy = raw_data.get_by_name('energy')
-
+            self.year = data['year'].value
+            self.day = data['day'].value
+            self.incidence_angle = data['theta'].value
+            self.energy = data['energy'].value
+            self.N = len(self.energy)
+            glon = data['glon'].value
+            glat = data['glat'].value
+            self.coord = get_coordinates(glon, glat)
+            
         self.coord_uncertainty = 4.0 # uncertainty in degrees
-
-        self.label = 'UHECR'
-
         self.unit_vector = coord_to_uv(self.coord)
-
         self.period = self._find_period()
-
         self.A = self._find_area()
         
-
         
     def plot(self, style, skymap):
         """
@@ -437,14 +367,26 @@ class Uhecr():
         the time of detection.
 
         Possible areas are calculated from the exposure reported
-        in Abreu et al. (2010).
-
-        :param period: list of periods defining the time of detection
+        in Abreu et al. (2010) or Collaboration et al. 2014.
         """
-    
-        possible_areas = [A1, A2, A3]
-        
-        area = [possible_areas[i-1] for i in self.period]
+
+        if self.label == 'auger2010':
+            from ..detector.auger2010 import A1, A2, A3
+            possible_areas = [A1, A2, A3]
+            area = [possible_areas[i-1] for i in self.period]
+
+        if self.label == 'auger2014':
+            from ..detector.auger2014 import A1, A2, A3, A4, A1_incl, A2_incl, A3_incl, A4_incl
+            possible_areas_vert = [A1, A2, A3, A4]
+            possible_areas_incl = [A1_incl, A2_incl, A3_incl, A4_incl]
+
+            # find area depending on period and incl
+            area = []
+            for i, p in enumerate(self.period):
+                if self.incidence_angle[i] <= 60:
+                    area.append(possible_areas_vert[p - 1])
+                if self.incidence_angle[i] > 60:
+                    area.append(possible_areas_incl[p - 1])
 
         return area
 
@@ -452,11 +394,11 @@ class Uhecr():
     def _find_period(self):
         """
         For a given year or day, find UHECR period based on dates
-        in table 1 in Abreu et al. (2010).
-        
-        :param year: a list of years 
-        :param day: a list of julian days
+        in table 1 in Abreu et al. (2010) or in Collaboration et al. 2014.
         """
+
+        from ..detector.auger2014 import (period_1_start, period_1_end, period_2_start, period_2_end,
+                                          period_3_start, period_3_end, period_4_start, period_4_end)
 
         # check dates
         period = []
@@ -470,11 +412,14 @@ class Uhecr():
                 period.append(2)
             elif period_3_start <= test_date <= period_3_end:
                 period.append(3)
+            elif test_date >= period_3_end:
+                period.append(4)
             else:
-                print('Error: cannot determine period for year', year, 'and day', day)
+                print('Error: cannot determine period for year', y, 'and day', d)
         
         return period
 
+    
     def select_period(self, period):
         """
         Select certain periods for analysis, other periods will be discarded. 
@@ -504,3 +449,20 @@ class Uhecr():
 
         self.coord = self.coord[selection]
         
+
+# convenience functions
+    
+def get_coordinates(glon, glat, D = None):
+    """
+    Convert glon and glat to astropy SkyCoord
+    Add distance if possible (allows conversion to cartesian coords)
+        
+    :return: astropy.coordinates.SkyCoord
+    """
+
+    if D:
+        return SkyCoord(l = glon * u.degree, b = glat * u.degree,
+                        frame = 'galactic', distance = D * u.mpc)
+    else:
+        return SkyCoord(l = glon * u.degree, b = glat * u.degree, frame = 'galactic')
+    

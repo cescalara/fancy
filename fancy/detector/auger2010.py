@@ -7,7 +7,7 @@ from astropy.coordinates import EarthLocation
 from .exposure import m_integrand
 
 """
-Constants from information provided in Auger Collabration publications.
+Constants from information provided in Auger Collabration publications on the 2010 dataset.
 
 * latitude and longitude taken from Auger Collaboration 2008.
 * Information on periods and exposures from Abreu et al. 2010.
