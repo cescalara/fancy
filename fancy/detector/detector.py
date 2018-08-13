@@ -190,8 +190,8 @@ class Detector():
         lon = c.galactic.l.deg
         lat = c.galactic.b.deg
 
-        skymap.scatter(lon, lat, latlon = True, linewidth = 3, 
-                       color = 'k', alpha = 0.5,
+        skymap.scatter(lon, lat, latlon = True, s = 10, 
+                       color = 'k', alpha = 0.1,
                        label = 'limit of ' + self.label + '\'s exposure')
 
             

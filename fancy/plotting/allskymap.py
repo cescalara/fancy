@@ -241,13 +241,13 @@ class AllSkyMap(Basemap):
         Add the standard labels for parallels and meridians to the map
         """
 
-        patch = self.drawmapboundary(fill_color = cmap(0), linewidth = 2, color = None)
+        patch = self.drawmapboundary(fill_color = 'w', linewidth = 2, color = None)
         self.drawparallels(np.arange(-75, 76, 15), linewidth = 1, dashes = [2,4], latmax = 90,
-                             labels = [1, 0, 0, 0], textcolor = textcolor, fontsize = 14);
-        self.drawmeridians(np.arange(-150, 151, 30), linewidth = 1, dashes = [2,4], latmax = 90);
-        lons = np.arange(-150, 151, 30)
+                             labels = [1, 0, 0, 0], textcolor = 'k', fontsize = 14);
+        self.drawmeridians(np.arange(-150, 151, 60), linewidth = 1, dashes = [2,4], latmax = 90, alpha = 0.5);
+        lons = np.arange(-150, 151, 60)
         self.label_meridians(lons, fontsize = 14, vnudge = 1,
-                               halign = 'left', hnudge = -1)  
+                               halign = 'left', hnudge = -1, color = 'k')  
 
 
     def tissot(self, lon_0, lat_0, radius_deg, npts, ax = None, **kwargs):

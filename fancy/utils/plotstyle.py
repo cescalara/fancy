@@ -49,7 +49,7 @@ class PlotStyle():
         else:
             self.has_custom_styles = True
 
-        self.alpha_level = 0.5
+        self.alpha_level = 0.7
 
         self.textcolor = Solarized().base01
 

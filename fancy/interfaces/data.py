@@ -102,7 +102,7 @@ class Data():
             
         max_energy = max(max_energies)
         min_energy = min(min_energies)
-
+            
         norm_E = matplotlib.colors.Normalize(min_energy, max_energy)
         cmap = style.cmap
 
@@ -146,8 +146,8 @@ class Data():
             self.source.plot(style, skymap)
 
         # detector objects
-        if self.detector != {}:
-            self.detector.draw_exposure_lim(skymap)
+        #if self.detector != {}:
+        #    self.detector.draw_exposure_lim(skymap)
                 
         # standard labels and background
         skymap.draw_standard_labels(style.cmap, style.textcolor)
@@ -162,7 +162,7 @@ class Data():
             plt.setp(text, color = style.textcolor)
         
         # add a colorbar if uhecr objects plotted
-        if self.uhecr != {}:
+        if self.uhecr != {} and self.uhecr.N != 1:
             self._uhecr_colorbar(style)
 
         if save:
@@ -403,9 +403,10 @@ class Uhecr():
         :param label: the object's label
         """
 
-        # plot the UHECR locations
-        # use colormap for energy
-        norm_E = matplotlib.colors.Normalize(self.energy.min(), self.energy.max())
+        # plot the UHECR location
+        if self.N != 1:
+            # use colormap for energy
+            norm_E = matplotlib.colors.Normalize(self.energy.min(), self.energy.max())
         cmap = style.cmap
 
         lon = self.coord.galactic.l.deg
@@ -414,8 +415,11 @@ class Uhecr():
         write_label = True
         for E, lon, lat in np.nditer([self.energy, lon, lat]):
 
-            # shift up to top 4 colors in palette, using first for background
-            color = cmap(norm_E(E) + 0.2) 
+            if self.N != 1:
+                # shift up to top 4 colors in palette, using first for background
+                color = cmap(norm_E(E) + 0.2)
+            else:
+                color = cmap(0.5)
 
             # just label once
             if write_label:
