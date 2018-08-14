@@ -113,11 +113,14 @@ class ExposureIntegralTable():
             self.table = f['main']['table'].value
             
             if f['simulation']['kappa'].value is not h5py.Empty('f'):
-                self.sim_kappa = f['simulation']['kappa'].value
-                self.sim_table = f['simulation']['table'].value
-                self.sim_alpha = f['simulation']['alpha'].value
-                self.sim_B = f['simulation']['B'].value
-                self.sim_D = f['simulation']['D'].value
+                try:
+                    self.sim_kappa = f['simulation']['kappa'].value
+                    self.sim_table = f['simulation']['table'].value
+                    self.sim_alpha = f['simulation']['alpha'].value
+                    self.sim_B = f['simulation']['B'].value
+                    self.sim_D = f['simulation']['D'].value
+                except:
+                    print("skipped simulation values")
         
     def save(self, output_filename):
         """

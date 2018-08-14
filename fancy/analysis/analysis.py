@@ -346,11 +346,11 @@ class Analysis():
             for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, labels]):
                 color = cmap(lab)
                 if label:
-                    skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, facecolor = color,
+                    skymap.tissot(lon, lat, 4.0, npts = 30, facecolor = color,
                                   alpha = 0.5, label = 'simulated data')
                     label = False
                 else:
-                    skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, facecolor = color, alpha = 0.5)
+                    skymap.tissot(lon, lat, 4.0, npts = 30, facecolor = color, alpha = 0.5)
 
             # standard labels and background
             skymap.draw_standard_labels(style.cmap, style.textcolor)
