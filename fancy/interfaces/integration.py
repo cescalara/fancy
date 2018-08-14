@@ -153,7 +153,7 @@ class ExposureIntegralTable():
             else:
                 sim.create_dataset('kappa', data = h5py.Empty('f'))
                 sim.create_dataset('table', data = h5py.Empty('f'))
-                sim.create_dataset('alpha', data = self.sim_alpha)
-                sim.create_dataset('B', data = self.sim_B)
-                sim.create_dataset('D', data = self.sim_D)
+                sim.create_dataset('alpha', data = h5py.Empty('f'))
+                sim.create_dataset('B', data = h5py.Empty('f'))
+                sim.create_dataset('D', data = h5py.Empty('f'))
          
