@@ -341,13 +341,10 @@ class Analysis():
             labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
 
             Ns = self.data.source.N
-            cmap = plt.cm.get_cmap('plasma', Ns - 1) 
+            cmap = plt.cm.get_cmap('plasma', Ns + 1) 
             label = True
             for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, labels]):
-                if (lab == Ns):
-                    color = 'k'
-                else:
-                    color = cmap(lab)
+                color = cmap(lab)
                 if label:
                     skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, facecolor = color,
                                   alpha = 0.5, label = 'simulated data')
