@@ -34,9 +34,11 @@ NB: the forumla for beta_pi in de Domenico and Insolia (2013) is missing a minus
 np.warnings.filterwarnings('ignore')
 
 # Globals
-H0 = 2.0e-18
-c = 1.0e8
-DH = (c / H0) / 3.084e22 # Mpc
+Mpc_in_m = 3.084e22 # [m]
+H0 = 70 # [km s^-1 Mpc^-1]
+H0 = H0 * (1e3 / Mpc_in_m) # [s^-1]
+c = 3.0e8 # [m s^-1]
+DH = (c / H0) / Mpc_in_m # [Mpc]
 
 def beta_pi(z, E):
     """
