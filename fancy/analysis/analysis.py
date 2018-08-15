@@ -59,23 +59,26 @@ class Analysis():
         self.tables = ExposureIntegralTable(varpi = varpi, params = params)
      
             
-    def build_tables(self, num_points = 50, sim_only = False):
+    def build_tables(self, num_points = 50, sim_only = False, fit_only = False):
         """
         Build the necessary integral tables.
         """
 
-        if self.analysis_type == self.arr_dir_type:
-            kappa_true = self.model.kappa
+        if not fit_only:
             
-        if self.analysis_type == self.joint_type:
-            self.Eex = get_Eex(self.Eth_src, self.model.alpha)
-            self.kappa_ex = get_kappa_ex(self.Eex, self.model.B, self.data.source.distance)        
-            kappa_true = self.kappa_ex
-            
-        # kappa_true table for simulation
-        self.tables.build_for_sim(kappa_true, self.model.alpha, self.model.B, self.data.source.distance)
+            # kappa_true table for simulation
+            if self.analysis_type == self.arr_dir_type:
+                kappa_true = self.model.kappa
+
+            if self.analysis_type == self.joint_type:
+                self.Eex = get_Eex(self.Eth_src, self.model.alpha)
+                self.kappa_ex = get_kappa_ex(self.Eex, self.model.B, self.data.source.distance)        
+                kappa_true = self.kappa_ex
+
+            self.tables.build_for_sim(kappa_true, self.model.alpha, self.model.B, self.data.source.distance)
     
         if not sim_only:
+
             # logarithmically spcaed array with 60% of points between KAPPA_MIN and 100
             kappa_first = np.logspace(np.log(1), np.log(10), int(num_points * 0.7), base = np.e)
             kappa_second = np.logspace(np.log(10), np.log(100), int(num_points * 0.2) + 1, base = np.e)
@@ -338,19 +341,16 @@ class Analysis():
             labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
 
             Ns = self.data.source.N
-            cmap = plt.cm.get_cmap('plasma', Ns - 1) 
+            cmap = plt.cm.get_cmap('plasma', Ns + 1) 
             label = True
             for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, labels]):
-                if (lab == Ns):
-                    color = 'k'
-                else:
-                    color = cmap(lab)
+                color = cmap(lab)
                 if label:
-                    skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, facecolor = color,
+                    skymap.tissot(lon, lat, 4.0, npts = 30, facecolor = color,
                                   alpha = 0.5, label = 'simulated data')
                     label = False
                 else:
-                    skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, facecolor = color, alpha = 0.5)
+                    skymap.tissot(lon, lat, 4.0, npts = 30, facecolor = color, alpha = 0.5)
 
             # standard labels and background
             skymap.draw_standard_labels(style.cmap, style.textcolor)

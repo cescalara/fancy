@@ -111,11 +111,16 @@ class ExposureIntegralTable():
             self.params = f['params'].value
             self.kappa = f['main']['kappa'].value
             self.table = f['main']['table'].value
-            self.sim_kappa = f['simulation']['kappa'].value
-            self.sim_table = f['simulation']['table'].value
-            self.sim_alpha = f['simulation']['alpha'].value
-            self.sim_B = f['simulation']['B'].value
-            self.sim_D = f['simulation']['D'].value
+            
+            if f['simulation']['kappa'].value is not h5py.Empty('f'):
+                try:
+                    self.sim_kappa = f['simulation']['kappa'].value
+                    self.sim_table = f['simulation']['table'].value
+                    self.sim_alpha = f['simulation']['alpha'].value
+                    self.sim_B = f['simulation']['B'].value
+                    self.sim_D = f['simulation']['D'].value
+                except:
+                    print("skipped simulation values")
         
     def save(self, output_filename):
         """
@@ -153,7 +158,7 @@ class ExposureIntegralTable():
             else:
                 sim.create_dataset('kappa', data = h5py.Empty('f'))
                 sim.create_dataset('table', data = h5py.Empty('f'))
-                sim.create_dataset('alpha', data = self.sim_alpha)
-                sim.create_dataset('B', data = self.sim_B)
-                sim.create_dataset('D', data = self.sim_D)
+                sim.create_dataset('alpha', data = h5py.Empty('f'))
+                sim.create_dataset('B', data = h5py.Empty('f'))
+                sim.create_dataset('D', data = h5py.Empty('f'))
          
