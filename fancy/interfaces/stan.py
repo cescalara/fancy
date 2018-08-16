@@ -1,6 +1,7 @@
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy import units as u
+from pandas import read_csv
 
 from .stan_utility import *
 
@@ -149,3 +150,4 @@ def convert_scale(D, Dbg, alpha_T, eps, F0 = None, L = None):
         return D, Dbg, alpha_T, eps, F0, L
     else:
         return D, Dbg, alpha_T, eps
+

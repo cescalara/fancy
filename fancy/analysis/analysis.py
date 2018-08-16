@@ -441,7 +441,7 @@ class Analysis():
         print('done')
 
         
-    def fit_model(self, iterations = 1000, chains = 4, seed = None):
+    def fit_model(self, iterations = 1000, chains = 4, seed = None, sample_file = None, warmup = None):
         """
         Fit a model.
 
@@ -451,7 +451,8 @@ class Analysis():
         """
 
         # fit
-        self.fit = self.model.model.sampling(data = self.fit_input, iter = iterations, chains = chains, seed = seed)
+        self.fit = self.model.model.sampling(data = self.fit_input, iter = iterations, chains = chains, seed = seed,
+                                             sample_file = sample_file, warmup = warmup)
 
         # Diagnositics
         self.fit_treedepth = stan_utility.check_treedepth(self.fit)

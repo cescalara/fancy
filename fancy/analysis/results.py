@@ -87,7 +87,11 @@ class Results():
         fit_parameters['alpha'] = np.mean(chain['alpha'])
         fit_parameters['F0'] = np.mean(chain['F0'])
         fit_parameters['L'] = np.mean(np.transpose(chain['L']), axis = 1)
-        
+        try:
+            fit_parameters['lambda'] = np.mean(np.transplose(chain['lambda']), axis = 1)
+        except:
+            print("Found no lambda parameters.")
+            
         return fit_parameters
         
     def get_input_data(self):
@@ -145,7 +149,8 @@ class PPC():
         self.B = fit_parameters['B']
         self.F0 = fit_parameters['F0']
         self.L = fit_parameters['L']
-
+        self.labels = fit_parameters['lambda']
+        
         self.arrival_direction = Direction(input_data['arrival_direction'])
         self.Edet = input_data['Edet']
         self.Eth = input_data['Eth']
@@ -188,6 +193,7 @@ class PPC():
         self.ppc_input['Eerr'] = input_data['Eerr']
         self.ppc_input['Dbg'] = input_data['Dbg']
 
+    
         for i in range(N):
             # run simulation
             print('running posterior predictive simulation(s)...')
@@ -199,6 +205,8 @@ class PPC():
             self.arrival_direction_preds.append(arr_dir_pred)
             Edet_pred = self.posterior_predictive.extract(['Edet'])['Edet'][0]
             self.Edet_preds.append(Edet_pred)
+            self.labels_pred = self.posterior_predictive.extract(['lambda'])['lambda'][0]
+        
             print(i, 'completed')
 
 
@@ -286,3 +294,26 @@ class PPC():
                         
                 else:
                     ax.axis('off')
+
+        if ppc_type == 'labels':
+
+            bins = np.linspace(min(self.lables), max(self.labels), len(self.labels))
+
+            # figure
+            fig, ax = plt.subplots(N_rows, N_cols, figsize = (5 * N_rows, 4 * N_cols))
+            flat_ax = ax.reshape(-1)
+
+            for i, ax in enumerate(flat_ax):
+
+                if i < N_grid:
+
+                    if i == 0:
+                        ax.hist(self.labels, bins = bins, alpha = 0.7, label = 'data', color = 'k')
+                        ax.get_yaxis().set_visible(False)
+                    else:
+                        ax.hist(self.labels_preds[i - 1], bins = bins, alpha = 0.7, label = 'predicted', color = 'g')
+                        ax.get_yaxis().set_visible(False)
+                        
+                else:
+                    ax.axis('off')
+
