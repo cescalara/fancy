@@ -220,6 +220,7 @@ class Analysis():
         self.Nex_sim = self.simulation.extract(['Nex_sim'])['Nex_sim']
         arrival_direction = self.simulation.extract(['arrival_direction'])['arrival_direction'][0]
         self.arrival_direction = Direction(arrival_direction)
+        self.labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
 
         if self.analysis_type == self.joint_type:
             
@@ -338,12 +339,10 @@ class Analysis():
             self.data.source.plot(style, skymap)
             self.data.detector.draw_exposure_lim(skymap)
        
-            labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
-
             Ns = self.data.source.N
             cmap = plt.cm.get_cmap('plasma', Ns + 1) 
             label = True
-            for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, labels]):
+            for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, self.labels]):
                 color = cmap(lab)
                 if label:
                     skymap.tissot(lon, lat, 4.0, npts = 30, facecolor = color,

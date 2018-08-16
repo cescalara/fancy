@@ -336,7 +336,7 @@ class Uhecr():
         # plot the UHECR location
         if self.N != 1:
             # use colormap for energy
-            norm_E = matplotlib.colors.Normalize(self.energy.min(), self.energy.max())
+            norm_E = matplotlib.colors.Normalize(min(self.energy), max(self.energy))
         cmap = style.cmap
 
         lon = self.coord.galactic.l.deg
