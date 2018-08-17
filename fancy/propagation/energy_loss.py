@@ -274,3 +274,11 @@ def get_kappa_ex(E, B, D):
         kappa_ex.append(2.3 / theta_p**2)
 
     return kappa_ex;
+
+# functions describing detection energy
+def p_gt_Eth(Earr, Eerr, Eth):
+    return 1 - norm.cdf(Eth, Earr, Eerr * Earr)
+
+def get_lower_Eth_sim(Eerr, Eth):
+    E = optimize.fsolve(p_gt_Eth, Eth, args = (Eerr, Eth))
+    return round(E[0]) 

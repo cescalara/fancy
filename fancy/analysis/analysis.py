@@ -177,6 +177,10 @@ class Analysis():
         Dbg = self.model.Dbg
         D, Dbg, alpha_T, eps, F0, L = convert_scale(D, Dbg, alpha_T, eps, F0, L)
             
+
+        # find lower energy threshold for the simulation, given Eth and Eerr
+        Eth_sim = get_lower_Eth_sim(self.model.Eerr, self.model.Eth)
+
         # compile inputs from Model and Data
         self.simulation_input = {
                        'kappa_c' : self.data.detector.kappa_c, 
@@ -203,7 +207,7 @@ class Analysis():
             self.simulation_input['F0'] = F0
             
             self.simulation_input['alpha'] = self.model.alpha
-            self.simulation_input['Eth'] = self.model.Eth
+            self.simulation_input['Eth'] = Eth_sim
             self.simulation_input['Eerr'] = self.model.Eerr
 
             self.simulation_input['Dbg'] = Dbg
