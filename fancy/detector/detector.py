@@ -225,3 +225,5 @@ class Angle():
             else:
                 self.deg = [np.rad2deg(a) for a in angle]
             self.rad = angle
+
+
