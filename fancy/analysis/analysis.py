@@ -10,7 +10,7 @@ from ..interfaces.stan import Direction, convert_scale
 from ..interfaces import stan_utility
 from ..utils import PlotStyle
 from ..plotting import AllSkyMap
-from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex
+from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim
 
 
 __all__ = ['Analysis']
@@ -133,7 +133,7 @@ class Analysis():
             za = 99
             i = 0
             while (za > self.data.detector.threshold_zenith_angle.rad):
-                dt = np.random.exponential(1 / self.Nex_sim)
+                dt = np.random.exponential(1 / self.N)
                 if (first):
                     t = start_time + dt
                 else:
@@ -179,8 +179,9 @@ class Analysis():
             
 
         # find lower energy threshold for the simulation, given Eth and Eerr
-        Eth_sim = get_lower_Eth_sim(self.model.Eerr, self.model.Eth)
-
+        Eth_sim = get_Eth_sim(self.model.Eerr, self.model.Eth)
+        print('simulating down to', Eth_sim, 'EeV...')
+        
         # compile inputs from Model and Data
         self.simulation_input = {
                        'kappa_c' : self.data.detector.kappa_c, 
@@ -223,17 +224,28 @@ class Analysis():
         print('extracting output...')
         self.Nex_sim = self.simulation.extract(['Nex_sim'])['Nex_sim']
         arrival_direction = self.simulation.extract(['arrival_direction'])['arrival_direction'][0]
-        self.arrival_direction = Direction(arrival_direction)
         self.labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
-
+    
         if self.analysis_type == self.joint_type:
             
             self.Edet = self.simulation.extract(['Edet'])['Edet'][0]
             self.Earr = self.simulation.extract(['Earr'])['Earr'][0]
             self.E = self.simulation.extract(['E'])['E'][0]
+
+            # make cut on Eth
+            print('making cut at Eth =', self.model.Eth, 'EeV...')
+            inds = np.where(self.Edet >= self.model.Eth)
+            self.Edet = self.Edet[inds]
+            arrival_direction = arrival_direction[inds]
+            self.labels = self.labels[inds]
+            print(len(inds), 'events above', self.Eth, 'EeV...')
         
+        # convert to Direction object
+        self.arrival_direction = Direction(arrival_direction)
+        self.N = len(self.arrival_direction.unit_vector)
         print('done')
 
+        
         # simulate the zenith angles
         print('simulating zenith angles...')
         self.zenith_angles = self._simulate_zenith_angles()
@@ -259,9 +271,9 @@ class Analysis():
         self.fit_input = {'Ns' : self.data.source.N, 
                           'varpi' :self.data.source.unit_vector,
                           'D' : D, 
-                          'N' : len(self.arrival_direction.unit_vector), 
+                          'N' : self.N, 
                           'arrival_direction' : self.arrival_direction.unit_vector, 
-                          'A' : np.tile(self.data.detector.area, len(self.arrival_direction.unit_vector)),
+                          'A' : np.tile(self.data.detector.area, self.N),
                           'kappa_c' : self.data.detector.kappa_c,
                           'alpha_T' : alpha_T, 
                           'Ngrid' : len(kappa_grid), 
