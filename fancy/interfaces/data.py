@@ -448,7 +448,29 @@ class Uhecr():
         self.year = [self.year[i] for i in selection]
 
         self.coord = self.coord[selection]
-        
+
+    def select_energy(self, Eth):
+        """
+        Select out only UHECRs above a certain energy.
+        """
+
+        selection = np.where(np.asarray(self.energy) >= Eth)
+        selection = selection[0].tolist()
+
+        # make selection
+        self.A = [self.A[i] for i in selection]
+        self.period = [self.period[i] for i in selection]
+        self.energy = [self.energy[i] for i in selection]
+        self.incidence_angle = [self.incidence_angle[i] for i in selection]
+        self.unit_vector = [self.unit_vector[i] for i in selection] 
+
+        self.N = len(self.period)
+
+        self.day = [self.day[i] for i in selection]
+        self.year = [self.year[i] for i in selection]
+
+        self.coord = self.coord[selection]
+
 
 # convenience functions
     
