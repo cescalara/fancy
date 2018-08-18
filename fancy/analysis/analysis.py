@@ -238,7 +238,7 @@ class Analysis():
             self.Edet = self.Edet[inds]
             arrival_direction = arrival_direction[inds]
             self.labels = self.labels[inds]
-            print(len(inds), 'events above', self.Eth, 'EeV...')
+            print(len(arrival_direction), 'events above', self.model.Eth, 'EeV...')
         
         # convert to Direction object
         self.arrival_direction = Direction(arrival_direction)
