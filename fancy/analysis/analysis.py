@@ -178,9 +178,10 @@ class Analysis():
         D, Dbg, alpha_T, eps, F0, L = convert_scale(D, Dbg, alpha_T, eps, F0, L)
             
 
-        # find lower energy threshold for the simulation, given Eth and Eerr
-        Eth_sim = get_Eth_sim(self.model.Eerr, self.model.Eth)
-        print('simulating down to', Eth_sim, 'EeV...')
+        if self.analysis_type == self.joint_type:
+            # find lower energy threshold for the simulation, given Eth and Eerr
+            Eth_sim = get_Eth_sim(self.model.Eerr, self.model.Eth)
+            print('simulating down to', Eth_sim, 'EeV...')
         
         # compile inputs from Model and Data
         self.simulation_input = {
@@ -194,24 +195,21 @@ class Analysis():
                        'alpha_T' : alpha_T,
                        'eps' : eps}
 
+        self.simulation_input['L'] = L
+        self.simulation_input['F0'] = F0
+        self.simulation_input['Dbg'] = Dbg
+          
         if self.analysis_type == self.arr_dir_type:
 
-            self.simulation_input['F_T'] = self.model.F_T
-            self.simulation_input['f'] = self.model.f
             self.simulation_input['kappa'] = self.model.kappa
             
         if self.analysis_type == self.joint_type:
             
-            self.simulation_input['B'] = self.model.B
-            
-            self.simulation_input['L'] = L
-            self.simulation_input['F0'] = F0
-            
+            self.simulation_input['B'] = self.model.B    
             self.simulation_input['alpha'] = self.model.alpha
             self.simulation_input['Eth'] = Eth_sim
             self.simulation_input['Eerr'] = self.model.Eerr
 
-            self.simulation_input['Dbg'] = Dbg
         
         # run simulation
         print('running stan simulation...')
@@ -279,14 +277,14 @@ class Analysis():
                           'Ngrid' : len(kappa_grid), 
                           'eps' : eps_fit, 
                           'kappa_grid' : kappa_grid,
-                          'zenith_angle' : self.zenith_angles}
+                          'zenith_angle' : self.zenith_angles,
+                          'Dbg' : Dbg}
 
         if self.analysis_type == self.joint_type:
             
             self.fit_input['Edet'] = self.Edet
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
-            self.fit_input['Dbg'] = Dbg
 
         print('done')
         
