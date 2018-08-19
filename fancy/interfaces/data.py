@@ -287,7 +287,24 @@ class Source():
         self.N = len(self.distance)
 
         self.coord = self.coord[selection]
-       
+
+    def select_distance(self, Dth):
+        """
+        Select sources with distance <= Dth. 
+        Dth should be eneterd in [Mpc].
+        """
+
+        selection = [i for i, d in enumerate(self.distance) if d <= Dth]
+        self.selection = selection
+        
+        self.unit_vector = [self.unit_vector[i] for i in selection]
+        self.distance = [self.distance[i] for i in selection]
+
+        self.N = len(self.distance)
+
+        self.coord = self.coord[selection]
+
+        
         
 class Uhecr():
     """
