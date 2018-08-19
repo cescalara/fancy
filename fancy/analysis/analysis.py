@@ -45,6 +45,7 @@ class Analysis():
         self.fit = None
 
         self.arr_dir_type = 'arrival direction'
+        self.E_loss_type = 'energy loss'
         self.joint_type = 'joint'
 
         if analysis_type == None:
@@ -67,7 +68,7 @@ class Analysis():
         if not fit_only:
             
             # kappa_true table for simulation
-            if self.analysis_type == self.arr_dir_type:
+            if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
                 kappa_true = self.model.kappa
 
             if self.analysis_type == self.joint_type:
@@ -178,7 +179,7 @@ class Analysis():
         D, Dbg, alpha_T, eps, F0, L = convert_scale(D, Dbg, alpha_T, eps, F0, L)
             
 
-        if self.analysis_type == self.joint_type:
+        if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
             # find lower energy threshold for the simulation, given Eth and Eerr
             Eth_sim = get_Eth_sim(self.model.Eerr, self.model.Eth)
             print('simulating down to', Eth_sim, 'EeV...')
@@ -199,9 +200,15 @@ class Analysis():
         self.simulation_input['F0'] = F0
         self.simulation_input['Dbg'] = Dbg
           
-        if self.analysis_type == self.arr_dir_type:
+        if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
 
             self.simulation_input['kappa'] = self.model.kappa
+
+        if self.analysis_type == self.E_loss_type:
+
+            self.simulation_input['alpha'] = self.model.alpha
+            self.simulation_input['Eth'] = Eth_sim
+            self.simulation_input['Eerr'] = self.model.Eerr
             
         if self.analysis_type == self.joint_type:
             
@@ -224,7 +231,7 @@ class Analysis():
         arrival_direction = self.simulation.extract(['arrival_direction'])['arrival_direction'][0]
         self.labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
     
-        if self.analysis_type == self.joint_type:
+        if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
             
             self.Edet = self.simulation.extract(['Edet'])['Edet'][0]
             self.Earr = self.simulation.extract(['Earr'])['Earr'][0]
@@ -280,7 +287,8 @@ class Analysis():
                           'zenith_angle' : self.zenith_angles,
                           'Dbg' : Dbg}
 
-        if self.analysis_type == self.joint_type:
+
+        if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
             
             self.fit_input['Edet'] = self.Edet
             self.fit_input['Eth'] = self.model.Eth
