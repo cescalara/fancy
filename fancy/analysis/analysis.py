@@ -451,7 +451,8 @@ class Analysis():
                           'Ngrid' : len(kappa_grid),
                           'eps' : eps_fit,
                           'kappa_grid' : kappa_grid,
-                          'zenith_angle' : np.deg2rad(self.data.uhecr.incidence_angle)}
+                          'zenith_angle' : np.deg2rad(self.data.uhecr.incidence_angle),
+                          'flux_weight' : self.data.source.flux_weight}
 
         if self.analysis_type == self.joint_type:
 

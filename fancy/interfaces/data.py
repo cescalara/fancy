@@ -247,8 +247,16 @@ class Source():
             glat = data['glat'].value
             self.coord = get_coordinates(glon, glat)
 
+            # get fluxes
+            if self.label == 'SBG_23' or self.label == 'SBG_63':
+                self.flux = data['L'].value
+            if self.label == '2FHL_250Mpc':
+                self.flux = data['flux'].value
+            if self.label == 'swift_BAT_213':
+                self.flux = data['F']
+                
         self.unit_vector = coord_to_uv(self.coord)
-
+        self.flux_weights = self.flux / max(self.flux)
         
     def plot(self, style, skymap):
         """
@@ -287,6 +295,8 @@ class Source():
         self.N = len(self.distance)
 
         self.coord = self.coord[selection]
+        self.flux = self.flux[selection]
+        self.flux_weight = self.flux_weight[selection]
 
     def select_distance(self, Dth):
         """
@@ -303,6 +313,8 @@ class Source():
         self.N = len(self.distance)
 
         self.coord = self.coord[selection]
+        self.flux = self.flux[selection]
+        self.flux_weight = self.flux_weight[selection]
 
         
         
