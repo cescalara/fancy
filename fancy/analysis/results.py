@@ -79,16 +79,16 @@ class Results():
         Return mean values of all main fit parameters.
         """
 
-        list_of_keys = ['B', 'alpha', 'L', 'F0']
+        list_of_keys = ['B', 'alpha', 'L', 'F0', 'lambda']
         chain = self.get_chain(list_of_keys)
 
         fit_parameters = {}
         fit_parameters['B'] = np.mean(chain['B'])
         fit_parameters['alpha'] = np.mean(chain['alpha'])
         fit_parameters['F0'] = np.mean(chain['F0'])
-        fit_parameters['L'] = np.mean(np.transpose(chain['L']), axis = 1)
+        fit_parameters['L'] = np.mean(chain['L'])
         try:
-            fit_parameters['lambda'] = np.mean(np.transplose(chain['lambda']), axis = 1)
+            fit_parameters['lambda'] = np.mean(np.transpose(chain['lambda']), axis = 1)
         except:
             print("Found no lambda parameters.")
             
@@ -185,7 +185,7 @@ class PPC():
             'eps' : eps}
         
         self.ppc_input['B'] = self.B
-        self.ppc_input['L'] = self.L
+        self.ppc_input['L'] = np.tile(self.L, input_data['Ns'])
         self.ppc_input['F0'] = self.F0
         self.ppc_input['alpha'] = self.alpha
         
@@ -297,7 +297,7 @@ class PPC():
 
         if ppc_type == 'labels':
 
-            bins = np.linspace(min(self.lables), max(self.labels), len(self.labels))
+            bins = np.linspace(min(self.labels), max(self.labels), len(self.labels))
 
             # figure
             fig, ax = plt.subplots(N_rows, N_cols, figsize = (5 * N_rows, 4 * N_cols))
@@ -311,7 +311,7 @@ class PPC():
                         ax.hist(self.labels, bins = bins, alpha = 0.7, label = 'data', color = 'k')
                         ax.get_yaxis().set_visible(False)
                     else:
-                        ax.hist(self.labels_preds[i - 1], bins = bins, alpha = 0.7, label = 'predicted', color = 'g')
+                        ax.hist(self.labels_pred[i - 1], bins = bins, alpha = 0.7, label = 'predicted', color = 'g')
                         ax.get_yaxis().set_visible(False)
                         
                 else:
