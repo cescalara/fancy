@@ -253,10 +253,10 @@ class Source():
             if self.label == '2FHL_250Mpc':
                 self.flux = data['flux'].value
             if self.label == 'swift_BAT_213':
-                self.flux = data['F']
+                self.flux = data['F'].value
                 
         self.unit_vector = coord_to_uv(self.coord)
-        self.flux_weights = self.flux / max(self.flux)
+        self.flux_weight = self.flux / max(self.flux)
         
     def plot(self, style, skymap):
         """
