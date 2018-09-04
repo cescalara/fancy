@@ -254,10 +254,15 @@ class Source():
                 self.flux = data['flux'].value
             if self.label == 'swift_BAT_213':
                 self.flux = data['F'].value
-                
+            else:
+                self.flux = None
         self.unit_vector = coord_to_uv(self.coord)
-        self.flux_weight = self.flux / max(self.flux)
-        
+        try:
+            self.flux_weight = self.flux / max(self.flux)
+        except:
+            print('No flux weights calculated for sources.')
+            
+            
     def plot(self, style, skymap):
         """
         Plot the sources on a map of the sky. 
@@ -295,9 +300,12 @@ class Source():
         self.N = len(self.distance)
 
         self.coord = self.coord[selection]
-        self.flux = self.flux[selection]
-        self.flux_weight = self.flux_weight[selection]
-
+        try:
+            self.flux = self.flux[selection]
+            self.flux_weight = self.flux_weight[selection]
+        except:
+            print('No fluxes to select on.')
+            
     def select_distance(self, Dth):
         """
         Select sources with distance <= Dth. 
@@ -313,9 +321,11 @@ class Source():
         self.N = len(self.distance)
 
         self.coord = self.coord[selection]
-        self.flux = self.flux[selection]
-        self.flux_weight = self.flux_weight[selection]
-
+        try:
+            self.flux = self.flux[selection]
+            self.flux_weight = self.flux_weight[selection]
+        except:
+            print('No fluxes to select on.')
         
         
 class Uhecr():
