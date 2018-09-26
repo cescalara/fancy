@@ -175,8 +175,9 @@ class Analysis():
         alpha_T = self.data.detector.alpha_T
         L = self.model.L
         F0 = self.model.F0
+        F1 = self.model.F1
         Dbg = self.model.Dbg
-        D, Dbg, alpha_T, eps, F0, L = convert_scale(D, Dbg, alpha_T, eps, F0, L)
+        D, Dbg, alpha_T, eps, F0, F1, L = convert_scale(D, Dbg, alpha_T, eps, F0, F1, L)
             
 
         if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
@@ -198,6 +199,7 @@ class Analysis():
 
         self.simulation_input['L'] = L
         self.simulation_input['F0'] = F0
+        self.simulation_input['F1'] = F1
         self.simulation_input['Dbg'] = Dbg
           
         if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
@@ -268,8 +270,9 @@ class Analysis():
         alpha_T = self.data.detector.alpha_T
         L = self.model.L
         F0 = self.model.F0
+        F1 = self.model.F1
         Dbg = self.model.Dbg
-        D, Dbg, alpha_T, eps_fit, F0, L = convert_scale(D, Dbg, alpha_T, eps_fit, F0, L)
+        D, Dbg, alpha_T, eps_fit, F0, F1, L = convert_scale(D, Dbg, alpha_T, eps_fit, F0, F1, L)
             
         # prepare fit inputs
         print('preparing fit inputs...')
@@ -362,7 +365,7 @@ class Analysis():
             self.data.detector.draw_exposure_lim(skymap)
        
             Ns = self.data.source.N
-            cmap = plt.cm.get_cmap('plasma', Ns + 1) 
+            cmap = plt.cm.get_cmap('plasma', Ns + 2) 
             label = True
             for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, self.labels]):
                 color = cmap(lab)
