@@ -93,7 +93,7 @@ def phi(xi):
     """
     
     if (xi == 2):
-        return (np.pi / 12) * (xi - 2)**4
+        return (np.pi / 12) #* (xi - 2)**4
 
     elif (xi < 25):
 
@@ -133,7 +133,7 @@ def beta_bh(z, E):
     
     A = 3.44e-18 
     integ, err = integrate.quad(integrand, 2, np.inf, args = (E, z))
-
+    
     return (A  / E**3) * integ 
 
 def Ltot(z, E):
@@ -205,7 +205,8 @@ def get_arrival_energy(E, D):
     integrator = integrate.ode(dEdr).set_integrator('lsoda', method = 'bdf')
     integrator.set_initial_value(E, 0)
     r1 = D
-    dr = 1
+    #dr = 1
+    dr = 10
     
     while integrator.successful() and integrator.t < r1:
         integrator.integrate(integrator.t + dr)
