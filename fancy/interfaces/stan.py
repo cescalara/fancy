@@ -151,9 +151,6 @@ def convert_scale(D, Dbg, alpha_T, eps, F0 = None, F1 = None, L = None):
         L = L / 1.0e39
 
     if F0 and isinstance(L, (list, np.ndarray)):
-        if F1:
-            return D, Dbg, alpha_T, eps, F0, F1, L
-        else:
-            return D, Dbg, alpha_T, eps, F0, L
+        return D, Dbg, alpha_T, eps, F0, F1, L
     else:
         return D, Dbg, alpha_T, eps

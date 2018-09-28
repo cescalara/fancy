@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from ..interfaces import stan_utility
 from ..interfaces.stan import Direction
 from ..interfaces.integration import ExposureIntegralTable
-from ..propagation.energy_loss import get_Eth_src, get_Eex, get_kappa_ex
+from ..propagation.energy_loss import get_Eth_src, get_Eex, get_kappa_ex, get_Eth_sim
 from ..utils import PlotStyle
 from ..plotting import AllSkyMap
 
@@ -79,7 +79,7 @@ class Results():
         Return mean values of all main fit parameters.
         """
 
-        list_of_keys = ['B', 'alpha', 'L', 'F0', 'lambda']
+        list_of_keys = ['B', 'alpha', 'L', 'F0', 'F1', 'lambda']
         chain = self.get_chain(list_of_keys)
 
         fit_parameters = {}
@@ -90,7 +90,11 @@ class Results():
         try:
             fit_parameters['lambda'] = np.mean(np.transpose(chain['lambda']), axis = 1)
         except:
-            print("Found no lambda parameters.")
+            print('Found no lambda parameters.')
+        try:
+            fit_parameters['F1'] = np.mean(chain['F1'])
+        except:
+            print('Found no F1 parameter.')
             
         return fit_parameters
         
@@ -148,21 +152,28 @@ class PPC():
         self.alpha = fit_parameters['alpha']
         self.B = fit_parameters['B']
         self.F0 = fit_parameters['F0']
+        self.F1 = fit_parameters['F1']
         self.L = fit_parameters['L']
         self.labels = fit_parameters['lambda']
         
         self.arrival_direction = Direction(input_data['arrival_direction'])
         self.Edet = input_data['Edet']
         self.Eth = input_data['Eth']
+             
+        # find lower energy threshold for the simulation, given Eth and Eerr
+        Eth_sim = get_Eth_sim(input_data['Eerr'], input_data['Eth'])
+        print('simulating down to', Eth_sim, 'EeV...')
         
+        # correct for e_fac
+        e_fac = (input_data['Eth'] / Eth_sim)**(1 - input_data['alpha']) 
+       
         # calculate eps integral
         print('precomputing exposure integrals...')
         # rescale to [Mpc]
         D = [(d / 3.086) * 100 for d in input_data['D']]
-        self.Eth_src = get_Eth_src(input_data['Eth'], D)
+        self.Eth_src = get_Eth_src(Eth_sim, D)
         self.Eex = get_Eex(self.Eth_src, self.alpha)
         self.kappa_ex = get_kappa_ex(self.Eex, self.B, D)        
-        
         varpi = input_data['varpi']
         params = input_data['params']
         self.ppc_table = ExposureIntegralTable(varpi = varpi, params = params)
@@ -171,7 +182,7 @@ class PPC():
         eps = self.ppc_table.sim_table
         # convert scale for sampling
         eps = [e / 1000 for e in eps]
-        
+
         # compile inputs 
         self.ppc_input = {
             'kappa_c' : input_data['kappa_c'],
@@ -185,27 +196,44 @@ class PPC():
             'eps' : eps}
         
         self.ppc_input['B'] = self.B
-        self.ppc_input['L'] = np.tile(self.L, input_data['Ns'])
-        self.ppc_input['F0'] = self.F0
+        self.ppc_input['L'] = np.tile(self.L, input_data['Ns']) / e_fac
+        self.ppc_input['F0'] = self.F0 / e_fac
+        self.ppc_input['F1'] = self.F1 / e_fac 
         self.ppc_input['alpha'] = self.alpha
-        
-        self.ppc_input['Eth'] = input_data['Eth']
         self.ppc_input['Eerr'] = input_data['Eerr']
         self.ppc_input['Dbg'] = input_data['Dbg']
-
-    
+        self.ppc_input['Eth'] = Eth_sim
+        
+       
+        
         for i in range(N):
             # run simulation
             print('running posterior predictive simulation(s)...')
             self.posterior_predictive = self.simulation.sampling(data = self.ppc_input, iter = 1,
-                                                                 chains = 1, algorithm = "Fixed_param", seed = seed)
+                                                       chains = 1, algorithm = "Fixed_param", seed = seed)
+            
+            print('done')
+
             # extract output
+            print('extracting output...')
+            self.Nex_preds.append(self.posterior_predictive.extract(['Nex_sim'])['Nex_sim'])
+            labels_pred = self.posterior_predictive.extract(['lambda'])['lambda'][0]
             arrival_direction = self.posterior_predictive.extract(['arrival_direction'])['arrival_direction'][0]
-            arr_dir_pred = Direction(arrival_direction)
-            self.arrival_direction_preds.append(arr_dir_pred)
             Edet_pred = self.posterior_predictive.extract(['Edet'])['Edet'][0]
+
+            # make cut on Eth
+            print('making cut at Eth =', self.ppc_input['Eth'], 'EeV...')
+            inds = np.where(Edet_pred >= self.ppc_input['Eth'])
+            Edet_pred = Edet_pred[inds]
+            arrival_direction = arrival_direction[inds]
+            labels_pred = labels_pred[inds]
+            arr_dir_pred = Direction(arrival_direction)
+            print(len(arrival_direction), 'events above', self.model.Eth, 'EeV...')
             self.Edet_preds.append(Edet_pred)
-            self.labels_pred = self.posterior_predictive.extract(['lambda'])['lambda'][0]
+            self.labels_preds.append(labels_pred)
+            self.arrival_direction_preds.append(arr_dir_pred)
+            #self.N = len(self.arrival_direction.unit_vector)
+            print('done')
         
             print(i, 'completed')
 
