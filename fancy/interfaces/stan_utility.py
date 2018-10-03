@@ -131,7 +131,7 @@ def partition_div(fit):
     div_params = dict((key, params[key][div == 1]) for key in params)
     return nondiv_params, div_params
 
-def compile_model(filename, model_name=None, **kwargs):
+def compile_model(filename, model_name=None, include_paths = None, **kwargs):
     """This will automatically cache models - great if you're just running a
     script on the command line.
 
@@ -148,7 +148,7 @@ def compile_model(filename, model_name=None, **kwargs):
         try:
             sm = pickle.load(open(cache_fn, 'rb'))
         except:
-            sm = pystan.StanModel(model_code=model_code)
+            sm = pystan.StanModel(model_code=model_code, include_paths = include_paths)
             with open(cache_fn, 'wb') as f:
                 pickle.dump(sm, f)
         else:
