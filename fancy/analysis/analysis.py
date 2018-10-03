@@ -53,7 +53,11 @@ class Analysis():
         self.analysis_type = analysis_type
 
         if self.analysis_type == 'joint':
-            self.Eth_src = get_Eth_src(self.model.Eth, self.data.source.distance)
+            # find lower energy threshold for the simulation, given Eth and Eerr
+            self.Eth_sim = get_Eth_sim(self.model.Eerr, self.model.Eth)
+            #self.Eth_sim = 52
+            # find correspsonding Eth_src
+            self.Eth_src = get_Eth_src(self.Eth_sim, self.data.source.distance)
 
         params = self.data.detector.params
         varpi = self.data.source.unit_vector
@@ -182,8 +186,7 @@ class Analysis():
 
         if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
             # find lower energy threshold for the simulation, given Eth and Eerr
-            Eth_sim = get_Eth_sim(self.model.Eerr, self.model.Eth)
-            print('simulating down to', Eth_sim, 'EeV...')
+            print('simulating down to', self.Eth_sim, 'EeV...')
         
         # compile inputs from Model and Data
         self.simulation_input = {
@@ -209,14 +212,14 @@ class Analysis():
         if self.analysis_type == self.E_loss_type:
 
             self.simulation_input['alpha'] = self.model.alpha
-            self.simulation_input['Eth'] = Eth_sim
+            self.simulation_input['Eth'] = self.Eth_sim
             self.simulation_input['Eerr'] = self.model.Eerr
             
         if self.analysis_type == self.joint_type:
             
             self.simulation_input['B'] = self.model.B    
             self.simulation_input['alpha'] = self.model.alpha
-            self.simulation_input['Eth'] = Eth_sim
+            self.simulation_input['Eth'] = self.Eth_sim
             self.simulation_input['Eerr'] = self.model.Eerr
 
         

@@ -142,7 +142,8 @@ class PPC():
 
         self.arrival_direction_preds = []
         self.Edet_preds = []
-                
+        self.Nex_preds = []
+        self.labels_preds = []
         
     def simulate(self, fit_parameters, input_data, seed = None, N = 3):
         """
@@ -161,12 +162,9 @@ class PPC():
         self.Eth = input_data['Eth']
              
         # find lower energy threshold for the simulation, given Eth and Eerr
-        Eth_sim = get_Eth_sim(input_data['Eerr'], input_data['Eth'])
+        Eth_sim = get_Eth_sim(input_data['Eerr'], self.Eth)
         print('simulating down to', Eth_sim, 'EeV...')
         
-        # correct for e_fac
-        e_fac = (input_data['Eth'] / Eth_sim)**(1 - input_data['alpha']) 
-       
         # calculate eps integral
         print('precomputing exposure integrals...')
         # rescale to [Mpc]
@@ -196,9 +194,9 @@ class PPC():
             'eps' : eps}
         
         self.ppc_input['B'] = self.B
-        self.ppc_input['L'] = np.tile(self.L, input_data['Ns']) / e_fac
-        self.ppc_input['F0'] = self.F0 / e_fac
-        self.ppc_input['F1'] = self.F1 / e_fac 
+        self.ppc_input['L'] = np.tile(self.L, input_data['Ns']) 
+        self.ppc_input['F0'] = self.F0 
+        self.ppc_input['F1'] = self.F1  
         self.ppc_input['alpha'] = self.alpha
         self.ppc_input['Eerr'] = input_data['Eerr']
         self.ppc_input['Dbg'] = input_data['Dbg']
@@ -228,7 +226,7 @@ class PPC():
             arrival_direction = arrival_direction[inds]
             labels_pred = labels_pred[inds]
             arr_dir_pred = Direction(arrival_direction)
-            print(len(arrival_direction), 'events above', self.model.Eth, 'EeV...')
+            print(len(arrival_direction), 'events above', self.Eth, 'EeV...')
             self.Edet_preds.append(Edet_pred)
             self.labels_preds.append(labels_pred)
             self.arrival_direction_preds.append(arr_dir_pred)
@@ -339,7 +337,7 @@ class PPC():
                         ax.hist(self.labels, bins = bins, alpha = 0.7, label = 'data', color = 'k')
                         ax.get_yaxis().set_visible(False)
                     else:
-                        ax.hist(self.labels_pred[i - 1], bins = bins, alpha = 0.7, label = 'predicted', color = 'g')
+                        ax.hist(self.labels_preds[i - 1], bins = bins, alpha = 0.7, label = 'predicted', color = 'g')
                         ax.get_yaxis().set_visible(False)
                         
                 else:
