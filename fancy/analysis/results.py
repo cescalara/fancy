@@ -192,11 +192,14 @@ class PPC():
             'theta_m' : input_data['theta_m'],
             'alpha_T' : input_data['alpha_T'],
             'eps' : eps}
+
+        # calculate e_fac
+        e_fac = (self.Eth / Eth_sim)**(1 - self.alpha)
         
         self.ppc_input['B'] = self.B
-        self.ppc_input['L'] = np.tile(self.L, input_data['Ns']) 
-        self.ppc_input['F0'] = self.F0 
-        self.ppc_input['F1'] = self.F1  
+        self.ppc_input['L'] = np.tile(self.L, input_data['Ns']) / e_fac 
+        self.ppc_input['F0'] = self.F0 / e_fac
+        self.ppc_input['F1'] = self.F1 / e_fac 
         self.ppc_input['alpha'] = self.alpha
         self.ppc_input['Eerr'] = input_data['Eerr']
         self.ppc_input['Dbg'] = input_data['Dbg']
@@ -220,8 +223,8 @@ class PPC():
             Edet_pred = self.posterior_predictive.extract(['Edet'])['Edet'][0]
 
             # make cut on Eth
-            print('making cut at Eth =', self.ppc_input['Eth'], 'EeV...')
-            inds = np.where(Edet_pred >= self.ppc_input['Eth'])
+            print('making cut at Eth =', self.Eth, 'EeV...')
+            inds = np.where(Edet_pred >= self.Eth)
             Edet_pred = Edet_pred[inds]
             arrival_direction = arrival_direction[inds]
             labels_pred = labels_pred[inds]

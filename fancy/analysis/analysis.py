@@ -10,7 +10,7 @@ from ..interfaces.stan import Direction, convert_scale
 from ..interfaces import stan_utility
 from ..utils import PlotStyle
 from ..plotting import AllSkyMap
-from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim
+from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim, get_arrival_energy
 
 
 __all__ = ['Analysis']
@@ -93,7 +93,25 @@ class Analysis():
             # full table for fit
             self.tables.build_for_fit(kappa)
 
+    def build_energy_table(self, num_points = 50, input_filename = None):
+        """
+        Build the energy interpolation tables.
+        """
 
+        self.E_grid = np.logspace(np.log(self.model.Eth), np.log(1.0e4), num_points, base = np.e)
+        self.Earr_grid = []
+        
+        for i, d in enumerate(self.data.source.distance):
+            print(i, d)
+            self.Earr_grid.append([get_arrival_energy(e, d)[0] for e in self.E_grid])
+
+        if input_filename:
+            with h5py.File(input_filename, 'r+') as f:
+                E_group = f.create_group('energy')
+                E_group.create_dataset('E_grid', data = self.E_grid)
+                E_group.create_dataset('Earr_grid', data = self.Earr_grid)
+                
+            
     def use_tables(self, input_filename, main_only = True):
         """
         Pass in names of integral tables that have already been made.
@@ -106,6 +124,11 @@ class Analysis():
             input_table = ExposureIntegralTable(input_filename = input_filename)
             self.tables.table = input_table.table
             self.tables.kappa = input_table.kappa
+
+            with h5py.File(input_filename, 'r') as f:
+                self.E_grid = f['energy/E_grid'].value
+                self.Earr_grid = f['energy/Earr_grid'].value
+            
         else:
             self.tables = ExposureIntegralTable(input_filename = input_filename)
 
@@ -187,7 +210,8 @@ class Analysis():
         if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
             # find lower energy threshold for the simulation, given Eth and Eerr
             print('simulating down to', self.Eth_sim, 'EeV...')
-        
+
+            
         # compile inputs from Model and Data
         self.simulation_input = {
                        'kappa_c' : self.data.detector.kappa_c, 
@@ -263,11 +287,17 @@ class Analysis():
         
         eps_fit = self.tables.table
         kappa_grid = self.tables.kappa
-
+        E_grid = self.E_grid
+        Earr_grid = list(self.Earr_grid)
+        
         # handle selected sources
         if (self.data.source.N < len(eps_fit)):
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
+            Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
 
+        # add E interpolation for Dbg
+        Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])    
+            
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
@@ -299,7 +329,9 @@ class Analysis():
             self.fit_input['Edet'] = self.Edet
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
-
+            self.fit_input['E_grid'] = E_grid
+            self.fit_input['Earr_grid'] = Earr_grid
+            
         print('done')
         
         
@@ -434,11 +466,17 @@ class Analysis():
 
         eps_fit = self.tables.table
         kappa_grid = self.tables.kappa
-
+        E_grid = self.E_grid
+        Earr_grid = list(self.Earr_grid)
+        
         # handle selected sources
         if (self.data.source.N < len(eps_fit)):
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
+            Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
 
+        # add E interpolation for Dbg
+        Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])
+            
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
@@ -470,7 +508,9 @@ class Analysis():
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
             self.fit_input['Dbg'] = Dbg
-    
+            self.fit_input['E_grid'] = E_grid
+            self.fit_input['Earr_grid'] = Earr_grid
+            
         print('done')
 
         
