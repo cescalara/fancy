@@ -238,7 +238,7 @@ class Source():
         """
 
         self.label = label
-
+        
         with h5py.File(filename, 'r') as f:
             data = f[self.label]
             self.distance = data['D'].value
@@ -250,15 +250,16 @@ class Source():
             # get fluxes
             if self.label == 'SBG_23' or self.label == 'SBG_63':
                 self.flux = data['L'].value
-            if self.label == '2FHL_250Mpc':
+            elif self.label == '2FHL_250Mpc':
                 self.flux = data['flux'].value
-            if self.label == 'swift_BAT_213':
+            elif self.label == 'swift_BAT_213':
                 self.flux = data['F'].value
             else:
                 self.flux = None
+                
         self.unit_vector = coord_to_uv(self.coord)
         try:
-            self.flux_weight = self.flux / max(self.flux)
+            self.flux_weight = [fl / max(self.flux) for fl in self.flux] 
         except:
             print('No flux weights calculated for sources.')
             
