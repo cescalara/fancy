@@ -296,8 +296,9 @@ class Analysis():
             Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
 
         # add E interpolation for Dbg
-        Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])    
-            
+        #Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])    
+        Earr_grid.append([0 for e in E_grid])
+        
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
@@ -331,6 +332,12 @@ class Analysis():
             self.fit_input['Eerr'] = self.model.Eerr
             self.fit_input['E_grid'] = E_grid
             self.fit_input['Earr_grid'] = Earr_grid
+
+        try:
+            self.fit_input['flux_weight'] = self.data.source.flux_weight
+        except:
+            print('No flux weights available for sources.')
+      
             
         print('done')
         
