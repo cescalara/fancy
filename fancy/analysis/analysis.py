@@ -246,6 +246,10 @@ class Analysis():
             self.simulation_input['Eth'] = self.Eth_sim
             self.simulation_input['Eerr'] = self.model.Eerr
 
+        try:
+            self.simulation_input['flux'] = self.data.source.flux
+        except:
+            print('No flux weights used in simulation.')
         
         # run simulation
         print('running stan simulation...')
@@ -334,7 +338,7 @@ class Analysis():
             self.fit_input['Earr_grid'] = Earr_grid
 
         try:
-            self.fit_input['flux_weight'] = self.data.source.flux_weight
+            self.fit_input['flux'] = self.data.source.flux
         except:
             print('No flux weights available for sources.')
       
@@ -482,7 +486,8 @@ class Analysis():
             Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
 
         # add E interpolation for Dbg
-        Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])
+        #Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])
+        Earr_grid.append([0 for e in E_grid])
             
         # convert scale for sampling
         D = self.data.source.distance
@@ -505,7 +510,7 @@ class Analysis():
                           'zenith_angle' : np.deg2rad(self.data.uhecr.incidence_angle)}
         
         try:
-            self.fit_input['flux_weight'] = self.data.source.flux_weight
+            self.fit_input['flux'] = self.data.source.flux
         except:
             print('No flux weights available for sources.')
         
