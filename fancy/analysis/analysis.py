@@ -149,7 +149,11 @@ class Analysis():
         """
 
         start_time = 2004
-        c_icrs = self.arrival_direction.d.icrs 
+
+        if len(self.arrival_direction.d.icrs) == 1:
+            c_icrs = self.arrival_direction.d.icrs[0]
+        else:
+            c_icrs = self.arrival_direction.d.icrs 
 
         time = []
         zenith_angles = []
@@ -168,6 +172,7 @@ class Analysis():
                     t = time[-1] + dt
                 tdy = Time(t, format = 'decimalyear')
                 za = self._get_zenith_angle(d, self.data.detector.location, tdy)
+        
                 i += 1
                 if (i > 100):
                     za = self.data.detector.threshold_zenith_angle.rad
@@ -184,7 +189,7 @@ class Analysis():
         return zenith_angles
 
     
-    def simulate(self, seed = None):
+    def simulate(self, seed = None, Eth_sim = None):
         """
         Run a simulation.
 
@@ -209,6 +214,8 @@ class Analysis():
 
         if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
             # find lower energy threshold for the simulation, given Eth and Eerr
+            if Eth_sim:
+                self.Eth_sim = Eth_sim
             print('simulating down to', self.Eth_sim, 'EeV...')
 
             
@@ -517,6 +524,70 @@ class Analysis():
         if self.analysis_type == self.joint_type:
 
             self.fit_input['Edet'] = self.data.uhecr.energy
+            self.fit_input['Eth'] = self.model.Eth
+            self.fit_input['Eerr'] = self.model.Eerr
+            self.fit_input['Dbg'] = Dbg
+            self.fit_input['E_grid'] = E_grid
+            self.fit_input['Earr_grid'] = Earr_grid
+            
+        print('done')
+
+    def use_crpropa_data(self, energy, arrival_direction):
+        """
+        Build fit inputs from the UHECR dataset.
+        """
+
+        self.N = len(energy)
+        self.arrival_direction = arrival_direction 
+        self.energy = energy
+        
+        eps_fit = self.tables.table
+        kappa_grid = self.tables.kappa
+        E_grid = self.E_grid
+        Earr_grid = list(self.Earr_grid)
+        
+        # handle selected sources
+        if (self.data.source.N < len(eps_fit)):
+            eps_fit = [eps_fit[i] for i in self.data.source.selection]
+            Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
+
+        # add E interpolation for Dbg
+        #Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])
+        Earr_grid.append([0 for e in E_grid])
+            
+        # convert scale for sampling
+        D = self.data.source.distance
+        alpha_T = self.data.detector.alpha_T
+        Dbg = self.model.Dbg
+        D, Dbg, alpha_T, eps_fit = convert_scale(D, Dbg, alpha_T, eps_fit)
+
+        # simulate the zenith angles
+        print('simulating zenith angles...')
+        self.zenith_angles = self._simulate_zenith_angles()
+        print('done')
+        
+        print('preparing fit inputs...')
+        self.fit_input = {'Ns' : self.data.source.N,
+                          'varpi' :self.data.source.unit_vector,
+                          'D' : D,
+                          'N' : self.N,
+                          'arrival_direction' : self.arrival_direction.unit_vector,
+                          'A' : np.tile(self.data.detector.area, self.N),
+                          'kappa_c' : self.data.detector.kappa_c,
+                          'alpha_T' : alpha_T,
+                          'Ngrid' : len(kappa_grid),
+                          'eps' : eps_fit,
+                          'kappa_grid' : kappa_grid,
+                          'zenith_angle' : self.zenith_angles}
+        
+        try:
+            self.fit_input['flux'] = self.data.source.flux
+        except:
+            print('No flux weights available for sources.')
+        
+        if self.analysis_type == self.joint_type:
+
+            self.fit_input['Edet'] = energy
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
             self.fit_input['Dbg'] = Dbg
