@@ -254,8 +254,12 @@ class Analysis():
             self.simulation_input['Eerr'] = self.model.Eerr
 
         try:
-            self.simulation_input['flux'] = self.data.source.flux
+            if self.data.source.flux:
+                self.simulation_input['flux'] = self.data.source.flux
+            else:
+                self.simulation_input['flux'] = np.zeros(self.data.source.N)
         except:
+            self.simulation_input['flux'] = np.zeros(self.data.source.N)
             print('No flux weights used in simulation.')
         
         # run simulation
@@ -345,7 +349,10 @@ class Analysis():
             self.fit_input['Earr_grid'] = Earr_grid
 
         try:
-            self.fit_input['flux'] = self.data.source.flux
+            if self.data.source.flux:
+                self.simulation_input['flux'] = self.data.source.flux
+            else:
+                self.simulation_input['flux'] = np.zeros(self.data.source.N)
         except:
             print('No flux weights available for sources.')
       
@@ -420,6 +427,12 @@ class Analysis():
             Ns = self.data.source.N
             cmap = plt.cm.get_cmap('plasma', Ns + 2) 
             label = True
+
+            try:
+                self.lables = self.labels
+            except:
+                self.labels = np.ones(len(self.arrival_direction.lons))
+
             for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, self.labels]):
                 color = cmap(lab)
                 if label:
@@ -457,26 +470,27 @@ class Analysis():
         Read in simulated data from a file to create fit_input.
         """
 
+        self.simulation_input = {}
+        self.fit_input = {}
         with h5py.File(input_filename, 'r') as f:
-            try:
+            
 
-                sim_input = f['input/simulation']
-                for key in sim_input:
-                    self.simulation_input[key] = sim_input[key].value
+            sim_input = f['input/simulation']
+            for key in sim_input:
+                self.simulation_input[key] = sim_input[key].value
                 
-                sim_output = f['output/simulation']
-                self.E = sim_output['E'].value
-                self.Earr = sim_output['Earr'].value
-                self.Edet = sim_output['Edet'].value
+            sim_output = f['output/simulation']
+            self.E = sim_output['E'].value
+            self.Earr = sim_output['Earr'].value
+            self.Edet = sim_output['Edet'].value
                 
-                sim_fit_input = sim_output['fit_input']
-                for key in sim_fit_input:
-                    self.fit_input[key] = sim_fit_input[key].value
+            sim_fit_input = sim_output['fit_input']
+            for key in sim_fit_input:
+                self.fit_input[key] = sim_fit_input[key].value
+            self.arrival_direction = Direction(self.fit_input['arrival_direction'])
+            
 
-            except:
-                print('Error: file does not contain simulation data')
                 
-        
     def use_uhecr_data(self):
         """
         Build fit inputs from the UHECR dataset.

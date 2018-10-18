@@ -79,7 +79,7 @@ class Results():
         Return mean values of all main fit parameters.
         """
 
-        list_of_keys = ['B', 'alpha', 'L', 'F0', 'F1', 'lambda']
+        list_of_keys = ['B', 'alpha', 'L', 'F0', 'lambda']
         chain = self.get_chain(list_of_keys)
 
         fit_parameters = {}
@@ -91,10 +91,6 @@ class Results():
             fit_parameters['lambda'] = np.mean(np.transpose(chain['lambda']), axis = 1)
         except:
             print('Found no lambda parameters.')
-        try:
-            fit_parameters['F1'] = np.mean(chain['F1'])
-        except:
-            print('Found no F1 parameter.')
             
         return fit_parameters
         
@@ -111,17 +107,18 @@ class Results():
                 
         return fit_input
     
-    def run_ppc(self, stan_sim_file, N = 3):
+    def run_ppc(self, stan_sim_file, include_paths, N = 3):
         """
         Run N posterior predictive simulations.
         """
 
-        fit_parameters = self.get_fit_parameters()
+        keys = ['L', 'F0', 'alpha', 'B']
+        fit_chain = self.get_chain(keys)
         input_data = self.get_input_data()
     
-        self.ppc = PPC(stan_sim_file)
+        self.ppc = PPC(stan_sim_file, include_paths)
         
-        self.ppc.simulate(fit_parameters, input_data, N = N)
+        self.ppc.simulate(fit_chain, input_data, N = N)
 
     
     
@@ -131,83 +128,80 @@ class PPC():
     Handles posterior predictive checks.
     """
 
-    def __init__(self, stan_sim_file):
+    def __init__(self, stan_sim_file, include_paths):
         """
         Handles posterior predictive checks.
         :param stan_sim_file: the stan file to use to run the simulation
         """
-    
+
         # compile the stan model
-        self.simulation = stan_utility.compile_model(stan_sim_file)
+        self.simulation = stan_utility.compile_model(stan_sim_file, inlclude_paths = include_paths)
 
         self.arrival_direction_preds = []
         self.Edet_preds = []
         self.Nex_preds = []
         self.labels_preds = []
         
-    def simulate(self, fit_parameters, input_data, seed = None, N = 3):
+    def simulate(self, fit_chain, input_data, seed = None, N = 3):
         """
         Simulate from the posterior predictive distribution. 
         """
 
-        self.alpha = fit_parameters['alpha']
-        self.B = fit_parameters['B']
-        self.F0 = fit_parameters['F0']
-        self.F1 = fit_parameters['F1']
-        self.L = fit_parameters['L']
-        self.labels = fit_parameters['lambda']
-        
+        self.alpha = fit_chain['alpha']
+        self.B = fit_chain['B']
+        self.F0 = fit_chain['F0']
+        self.L = fit_chain['L']
+    
         self.arrival_direction = Direction(input_data['arrival_direction'])
         self.Edet = input_data['Edet']
         self.Eth = input_data['Eth']
-             
-        # find lower energy threshold for the simulation, given Eth and Eerr
-        Eth_sim = get_Eth_sim(input_data['Eerr'], self.Eth)
-        print('simulating down to', Eth_sim, 'EeV...')
-        
-        # calculate eps integral
-        print('precomputing exposure integrals...')
+
         # rescale to [Mpc]
         D = [(d / 3.086) * 100 for d in input_data['D']]
-        self.Eth_src = get_Eth_src(Eth_sim, D)
-        self.Eex = get_Eex(self.Eth_src, self.alpha)
-        self.kappa_ex = get_kappa_ex(self.Eex, self.B, D)        
-        varpi = input_data['varpi']
-        params = input_data['params']
-        self.ppc_table = ExposureIntegralTable(varpi = varpi, params = params)
-        self.ppc_table.build_for_sim(self.kappa_ex, self.alpha, self.B, input_data['D'])
+        self.Eth_src = get_Eth_src(self.Eth, D)
+        self.varpi = input_data['varpi']
+        self.params = input_data['params']
             
-        eps = self.ppc_table.sim_table
-        # convert scale for sampling
-        eps = [e / 1000 for e in eps]
-
-        # compile inputs 
-        self.ppc_input = {
-            'kappa_c' : input_data['kappa_c'],
-            'Ns' : input_data['Ns'],
-            'varpi' : input_data['varpi'],
-            'D' : input_data['D'],
-            'A' : input_data['A'][0],
-            'a0' : input_data['a0'],
-            'theta_m' : input_data['theta_m'],
-            'alpha_T' : input_data['alpha_T'],
-            'eps' : eps}
-
-        # calculate e_fac
-        e_fac = (self.Eth / Eth_sim)**(1 - self.alpha)
-        
-        self.ppc_input['B'] = self.B
-        self.ppc_input['L'] = np.tile(self.L, input_data['Ns']) / e_fac 
-        self.ppc_input['F0'] = self.F0 / e_fac
-        self.ppc_input['F1'] = self.F1 / e_fac 
-        self.ppc_input['alpha'] = self.alpha
-        self.ppc_input['Eerr'] = input_data['Eerr']
-        self.ppc_input['Dbg'] = input_data['Dbg']
-        self.ppc_input['Eth'] = Eth_sim
-        
-       
+        print('simulating down to', self.Eth, 'EeV...')  
         
         for i in range(N):
+
+            # sample parameters from chain
+            alpha = np.random.choice(self.alpha, 1)[0]
+            B = np.random.choice(self.B, 1)[0]
+            F0 = np.random.choice(self.F0)[0]
+            L = np.random.choice(self.L)[0]
+            
+            # calculate eps integral
+            print('precomputing exposure integrals...')
+            Eex = get_Eex(self.Eth_src, alpha)
+            kappa_ex = get_kappa_ex(Eex, np.mean(self.B), D)        
+            self.ppc_table = ExposureIntegralTable(varpi = self.varpi, params = self.params)
+            self.ppc_table.build_for_sim(kappa_ex, alpha, B, D)
+            
+            eps = self.ppc_table.sim_table
+            # convert scale for sampling
+            eps = [e / 1000 for e in eps]
+            
+            # compile inputs 
+            self.ppc_input = {
+                'kappa_c' : input_data['kappa_c'],
+                'Ns' : input_data['Ns'],
+                'varpi' : input_data['varpi'],
+                'D' : input_data['D'],
+                'A' : input_data['A'][0],
+                'a0' : input_data['a0'],
+                'theta_m' : input_data['theta_m'],
+                'alpha_T' : input_data['alpha_T'],
+                'eps' : eps}
+            self.ppc_input['B'] = B
+            self.ppc_input['L'] = np.tile(L, input_data['Ns'])  
+            self.ppc_input['F0'] = F0  
+            self.ppc_input['alpha'] = alpha
+            self.ppc_input['Eerr'] = input_data['Eerr']
+            self.ppc_input['Dbg'] = input_data['Dbg']
+            self.ppc_input['Eth'] = self.Eth       
+            
             # run simulation
             print('running posterior predictive simulation(s)...')
             self.posterior_predictive = self.simulation.sampling(data = self.ppc_input, iter = 1,
@@ -221,22 +215,14 @@ class PPC():
             labels_pred = self.posterior_predictive.extract(['lambda'])['lambda'][0]
             arrival_direction = self.posterior_predictive.extract(['arrival_direction'])['arrival_direction'][0]
             Edet_pred = self.posterior_predictive.extract(['Edet'])['Edet'][0]
-
-            # make cut on Eth
-            print('making cut at Eth =', self.Eth, 'EeV...')
-            inds = np.where(Edet_pred >= self.Eth)
-            Edet_pred = Edet_pred[inds]
-            arrival_direction = arrival_direction[inds]
-            labels_pred = labels_pred[inds]
             arr_dir_pred = Direction(arrival_direction)
             print(len(arrival_direction), 'events above', self.Eth, 'EeV...')
             self.Edet_preds.append(Edet_pred)
             self.labels_preds.append(labels_pred)
             self.arrival_direction_preds.append(arr_dir_pred)
-            #self.N = len(self.arrival_direction.unit_vector)
             print('done')
         
-            print(i, 'completed')
+            print(i + 1, 'completed')
 
 
     def plot(self, ppc_type = None, cmap = None):
