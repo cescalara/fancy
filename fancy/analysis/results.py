@@ -167,10 +167,10 @@ class PPC():
         for i in range(N):
 
             # sample parameters from chain
-            alpha = np.random.choice(self.alpha, 1)[0]
-            B = np.random.choice(self.B, 1)[0]
-            F0 = np.random.choice(self.F0)[0]
-            L = np.random.choice(self.L)[0]
+            alpha = np.random.choice(self.alpha)
+            B = np.random.choice(self.B)
+            F0 = np.random.choice(self.F0)
+            L = np.random.choice(self.L)
             
             # calculate eps integral
             print('precomputing exposure integrals...')
@@ -224,6 +224,22 @@ class PPC():
         
             print(i + 1, 'completed')
 
+
+    def save(self, filename):
+        """
+        Save the predicted data to the given file. 
+        """
+
+        dt = h5py.special_dtype(vlen=np.dtype('f'))
+        arrival_direction_preds = [a.unit_vector for a in self.arrival_direction_preds]
+        with h5py.File(filename, 'w') as f:
+            ppc = f.create_group('PPC')
+            ppc.create_dataset('Edet', data = self.Edet)
+            ppc.create_dataset('arrival_direction', data = self.arrival_direction.unit_vector)
+            ppc.create_dataset('Edet_preds', data = self.Edet_preds, dtype = dt)
+            adp = ppc.create_group('arrival_direction_preds')
+            for i, a in enumerate(arrival_direction_preds):
+                adp.create_dataset(str(i), data = a)
 
     def plot(self, ppc_type = None, cmap = None):
         """
