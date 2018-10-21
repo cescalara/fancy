@@ -256,7 +256,12 @@ class Source():
                 self.flux = data['F'].value
             else:
                 self.flux = None
-                
+
+            # get names
+            self.name = []
+            for i in range(self.N):
+                self.name.append(data['name'][i])
+            
         self.unit_vector = coord_to_uv(self.coord)
         try:
             self.flux_weight = [fl / max(self.flux) for fl in self.flux] 
