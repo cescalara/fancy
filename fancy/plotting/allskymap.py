@@ -165,6 +165,22 @@ class AllSkyMap(Basemap):
         else:
             return False
 
+    def cross_zero(self, lon1, lon2):
+        """
+        Return True if a line joint lon1 and lon2 crosses over the 0/360 boundary.
+        """
+
+        # from east -> west
+        if (lon1 > 0 and lon1 < 90) and (lon2 > -90 and lon2 < 0):
+            return True
+
+        # from west->east
+        if (lon1 > -90 and lon1 < 0) and (lon2 > 0 and lon2 < 90):
+            return True
+
+        return False
+        
+
     def geodesic(self, lon1, lat1, lon2, lat2, del_s = .01, clip = True, **kwargs):
         """
         Plot a geodesic curve from (lon1, lat1) to (lon2, lat2), with
@@ -203,16 +219,27 @@ class AllSkyMap(Basemap):
         segs = []
         seg_lons, seg_lats = [lon1], [lat1]
         cur_hem = self.east_hem(lon1)
-        for lon, lat in zip(lons[1:], lats[1:]):
-            if self.east_hem(lon) == cur_hem:
-                seg_lons.append(lon)
-                seg_lats.append(lat)
+        #for lon, lat in zip(lons[1:], lats[1:]):
+        crossed_zero = False
+        
+        for i in (range(len(lons))[1:]): 
+            if self.east_hem(lons[i]) == cur_hem:
+                seg_lons.append(lons[i])
+                seg_lats.append(lats[i])
             else:
                 # We should interpolate a new pt at the boundary, but in
                 # the mean time just rely on the step size being small.
-                segs.append( (seg_lons, seg_lats) )
-                seg_lons, seg_lats = [lon], [lat]
-                cur_hem = not cur_hem
+
+                # if crossing zero, don't need new seg
+                if self.cross_zero(lons[i-1], lons[i]) or crossed_zero:
+                    crossed_zero = True
+                    
+                    seg_lons.append(lons[i])
+                    seg_lats.append(lats[i])
+                else:
+                    segs.append( (seg_lons, seg_lats) )
+                    seg_lons, seg_lats = [lons[i]], [lats[i]]
+                    cur_hem = not cur_hem
         segs.append( (seg_lons, seg_lats) )
 
         # Plot each segment; return a list of the mpl lines.
