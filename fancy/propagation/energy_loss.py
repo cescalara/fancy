@@ -41,6 +41,8 @@ H0 = 70 # [km s^-1 Mpc^-1]
 H0 = H0 * (1e3 / Mpc_in_m) # [s^-1]
 c = 3.0e8 # [m s^-1]
 DH = (c / H0) / Mpc_in_m # [Mpc]
+Om = 0.272
+Ol = 0.728
 
 def beta_pi(z, E):
     """
@@ -56,6 +58,8 @@ def beta_pi(z, E):
         return p[0] * (1 + z)**3 * np.exp(-p[1] / ((1 + z) * (E / 1e18)))
     if (E > check):
          return p[2] * (1 + z)**3
+    else:
+        return p[2] * (1 + z)**3
 
 def beta_adi(z):
     """
@@ -68,8 +72,8 @@ def beta_adi(z):
     lCDM = [0.272, 0.728]
     
     a = lCDM[0] * (1 + z)**3
-    b = 1 - sum(lCDM) * (1 + z)**2
-
+    #b = 1 - sum(lCDM) * (1 + z)**2
+    b = 0
     return H0 * (a + lCDM[1] + b)**(0.5)
 
 def phi_inf(xi):
@@ -131,10 +135,14 @@ def beta_bh(z, E):
     Described in de Domenico amnd Insolia (2013).
     """
     
-    A = 3.44e-18 
+    A = 3.44e-18
     integ, err = integrate.quad(integrand, 2, np.inf, args = (E, z))
+
+    out = (A / E**3) * integ
+    if out == np.nan or out == np.inf:
+        out = 0
     
-    return (A  / E**3) * integ 
+    return out 
 
 def Ltot(z, E):
     """
@@ -142,8 +150,27 @@ def Ltot(z, E):
     """
     
     c = 3.064e-7 # Mpc/yr
-    L = c / (beta_pi(z, E) + beta_adi(z) + (3.154e7 * beta_bh(z, E / 1e18)))
+
+    bp = beta_pi(z, E)
+    ba = beta_adi(z)
+    bbh = 3.154e7 * beta_bh(z, E / 1.0e18)
+
+    #print(bp, ba, bbh)
+    #L = c / (bp + ba + bbh)
+    L = dzdt(z) / (bp + ba + bbh) 
+
     return L
+
+def dzdt(z):
+    """
+    De Domenico & Insolia 2012 Equation 5.
+    """
+
+    H0 = 70.4 # s^-1 km/Mpc
+    H0 = ((H0 / 3.086e22) * 1e3) * 3.154e7 # yr^-1
+    numerator = ((Om * (1 + z)**3) + Ol)**(-0.5)
+    denominator = H0 * (1 + z)
+    return (1 /(numerator / denominator)) * DH   # Mpc yr^-1
 
 
 def make_energy_loss_plot(z, E):
@@ -154,15 +181,22 @@ def make_energy_loss_plot(z, E):
     c = 3.064e-7 # Mpc/yr
 
     # adiabatic and GZK
-    L_pi = [(c / beta_pi(z, e)) for e in E]
-    L_adi = [(c / beta_adi(z)) for e in E]
-
+    L_pi = [(dzdt(z) / beta_pi(z, e)) for e in E]
+    L_adi = [(dzdt(z) / beta_adi(z)) for e in E]
     # pair production
-    L_bh = [(c / (3.154e7 * beta_bh(z, e / 1e18))) for e in E]
-
+    L_bh = [(dzdt(z) / (3.154e7 * beta_bh(z, e / 1e18))) for e in E]
     # total
-    L_tot = [c / (beta_pi(z, e) + beta_adi(z) + (3.154e7*beta_bh(z, e/1e18)) ) for e in E]
+    L_tot = [dzdt(z) / (beta_pi(z, e) + beta_adi(z) + (3.154e7*beta_bh(z, e/1e18)) ) for e in E]
 
+    # adiabatic and GZK
+    #L_pi = [(c / beta_pi(z, e)) for e in E]
+    #L_adi = [(c / beta_adi(z)) for e in E]
+    # pair production
+    #L_bh = [(c / (3.154e7 * beta_bh(z, e / 1e18))) for e in E]
+    # total
+    #L_tot = [c / (beta_pi(z, e) + beta_adi(z) + (3.154e7*beta_bh(z, e/1e18)) ) for e in E]
+
+    
     plt.figure(figsize = (10, 7))
 
     plt.plot(E, L_pi, linewidth = 5, alpha = 0.7, label = 'Photomeson production')
