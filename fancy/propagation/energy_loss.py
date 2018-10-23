@@ -197,19 +197,20 @@ def make_energy_loss_plot(z, E):
     #L_tot = [c / (beta_pi(z, e) + beta_adi(z) + (3.154e7*beta_bh(z, e/1e18)) ) for e in E]
 
     
-    plt.figure(figsize = (10, 7))
+    plt.figure(figsize = (6, 6))
 
-    plt.plot(E, L_pi, linewidth = 5, alpha = 0.7, label = 'Photomeson production')
+    plt.plot(E, L_pi, linewidth = 5, alpha = 0.7, label = 'Photomeson')
     plt.plot(E, L_adi, linewidth = 5, alpha = 0.7, label = 'Adiabatic')
-    plt.plot(E, L_bh, linewidth = 5, alpha = 0.7, label = 'Pair production')
+    plt.plot(E, L_bh, linewidth = 5, alpha = 0.7, label = 'Pair')
     plt.plot(E, L_tot, '--', linewidth = 5, alpha = 0.7, label = 'Total')
 
     plt.xscale('log')
     plt.yscale('log')
     plt.ylim(5, 1e4)
+    plt.xlim(1e18, 1e22)
     plt.xlabel('E [eV]')
     plt.ylabel('L [Mpc]')
-    plt.legend()
+    plt.legend(frameon = False, loc = 'best')
 
 def dEdr(r, E):
     """

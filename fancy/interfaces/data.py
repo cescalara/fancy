@@ -257,10 +257,11 @@ class Source():
             else:
                 self.flux = None
 
-            # get names
-            self.name = []
-            for i in range(self.N):
-                self.name.append(data['name'][i])
+            if self.label != 'cosmo_150':
+                # get names
+                self.name = []
+                for i in range(self.N):
+                    self.name.append(data['name'][i])
             
         self.unit_vector = coord_to_uv(self.coord)
         try:
