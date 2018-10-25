@@ -58,9 +58,8 @@ def beta_pi(z, E):
         return p[0] * (1 + z)**3 * np.exp(-p[1] / ((1 + z) * (E / 1e18)))
     if (E > check):
          return p[2] * (1 + z)**3
-    else:
-        return p[2] * (1 + z)**3
 
+     
 def beta_adi(z):
     """
     Losses due to adiabatic expansion. 
