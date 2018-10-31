@@ -250,7 +250,7 @@ class Source():
             # get fluxes
             if self.label == 'SBG_23' or self.label == 'SBG_63':
                 self.flux = data['L'].value
-            elif self.label == '2FHL_250Mpc':
+            elif self.label == '2FHL_250Mpc' or self.label == '3FHL_250Mpc_FA':
                 self.flux = data['flux'].value
             elif self.label == 'swift_BAT_213':
                 self.flux = data['F'].value
