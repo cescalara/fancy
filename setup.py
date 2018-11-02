@@ -4,7 +4,7 @@ setuptools.setup(
 
     name = 'fancy',
     packages = setuptools.find_packages(), 
-    version = 'v1.9',
+    version = 'v2.0',
     description = 'Framework for the Analysis of Cosmic raYs',
     author = 'Francesca Capel',
     author_email = 'capel.francesca@gmail.com',
