@@ -297,8 +297,8 @@ class AllSkyMap(Basemap):
         """
 
         # only use modified version if we are in a critical region
-        if (    (    (self.east_hem(lon_0) and self.east_hem(lon_0 + radius_deg+1))
-                     or (not self.east_hem(lon_0) and not self.east_hem(lon_0-radius_deg-1))    )
+        if (    (    (self.east_hem(lon_0) and self.east_hem(lon_0 + radius_deg+5))
+                     or (not self.east_hem(lon_0) and not self.east_hem(lon_0-radius_deg-5))    )
                 and abs(lat_0) + radius_deg <90    ):
             
             return Basemap.tissot(self, lon_0, lat_0, radius_deg, npts, ax = None, **kwargs)

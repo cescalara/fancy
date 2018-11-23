@@ -125,9 +125,10 @@ class Analysis():
             self.tables.table = input_table.table
             self.tables.kappa = input_table.kappa
 
-            with h5py.File(input_filename, 'r') as f:
-                self.E_grid = f['energy/E_grid'].value
-                self.Earr_grid = f['energy/Earr_grid'].value
+            if self.analysis_type == self.joint_type:
+                with h5py.File(input_filename, 'r') as f:
+                    self.E_grid = f['energy/E_grid'].value
+                    self.Earr_grid = f['energy/Earr_grid'].value
             
         else:
             self.tables = ExposureIntegralTable(input_filename = input_filename)
@@ -498,17 +499,21 @@ class Analysis():
 
         eps_fit = self.tables.table
         kappa_grid = self.tables.kappa
-        E_grid = self.E_grid
-        Earr_grid = list(self.Earr_grid)
+
+        if self.analysis_type == self.joint_type:
+            E_grid = self.E_grid
+            Earr_grid = list(self.Earr_grid)
         
         # handle selected sources
         if (self.data.source.N < len(eps_fit)):
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
-            Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
+            if self.analysis_type == self.joint_type:
+                Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
 
-        # add E interpolation for Dbg
-        #Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])
-        Earr_grid.append([0 for e in E_grid])
+        if self.analysis_type == self.joint_type:
+            # add E interpolation for Dbg
+            #Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])
+            Earr_grid.append([0 for e in E_grid])
             
         # convert scale for sampling
         D = self.data.source.distance

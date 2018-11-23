@@ -44,7 +44,7 @@ class Data():
         """
 
         if label == None:
-            label = 'AGN_VCV'
+            label = 'VCV_AGN'
         
         new_source = Source(filename, label)
     
@@ -257,7 +257,7 @@ class Source():
             else:
                 self.flux = None
 
-            if self.label != 'cosmo_150':
+            if self.label != 'cosmo_150' and self.label != 'VCV_AGN':
                 # get names
                 self.name = []
                 for i in range(self.N):

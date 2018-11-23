@@ -123,7 +123,7 @@ def constant_val(kappa):
         return kappa / (4 * np.pi * np.sinh(kappa))
 
 """
-Exposure as a funciton of declination. 
+Exposure as a function of declination. 
 """
 
 def xi_dec(dec, p):
