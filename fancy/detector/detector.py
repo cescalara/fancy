@@ -218,7 +218,7 @@ class Angle():
             if isinstance(angle, int) or isinstance(angle, float):
                 self.rad = np.deg2rad(angle)
             else:
-                self.rad = [n p.deg2rad(a) for a in angle]
+                self.rad = [np.deg2rad(a) for a in angle]
         elif type == self._defined_types[1]:
             if isinstance(angle, int) or isinstance(angle, float):
                 self.deg = np.rad2deg(angle)
