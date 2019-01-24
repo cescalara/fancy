@@ -39,7 +39,7 @@ class Analysis():
         if self.filename:
 
             with h5py.File(self.filename, 'w') as f:
-                desc = file.create_group('description')
+                desc = f.create_group('description')
                 desc.attrs['summary'] = b'Testing out the simulation.'
                 f.create_group('input')
                 f.create_group('output')
