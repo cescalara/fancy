@@ -84,3 +84,6 @@ A = alpha_T / (M * deltat)
 
 # reconstruction uncertainty for arrival direction
 kappa_c = 9323
+
+# reconstruction uncertainty for energy
+f_E = 0.12
