@@ -3,7 +3,8 @@ from math import ceil
 import numpy as np
 from matplotlib import pyplot as plt
 
-from ..interfaces import stan_utility
+import stan_utility
+
 from ..interfaces.stan import Direction
 from ..interfaces.integration import ExposureIntegralTable
 from ..propagation.energy_loss import get_Eth_src, get_Eex, get_kappa_ex, get_Eth_sim
@@ -135,7 +136,7 @@ class PPC():
         """
 
         # compile the stan model
-        self.simulation = stan_utility.compile_model(stan_sim_file, inlclude_paths = include_paths)
+        self.simulation = stan_utility.compile_model(filename = stan_sim_file, model_name = 'ppc_sim', inlclude_paths = include_paths)
 
         self.arrival_direction_preds = []
         self.Edet_preds = []
