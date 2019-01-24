@@ -4,7 +4,7 @@ from astropy import units as u
 from pandas import read_csv
 import h5py
 
-from .stan_utility import *
+import stan_utility  
 
 __all__ = ['Model', 'Direction', 'uv_to_coord', 'coord_to_uv']
         
@@ -35,8 +35,10 @@ class Model():
         """
         Compile the models if not already done.
         """
-        self.model = compile_model(self.model_filename, include_paths = self.include_paths)
-        self.simulation = compile_model(self.sim_filename, include_paths = self.include_paths)
+        self.model = stan_utility.compile_model(filename = self.model_filename, model_name = 'sim',
+                                                include_paths = self.include_paths)
+        self.simulation = stan_utility.compile_model(filename = self.sim_filename, model_name = 'model',
+                                                     include_paths = self.include_paths)
 
     def input(self, B = None, kappa = None,
                           F_T = None, f = None, L = None, F0 = None, F1 = None,

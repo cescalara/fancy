@@ -5,9 +5,10 @@ from astropy import units as u
 from matplotlib import pyplot as plt
 import h5py
 
+import stan_utility
+
 from ..interfaces.integration import ExposureIntegralTable
 from ..interfaces.stan import Direction, convert_scale
-from ..interfaces import stan_utility
 from ..utils import PlotStyle
 from ..plotting import AllSkyMap
 from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim, get_arrival_energy
