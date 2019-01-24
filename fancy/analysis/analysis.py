@@ -22,7 +22,7 @@ class Analysis():
     To manage the running of simulations and fits based on Data and Model objects.
     """
 
-    def __init__(self, data, model, analysis_type = None, filename = None):
+    def __init__(self, data, model, analysis_type = None, filename = None, summary = b''):
         """
         To manage the running of simulations and fits based on Data and Model objects.
         
@@ -34,8 +34,13 @@ class Analysis():
         self.data = data
         self.model = model
         self.filename = filename
+
+        # Initialise file
         if self.filename:
-            with h5py.File(self.filename, 'r+') as f:
+
+            with h5py.File(self.filename, 'w') as f:
+                desc = file.create_group('description')
+                desc.attrs['summary'] = b'Testing out the simulation.'
                 f.create_group('input')
                 f.create_group('output')
             
@@ -51,19 +56,21 @@ class Analysis():
 
         if analysis_type == None:
             analysis_type = self.arr_dir_type
+            
         self.analysis_type = analysis_type
 
         if self.analysis_type == 'joint':
+
             # find lower energy threshold for the simulation, given Eth and Eerr
             self.Eth_sim = get_Eth_sim(self.model.Eerr, self.model.Eth)
-            #self.Eth_sim = 52
+
             # find correspsonding Eth_src
             self.Eth_src = get_Eth_src(self.Eth_sim, self.data.source.distance)
 
         params = self.data.detector.params
         varpi = self.data.source.unit_vector
         self.tables = ExposureIntegralTable(varpi = varpi, params = params)
-     
+        
             
     def build_tables(self, num_points = 50, sim_only = False, fit_only = False):
         """
