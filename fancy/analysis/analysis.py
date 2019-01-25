@@ -623,11 +623,11 @@ class Analysis():
                                              sample_file = sample_file, warmup = warmup)
 
         # Diagnositics
-        self.fit_treedepth = stan_utility.check_treedepth(self.fit)
-        self.fit_div = stan_utility.check_div(self.fit)
-        self.fit_energy = stan_utility.check_energy(self.fit)
-        self.n_eff = stan_utility.check_n_eff(self.fit)
-        self.rhat = stan_utility.check_rhat(self.fit)
+        self.fit_treedepth = stan_utility.utils.check_treedepth(self.fit)
+        self.fit_div = stan_utility.utils.check_div(self.fit)
+        self.fit_energy = stan_utility.utils.check_energy(self.fit)
+        self.n_eff = stan_utility.utils.check_n_eff(self.fit)
+        self.rhat = stan_utility.utils.check_rhat(self.fit)
         
         self.chain = self.fit.extract(permuted = True)
         return self.fit
