@@ -42,7 +42,7 @@ class Model():
 
     def input(self, B = None, kappa = None,
                           F_T = None, f = None, L = None, F0 = None, F1 = None,
-                          alpha = None, Eth = None, Eerr = None, Dbg = None):
+                          alpha = None, Eth = None, Eerr = None):
         """
         Get simulation inputs.
 
@@ -54,7 +54,6 @@ class Model():
         :param alpha: source spectral index
         :param Eth: threshold energy of study [EeV]
         :param Eerr: energy reconstruction uncertainty = Eerr * E 
-        :param Dbg: background component distance [Mpc]
         """
         self.F_T = F_T
         self.f = f
@@ -66,7 +65,6 @@ class Model():
         self.alpha = alpha
         self.Eth = Eth
         self.Eerr = Eerr
-        self.Dbg = Dbg
         
         
 class Direction():
@@ -132,7 +130,7 @@ def coord_to_uv(coord):
 
     return uv
 
-def convert_scale(D, Dbg, alpha_T, eps, F0 = None, F1 = None, L = None):
+def convert_scale(D, alpha_T, eps, F0 = None, F1 = None, L = None):
     """
     Convenience function to convert parameters 
     to O(1) scale for sampling in Stan.
@@ -144,7 +142,6 @@ def convert_scale(D, Dbg, alpha_T, eps, F0 = None, F1 = None, L = None):
     """
 
     D = [(d * 3.086) / 100 for d in D]
-    Dbg = (Dbg * 3.086) / 100.0
     alpha_T = alpha_T / 1000.0
     eps = [e / 1000.0 for e in eps]
     if F0:
@@ -155,6 +152,6 @@ def convert_scale(D, Dbg, alpha_T, eps, F0 = None, F1 = None, L = None):
         L = L / 1.0e39
 
     if F0 and isinstance(L, (list, np.ndarray)):
-        return D, Dbg, alpha_T, eps, F0, F1, L
+        return D, alpha_T, eps, F0, F1, L
     else:
-        return D, Dbg, alpha_T, eps
+        return D, alpha_T, eps
