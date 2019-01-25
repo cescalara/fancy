@@ -217,8 +217,7 @@ class Analysis():
         L = self.model.L
         F0 = self.model.F0
         F1 = self.model.F1
-        Dbg = self.model.Dbg
-        D, Dbg, alpha_T, eps, F0, F1, L = convert_scale(D, Dbg, alpha_T, eps, F0, F1, L)
+        D, alpha_T, eps, F0, F1, L = convert_scale(D, alpha_T, eps, F0, F1, L)
             
 
         if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
@@ -243,7 +242,6 @@ class Analysis():
         self.simulation_input['L'] = L
         self.simulation_input['F0'] = F0
         self.simulation_input['F1'] = F1
-        self.simulation_input['Dbg'] = Dbg
           
         if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
 
@@ -319,8 +317,7 @@ class Analysis():
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
             Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
 
-        # add E interpolation for Dbg
-        #Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])    
+        # add E interpolation for background component (possible extension with Dbg)
         Earr_grid.append([0 for e in E_grid])
         
         # convert scale for sampling
@@ -329,8 +326,7 @@ class Analysis():
         L = self.model.L
         F0 = self.model.F0
         F1 = self.model.F1
-        Dbg = self.model.Dbg
-        D, Dbg, alpha_T, eps_fit, F0, F1, L = convert_scale(D, Dbg, alpha_T, eps_fit, F0, F1, L)
+        D, alpha_T, eps_fit, F0, F1, L = convert_scale(D, alpha_T, eps_fit, F0, F1, L)
             
         # prepare fit inputs
         print('preparing fit inputs...')
@@ -345,9 +341,7 @@ class Analysis():
                           'Ngrid' : len(kappa_grid), 
                           'eps' : eps_fit, 
                           'kappa_grid' : kappa_grid,
-                          'zenith_angle' : self.zenith_angles,
-                          'Dbg' : Dbg}
-
+                          'zenith_angle' : self.zenith_angles}
 
         if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
             
@@ -519,15 +513,13 @@ class Analysis():
                 Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
 
         if self.analysis_type == self.joint_type:
-            # add E interpolation for Dbg
-            #Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])
+            # add E interpolation for background component (possible extension with Dbg)
             Earr_grid.append([0 for e in E_grid])
             
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
-        Dbg = self.model.Dbg
-        D, Dbg, alpha_T, eps_fit = convert_scale(D, Dbg, alpha_T, eps_fit)
+        D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
                 
         print('preparing fit inputs...')
         self.fit_input = {'Ns' : self.data.source.N,
@@ -553,7 +545,6 @@ class Analysis():
             self.fit_input['Edet'] = self.data.uhecr.energy
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
-            self.fit_input['Dbg'] = Dbg
             self.fit_input['E_grid'] = E_grid
             self.fit_input['Earr_grid'] = Earr_grid
             
@@ -578,15 +569,13 @@ class Analysis():
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
             Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
 
-        # add E interpolation for Dbg
-        #Earr_grid.append([get_arrival_energy(e, self.model.Dbg) for e in E_grid])
+        # add E interpolation for background component
         Earr_grid.append([0 for e in E_grid])
             
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
-        Dbg = self.model.Dbg
-        D, Dbg, alpha_T, eps_fit = convert_scale(D, Dbg, alpha_T, eps_fit)
+        D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
 
         # simulate the zenith angles
         print('simulating zenith angles...')
@@ -617,7 +606,6 @@ class Analysis():
             self.fit_input['Edet'] = energy
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
-            self.fit_input['Dbg'] = Dbg
             self.fit_input['E_grid'] = E_grid
             self.fit_input['Earr_grid'] = Earr_grid
             
@@ -715,8 +703,7 @@ class Analysis():
             alpha_T = self.data.detector.alpha_T
             L = self.model.L
             F0 = self.model.F0
-            Dbg = self.model.Dbg
-            D, Dbg, alpha_T, eps, F0, L = convert_scale(D, Dbg, alpha_T, eps, F0, L)
+            D, alpha_T, eps, F0, L = convert_scale(D, alpha_T, eps, F0, L)
             
             # compile inputs from Model, Data and self.fit
             self.ppc_input = {
@@ -737,7 +724,6 @@ class Analysis():
             
             self.ppc_input['Eth'] = self.model.Eth
             self.ppc_input['Eerr'] = self.model.Eerr
-            self.ppc_input['Dbg'] = Dbg
 
             # run simulation
             print('running posterior predictive simulation...')
