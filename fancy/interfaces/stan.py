@@ -41,7 +41,7 @@ class Model():
                                                      include_paths = self.include_paths)
 
     def input(self, B = None, kappa = None,
-                          F_T = None, f = None, L = None, F0 = None, F1 = None,
+                          F_T = None, f = None, L = None, F0 = None,
                           alpha = None, Eth = None, Eerr = None):
         """
         Get simulation inputs.
@@ -61,7 +61,6 @@ class Model():
         self.B = B
         self.L = L 
         self.F0 = F0
-        self.F1 = F1
         self.alpha = alpha
         self.Eth = Eth
         self.Eerr = Eerr
@@ -130,7 +129,7 @@ def coord_to_uv(coord):
 
     return uv
 
-def convert_scale(D, alpha_T, eps, F0 = None, F1 = None, L = None):
+def convert_scale(D, alpha_T, eps, F0 = None, L = None):
     """
     Convenience function to convert parameters 
     to O(1) scale for sampling in Stan.
@@ -144,14 +143,14 @@ def convert_scale(D, alpha_T, eps, F0 = None, F1 = None, L = None):
     D = [(d * 3.086) / 100 for d in D]
     alpha_T = alpha_T / 1000.0
     eps = [e / 1000.0 for e in eps]
+    
     if F0:
         F0 = F0 * 1000.0
-    if F1:
-        F1 = F1 * 1000.0
+
     if isinstance(L, (list, np.ndarray)):
         L = L / 1.0e39
 
     if F0 and isinstance(L, (list, np.ndarray)):
-        return D, alpha_T, eps, F0, F1, L
+        return D, alpha_T, eps, F0, L
     else:
         return D, alpha_T, eps

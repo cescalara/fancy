@@ -216,8 +216,7 @@ class Analysis():
         alpha_T = self.data.detector.alpha_T
         L = self.model.L
         F0 = self.model.F0
-        F1 = self.model.F1
-        D, alpha_T, eps, F0, F1, L = convert_scale(D, alpha_T, eps, F0, F1, L)
+        D, alpha_T, eps, F0, L = convert_scale(D, alpha_T, eps, F0, L)
             
 
         if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
@@ -241,8 +240,7 @@ class Analysis():
 
         self.simulation_input['L'] = L
         self.simulation_input['F0'] = F0
-        self.simulation_input['F1'] = F1
-          
+
         if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
 
             self.simulation_input['kappa'] = self.model.kappa
@@ -325,8 +323,7 @@ class Analysis():
         alpha_T = self.data.detector.alpha_T
         L = self.model.L
         F0 = self.model.F0
-        F1 = self.model.F1
-        D, alpha_T, eps_fit, F0, F1, L = convert_scale(D, alpha_T, eps_fit, F0, F1, L)
+        D, alpha_T, eps_fit, F0, L = convert_scale(D, alpha_T, eps_fit, F0, L)
             
         # prepare fit inputs
         print('preparing fit inputs...')
