@@ -207,6 +207,7 @@ class Data():
         source = Source()
         source.label = 'sim_source'
         source.N = simulation_input['Ns']
+        source.distance = simulation_input['D']
         source.unit_vector = simulation_input['varpi']
         source.coord = uv_to_coord(source.unit_vector)
         
@@ -310,7 +311,7 @@ class Source():
             self.unit_vector = coord_to_uv(self.coord)
             
             
-    def plot(self, style, skymap):
+    def plot(self, style, skymap, size = 2.0):
         """
         Plot the sources on a map of the sky. 
 
@@ -324,13 +325,13 @@ class Source():
         write_label = True
         for lon, lat in np.nditer([self.coord.galactic.l.deg, self.coord.galactic.b.deg]):
             if write_label:
-                skymap.tissot(lon, lat, 5., 30, 
-                              facecolor = Solarized().base1, 
+                skymap.tissot(lon, lat, size, 30, 
+                              facecolor = 'k', 
                               alpha = style.alpha_level, label = self.label)
                 write_label = False
             else:
-                skymap.tissot(lon, lat, 5., 30, 
-                              facecolor = Solarized().base1, alpha = style.alpha_level)
+                skymap.tissot(lon, lat, size, 30, 
+                              facecolor = 'k', alpha = style.alpha_level)
             
     def select_sources(self, selection):
         """
@@ -390,7 +391,7 @@ class Uhecr():
         """
 
         self.label = label
-           
+    
         # Read out from file, otherwise define manually
         if filename:
             
@@ -406,13 +407,12 @@ class Uhecr():
                 glat = data['glat'].value
                 self.coord = get_coordinates(glon, glat)
                 
-                self.coord_uncertainty = 4.0 # uncertainty in degrees
                 self.unit_vector = coord_to_uv(self.coord)
                 self.period = self._find_period()
                 self.A = self._find_area()
             
         
-    def plot(self, style, skymap):
+    def plot(self, style, skymap, size = 3):
         """
         Plot the Uhecr instance on a skymap.
 
@@ -420,6 +420,7 @@ class Uhecr():
       
         :param style: the PlotStyle instance
         :param label: the object's label
+        :param coord_uncertainty: detection uncertainty (from Data.detector)
         """
 
         # plot the UHECR location
@@ -442,11 +443,11 @@ class Uhecr():
 
             # just label once
             if write_label:
-                skymap.tissot(lon, lat, self.coord_uncertainty, 30, facecolor = color, 
+                skymap.tissot(lon, lat, size, 30, facecolor = color, 
                             alpha = style.alpha_level, label = self.label)
                 write_label = False
             else:
-                skymap.tissot(lon, lat, self.coord_uncertainty, 30, facecolor = color,
+                skymap.tissot(lon, lat, size, 30, facecolor = color,
                               alpha = style.alpha_level)
 
                 
