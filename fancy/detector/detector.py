@@ -36,7 +36,9 @@ class Detector():
 
         self._view_options = ['map', 'decplot']
 
+        # See Equation 9 in Capel & Mortlock (2019)
         self.kappa_c = kappa_c
+        self.coord_uncertainty = np.sqrt(7552.0 / self.kappa_c)
         
         self.num_points = 500
 

@@ -113,7 +113,7 @@ def uv_to_coord(uv):
     y = transposed_uv[1] 
     z = transposed_uv[2]
        
-    c = SkyCoord(x, y, z, unit = 'mpc', representation_type = 'cartesian',
+    c = SkyCoord(x, y, z, unit = 'Mpc', representation_type = 'cartesian',
                  frame = 'icrs')
 
     return c

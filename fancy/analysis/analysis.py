@@ -229,19 +229,20 @@ class Analysis():
             
         # compile inputs from Model and Data
         self.simulation_input = {
-                       'kappa_c' : self.data.detector.kappa_c, 
-                       'Ns' : len(self.data.source.distance),
-                       'varpi' : self.data.source.unit_vector, 
-                       'D' : D,
-                       'A' : self.data.detector.area,
-                       'a0' : self.data.detector.location.lat.rad,
-                       'theta_m' : self.data.detector.threshold_zenith_angle.rad, 
-                       'alpha_T' : alpha_T,
-                       'eps' : eps}
+            'kappa_c' : self.data.detector.kappa_c, 
+            'Ns' : len(self.data.source.distance),
+            'varpi' : self.data.source.unit_vector, 
+            'D' : D,
+            'A' : self.data.detector.area,
+            'a0' : self.data.detector.location.lat.rad,
+            'lon' : self.data.detector.location.lon.rad,
+            'theta_m' : self.data.detector.threshold_zenith_angle.rad, 
+            'alpha_T' : alpha_T,
+            'eps' : eps}
 
         self.simulation_input['L'] = L
         self.simulation_input['F0'] = F0
-
+    
         if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
 
             self.simulation_input['kappa'] = self.model.kappa
@@ -399,8 +400,6 @@ class Analysis():
             for key, value in self.simulation_input.items():
                 sim_inputs.create_dataset(key, data = value)
 
-            sim_inputs.create_dataset('kappa_ex', data = self.kappa_ex)
-
             # outputs
             sim_outputs = f['output'].create_group('simulation')
 
@@ -552,7 +551,7 @@ class Analysis():
                           'Ngrid' : len(kappa_grid),
                           'eps' : eps_fit,
                           'kappa_grid' : kappa_grid,
-                          'zenith_angle' : np.deg2rad(self.data.uhecr.incidence_angle)}
+                          'zenith_angle' : np.deg2rad(self.data.uhecr.zenith_angle)}
         
         try:
             self.fit_input['flux'] = self.data.source.flux

@@ -3,11 +3,11 @@ import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 from astropy import units as u
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, EarthLocation
 from datetime import date, timedelta
 import h5py
 
-from .stan import coord_to_uv
+from .stan import coord_to_uv, uv_to_coord
 from ..detector.detector import Detector
 from ..plotting import AllSkyMap
 from ..utils import PlotStyle, Solarized
@@ -170,8 +170,59 @@ class Data():
         
         return fig, skymap
 
-    
-            
+
+    def from_simulation(self, sim_file_name):
+        """
+        Load data from a simulation file.
+        :param sim_file_name:
+        """
+
+        # Read out information on data and detector
+        simulation_input = {}
+        simulation_output = {}
+        with h5py.File(sim_file_name, 'r') as f:
+
+            sim_input = f['input/simulation']
+
+            for key in sim_input:
+                simulation_input[key] = sim_input[key].value
+
+            sim_output = f['output/simulation']
+
+            for key in sim_output:
+                simulation_output[key] = sim_output[key].value
+
+        # Gather information into objects
+        # Uhecr
+        uhecr = Uhecr()
+        uhecr.label = 'sim_uhecr'
+        uhecr.energy = simulation_output['Edet']
+        uhecr.N = simulation_output['N']
+        uhecr.A = np.tile(simulation_input['A'], uhecr.N)
+        uhecr.zenith_angle = simulation_output['zenith_angle']
+        uhecr.unit_vector = simulation_output['arrival_direction']
+        uhecr.coord = uv_to_coord(uhecr.unit_vector) 
+        
+        # Sources
+        source = Source()
+        source.label = 'sim_source'
+        source.N = simulation_input['Ns']
+        source.unit_vector = simulation_input['varpi']
+        source.coord = uv_to_coord(source.unit_vector)
+        
+        # Detector
+        lat = simulation_input['a0']
+        lon = simulation_input['lon']
+        location = EarthLocation(lat = lat * u.rad, lon = lon * u.rad)
+        alpha_T = simulation_input['alpha_T']
+        kappa_c = simulation_input['kappa_c']
+        theta_m = simulation_input['theta_m']
+
+        # Add to data object
+        self.uhecr = uhecr
+        self.source = source
+        self.add_detector(location, theta_m, simulation_output['A'], alpha_T, kappa_c, 'sim_detector')
+        
 class RawData():
     """
     Parses information for known data files in txt format. 
@@ -229,7 +280,7 @@ class Source():
     """
 
     
-    def __init__(self, filename, label):
+    def __init__(self, filename = None, label = None):
         """
         Stores the data and parameters for sources.
         
@@ -238,36 +289,25 @@ class Source():
         """
 
         self.label = label
-        
-        with h5py.File(filename, 'r') as f:
-            data = f[self.label]
-            self.distance = data['D'].value
-            self.N = len(self.distance)
-            glon = data['glon'].value
-            glat = data['glat'].value
-            self.coord = get_coordinates(glon, glat)
 
-            # get fluxes
-            if self.label == 'SBG_23' or self.label == 'SBG_63':
-                self.flux = data['L'].value
-            elif self.label == '2FHL_250Mpc' or self.label == '3FHL_250Mpc_FA':
-                self.flux = data['flux'].value
-            elif self.label == 'swift_BAT_213':
-                self.flux = data['F'].value
-            else:
-                self.flux = None
-
-            if self.label != 'cosmo_150' and self.label != 'VCV_AGN':
-                # get names
-                self.name = []
-                for i in range(self.N):
-                    self.name.append(data['name'][i])
+        # Read out from file, otherwise define manually
+        if filename:
             
-        self.unit_vector = coord_to_uv(self.coord)
-        try:
-            self.flux_weight = [fl / max(self.flux) for fl in self.flux] 
-        except:
-            print('No flux weights calculated for sources.')
+            with h5py.File(filename, 'r') as f:
+                data = f[self.label]
+                self.distance = data['D'].value
+                self.N = len(self.distance)
+                glon = data['glon'].value
+                glat = data['glat'].value
+                self.coord = get_coordinates(glon, glat)
+
+                if self.label != 'cosmo_150' and self.label != 'VCV_AGN':
+                    # Get names
+                    self.name = []
+                    for i in range(self.N):
+                        self.name.append(data['name'][i])
+            
+            self.unit_vector = coord_to_uv(self.coord)
             
             
     def plot(self, style, skymap):
@@ -341,7 +381,7 @@ class Uhecr():
     """
 
     
-    def __init__(self, filename, label):
+    def __init__(self, filename = None, label = None):
         """
         Stores the data and parameters for UHECRs.
         
@@ -350,24 +390,27 @@ class Uhecr():
         """
 
         self.label = label
-
-        with h5py.File(filename, 'r') as f:
-            data = f[self.label]
-
-            self.year = data['year'].value
-            self.day = data['day'].value
-            self.incidence_angle = data['theta'].value
-            self.energy = data['energy'].value
-            self.N = len(self.energy)
-            glon = data['glon'].value
-            glat = data['glat'].value
-            self.coord = get_coordinates(glon, glat)
+           
+        # Read out from file, otherwise define manually
+        if filename:
             
-        self.coord_uncertainty = 4.0 # uncertainty in degrees
-        self.unit_vector = coord_to_uv(self.coord)
-        self.period = self._find_period()
-        self.A = self._find_area()
-        
+            with h5py.File(filename, 'r') as f:
+                data = f[self.label]
+
+                self.year = data['year'].value
+                self.day = data['day'].value
+                self.incidence_angle = data['theta'].value
+                self.energy = data['energy'].value
+                self.N = len(self.energy)
+                glon = data['glon'].value
+                glat = data['glat'].value
+                self.coord = get_coordinates(glon, glat)
+                
+                self.coord_uncertainty = 4.0 # uncertainty in degrees
+                self.unit_vector = coord_to_uv(self.coord)
+                self.period = self._find_period()
+                self.A = self._find_area()
+            
         
     def plot(self, style, skymap):
         """
