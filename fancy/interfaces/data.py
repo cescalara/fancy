@@ -67,17 +67,14 @@ class Data():
         self.uhecr = new_uhecr
 
 
-    def add_detector(self, location, threshold_zenith_angle, area, total_exposure, kappa_c, label = None):
+    def add_detector(self, detector_properties):
         """
         Add a detector object to complement the data.
 
-        :param name: the name of the detector
+        :param detector_properties: dict of properties.
         """
-
-        if label == None:
-            label = 'detector#' + str(len(self.detector))
             
-        new_detector = Detector(location, threshold_zenith_angle, area, total_exposure, kappa_c, label)
+        new_detector = Detector(detector_properties)
         
         # define detector
         self.detector = new_detector
