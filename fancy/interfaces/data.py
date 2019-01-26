@@ -306,7 +306,7 @@ class Source():
         self.properties['distance'] = self.distance
         
         
-    def from_properties(self, source_properties, label):
+    def from_properties(self, source_properties):
         """
         Define sources from properties dict.
             
@@ -314,7 +314,7 @@ class Source():
         :param label: identifier
         """
 
-        self.label = label
+        self.label = source_properties['label']
 
         self.N = source_properties['N']
         self.unit_vector = source_properties['unit_vector']
@@ -462,7 +462,7 @@ class Uhecr():
         self.properties['zenith_angle'] = self.zenith_angle 
         
     
-    def from_properties(self, uhecr_properties, label):
+    def from_properties(self, uhecr_properties):
         """
         Define UHECR from properties dict.
             
@@ -470,7 +470,7 @@ class Uhecr():
         :param label: identifier
         """
 
-        self.label = label
+        self.label = uhecr_properties['label']
 
         # Read from input dict
         self.N = uhecr_properties['N']
