@@ -155,7 +155,7 @@ class Data():
             plt.setp(text, color = style.textcolor)
         
         # add a colorbar if uhecr objects plotted
-        if self.uhecr != {} and self.uhecr.N != 1:
+        if self.uhecr and self.uhecr.N != 1:
             self._uhecr_colorbar(style)
 
         if save:
