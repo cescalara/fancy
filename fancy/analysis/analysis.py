@@ -9,7 +9,7 @@ import stan_utility
 
 from ..interfaces.integration import ExposureIntegralTable
 from ..interfaces.stan import Direction, convert_scale
-from ..interface.data import Uhecr
+from ..interfaces.data import Uhecr
 from ..utils import PlotStyle
 from ..plotting import AllSkyMap
 from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim, get_arrival_energy
