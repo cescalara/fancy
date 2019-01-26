@@ -203,6 +203,7 @@ class Analysis():
         Run a simulation.
 
         :param seed: seed for RNG
+        :param Eth_sim: the minimun energy simulated
         """
 
         eps = self.tables.sim_table
@@ -304,6 +305,31 @@ class Analysis():
         print('simulating zenith angles...')
         self.zenith_angles = self._simulate_zenith_angles()
         print('done')
+
+        # store outputs in dict
+        self.simulation_output = {'Ns' : self.data.source.N, 
+                           'varpi' :self.data .source.unit_vector,
+                           'D' : D, 
+                           'N' : self.N, 
+                           'arrival_direction' : self.arrival_direction.unit_vector, 
+                           'A' : np.tile(self.data.detector.area, self.N),
+                           'kappa_c' : self.data.detector.kappa_c,
+                           'alpha_T' : alpha_T, 
+                           'zenith_angle' : self.zenith_angles}
+
+        if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
+            
+            self.simulation_output['E'] = self.E
+            self.simulation_output['Earr'] = self.Earr 
+            self.simulation_output['Edet'] = self.Edet
+            self.simulation_output['Eth'] = self.model.Eth
+            self.simulation_output['Eerr'] = self.model.Eerr
+        
+
+    def prepare_fit_inputs():
+        """
+        To be run after simulation to prepare the fit inputs.
+        """
         
         eps_fit = self.tables.table
         kappa_grid = self.tables.kappa
@@ -328,7 +354,7 @@ class Analysis():
         # prepare fit inputs
         print('preparing fit inputs...')
         self.fit_input = {'Ns' : self.data.source.N, 
-                          'varpi' :self.data.source.unit_vector,
+                          'varpi' :self.data .source.unit_vector,
                           'D' : D, 
                           'N' : self.N, 
                           'arrival_direction' : self.arrival_direction.unit_vector, 
@@ -364,28 +390,24 @@ class Analysis():
         """
         Write the simulated data to file.
         """
-        if self.fit_input != None:
             
-            with h5py.File(self.filename, 'r+') as f:
+        with h5py.File(self.filename, 'r+') as f:
+            
+            # inputs
+            sim_inputs = f['input'].create_group('simulation')
 
-                # inputs
-                sim_inputs = f['input'].create_group('simulation')
-                for key, value in self.simulation_input.items():
-                    sim_inputs.create_dataset(key, data = value)
-                sim_inputs.create_dataset('kappa_ex', data = self.kappa_ex)
+            for key, value in self.simulation_input.items():
+                sim_inputs.create_dataset(key, data = value)
 
-                # outputs
-                sim_outputs = f['output'].create_group('simulation')
-                sim_outputs.create_dataset('E', data = self.E)
-                sim_outputs.create_dataset('Earr', data = self.Earr)
-                sim_outputs.create_dataset('Edet', data = self.Edet)
-                sim_outputs.create_dataset('Nex_sim', data = self.Nex_sim)                
-                sim_fit_inputs = f['output/simulation'].create_group('fit_input')
-                for key, value in self.fit_input.items():
-                    sim_fit_inputs.create_dataset(key, data = value)
-        else:
-            print("Error: nothing to save!")
+            sim_inputs.create_dataset('kappa_ex', data = self.kappa_ex)
 
+            # outputs
+            sim_outputs = f['output'].create_group('simulation')
+
+            for key, value in self.simulation_output.items():
+                sim_outputs.create_dataset(key, data = value)
+                
+                
             
     def plot_simulation(self, type = None, cmap = None):
         """

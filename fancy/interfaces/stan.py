@@ -14,7 +14,7 @@ class Model():
     Simple wrapper for models defined in Stan.
     """
 
-    def __init__(self, model_filename, sim_filename, include_paths =  None):
+    def __init__(self, model_filename = None, sim_filename = None, include_paths =  None):
         """
         Simple wrapper for models defined in Stan.
        
@@ -28,18 +28,22 @@ class Model():
         
         self.simulation = None
         self.fit_input = None
-        
-        
+                
         
     def compile(self):
         """
-        Compile the models if not already done.
+        Compile and cache the necessary Stan models if not already done.
         """
-        self.model = stan_utility.compile_model(filename = self.model_filename, model_name = 'sim',
-                                                include_paths = self.include_paths)
-        self.simulation = stan_utility.compile_model(filename = self.sim_filename, model_name = 'model',
-                                                     include_paths = self.include_paths)
 
+        if self.model_filename:
+            self.model = stan_utility.compile_model(filename = self.model_filename, model_name = 'sim',
+                                                    include_paths = self.include_paths)
+
+        if self.sim_filename:
+            self.simulation = stan_utility.compile_model(filename = self.sim_filename, model_name = 'model',
+                                                         include_paths = self.include_paths)
+
+            
     def input(self, B = None, kappa = None,
                           F_T = None, f = None, L = None, F0 = None,
                           alpha = None, Eth = None, Eerr = None):
