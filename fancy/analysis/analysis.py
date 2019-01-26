@@ -353,7 +353,7 @@ class Analysis():
                           'D' : D, 
                           'N' : self.data.uhecr.N, 
                           'arrival_direction' : self.data.uhecr.unit_vector, 
-                          'A' : self.data.detector.area,
+                          'A' : self.data.uhecr.A,
                           'kappa_c' : self.data.detector.kappa_c,
                           'alpha_T' : alpha_T, 
                           'Ngrid' : len(kappa_grid), 
