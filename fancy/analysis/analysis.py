@@ -242,7 +242,7 @@ class Analysis():
 
         self.simulation_input['L'] = L
         self.simulation_input['F0'] = F0
-    
+        self.simulation_input['distance'] = self.data.source.distance
         if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
 
             self.simulation_input['kappa'] = self.model.kappa
@@ -327,9 +327,9 @@ class Analysis():
             self.simulation_output['Eerr'] = self.model.Eerr
         
 
-    def prepare_fit_inputs():
+    def _prepare_fit_inputs(self):
         """
-        To be run after simulation to prepare the fit inputs.
+        Gather inputs from Model, Data and IntegrationTables.
         """
         
         eps_fit = self.tables.table
@@ -348,41 +348,30 @@ class Analysis():
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
-        L = self.model.L
-        F0 = self.model.F0
-        D, alpha_T, eps_fit, F0, L = convert_scale(D, alpha_T, eps_fit, F0, L)
+        D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
             
         # prepare fit inputs
         print('preparing fit inputs...')
         self.fit_input = {'Ns' : self.data.source.N, 
-                          'varpi' :self.data .source.unit_vector,
+                          'varpi' :self.data.source.unit_vector,
                           'D' : D, 
-                          'N' : self.N, 
-                          'arrival_direction' : self.arrival_direction.unit_vector, 
-                          'A' : np.tile(self.data.detector.area, self.N),
+                          'N' : self.data.uhecr.N, 
+                          'arrival_direction' : self.data.uhecr.unit_vector, 
+                          'A' : self.data.detector.area,
                           'kappa_c' : self.data.detector.kappa_c,
                           'alpha_T' : alpha_T, 
                           'Ngrid' : len(kappa_grid), 
                           'eps' : eps_fit, 
                           'kappa_grid' : kappa_grid,
-                          'zenith_angle' : self.zenith_angles}
+                          'zenith_angle' : self.data.uhecr.zenith_angle}
 
         if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
             
-            self.fit_input['Edet'] = self.Edet
+            self.fit_input['Edet'] = self.data.uhecr.energy
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.model.Eerr
             self.fit_input['E_grid'] = E_grid
             self.fit_input['Earr_grid'] = Earr_grid
-
-        try:
-            if self.data.source.flux:
-                self.simulation_input['flux'] = self.data.source.flux
-            else:
-                self.simulation_input['flux'] = np.zeros(self.data.source.N)
-        except:
-            print('No flux weights available for sources.')
-      
             
         print('done')
         
@@ -485,31 +474,6 @@ class Analysis():
             plt.yscale('log')
             plt.legend()
     
-        
-    def use_simulation(self, input_filename):
-        """
-        Read in simulated data from a file to create fit_input.
-        """
-
-        self.simulation_input = {}
-        self.fit_input = {}
-        with h5py.File(input_filename, 'r') as f:
-            
-
-            sim_input = f['input/simulation']
-            for key in sim_input:
-                self.simulation_input[key] = sim_input[key].value
-                
-            sim_output = f['output/simulation']
-            self.E = sim_output['E'].value
-            self.Earr = sim_output['Earr'].value
-            self.Edet = sim_output['Edet'].value
-                
-            sim_fit_input = sim_output['fit_input']
-            for key in sim_fit_input:
-                self.fit_input[key] = sim_fit_input[key].value
-            self.arrival_direction = Direction(self.fit_input['arrival_direction'])
-            
 
                 
     def use_uhecr_data(self):
@@ -639,6 +603,9 @@ class Analysis():
         :param seed: seed for RNG
         """
 
+        # Prepare fit inputs
+        self._prepare_fit_inputs()
+        
         # fit
         self.fit = self.model.model.sampling(data = self.fit_input, iter = iterations, chains = chains, seed = seed,
                                              sample_file = sample_file, warmup = warmup)

@@ -198,7 +198,7 @@ class Data():
         uhecr.label = 'sim_uhecr'
         uhecr.energy = simulation_output['Edet']
         uhecr.N = simulation_output['N']
-        uhecr.A = np.tile(simulation_input['A'], uhecr.N)
+        uhecr.A = simulation_input['A']
         uhecr.zenith_angle = simulation_output['zenith_angle']
         uhecr.unit_vector = simulation_output['arrival_direction']
         uhecr.coord = uv_to_coord(uhecr.unit_vector) 
@@ -207,7 +207,7 @@ class Data():
         source = Source()
         source.label = 'sim_source'
         source.N = simulation_input['Ns']
-        source.distance = simulation_input['D']
+        source.distance = simulation_input['distance']
         source.unit_vector = simulation_input['varpi']
         source.coord = uv_to_coord(source.unit_vector)
         
