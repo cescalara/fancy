@@ -62,7 +62,7 @@ class Analysis():
         if self.analysis_type == 'joint':
 
             # find lower energy threshold for the simulation, given Eth and Eerr
-            self.Eth_sim = get_Eth_sim(self.model.Eerr, self.model.Eth)
+            self.Eth_sim = get_Eth_sim(self.data.detector.energy_uncertainty, self.model.Eth)
 
             # find correspsonding Eth_src
             self.Eth_src = get_Eth_src(self.Eth_sim, self.data.source.distance)
@@ -251,14 +251,14 @@ class Analysis():
 
             self.simulation_input['alpha'] = self.model.alpha
             self.simulation_input['Eth'] = self.Eth_sim
-            self.simulation_input['Eerr'] = self.model.Eerr
+            self.simulation_input['Eerr'] = self.data.detector.energy_uncertainty
             
         if self.analysis_type == self.joint_type:
             
             self.simulation_input['B'] = self.model.B    
             self.simulation_input['alpha'] = self.model.alpha
             self.simulation_input['Eth'] = self.Eth_sim
-            self.simulation_input['Eerr'] = self.model.Eerr
+            self.simulation_input['Eerr'] = self.data.detector.energy_uncertainty
 
         try:
             if self.data.source.flux:
@@ -364,7 +364,7 @@ class Analysis():
             
             self.fit_input['Edet'] = self.data.uhecr.energy
             self.fit_input['Eth'] = self.model.Eth
-            self.fit_input['Eerr'] = self.model.Eerr
+            self.fit_input['Eerr'] = self.data.detector.energy_uncertainty
             self.fit_input['E_grid'] = E_grid
             self.fit_input['Earr_grid'] = Earr_grid
             
@@ -520,7 +520,7 @@ class Analysis():
 
             self.fit_input['Edet'] = self.data.uhecr.energy
             self.fit_input['Eth'] = self.model.Eth
-            self.fit_input['Eerr'] = self.model.Eerr
+            self.fit_input['Eerr'] = self.data.detector.energy_uncertainty
             self.fit_input['E_grid'] = E_grid
             self.fit_input['Earr_grid'] = Earr_grid
             
@@ -581,7 +581,7 @@ class Analysis():
 
             self.fit_input['Edet'] = energy
             self.fit_input['Eth'] = self.model.Eth
-            self.fit_input['Eerr'] = self.model.Eerr
+            self.fit_input['Eerr'] = self.data.detector.energy_uncertainty
             self.fit_input['E_grid'] = E_grid
             self.fit_input['Earr_grid'] = Earr_grid
             
@@ -702,7 +702,7 @@ class Analysis():
             self.ppc_input['alpha'] = self.alpha_fit
             
             self.ppc_input['Eth'] = self.model.Eth
-            self.ppc_input['Eerr'] = self.model.Eerr
+            self.ppc_input['Eerr'] = self.data.detector.energy_uncertainty
 
             # run simulation
             print('running posterior predictive simulation...')

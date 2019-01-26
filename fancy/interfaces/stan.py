@@ -45,7 +45,7 @@ class Model():
             
     def input(self, B = None, kappa = None,
                           F_T = None, f = None, L = None, F0 = None,
-                          alpha = None, Eth = None, Eerr = None):
+                          alpha = None, Eth = None):
         """
         Get simulation inputs.
 
@@ -56,7 +56,6 @@ class Model():
         :param kappa_c: reconstruction parameter
         :param alpha: source spectral index
         :param Eth: threshold energy of study [EeV]
-        :param Eerr: energy reconstruction uncertainty = Eerr * E 
         """
         self.F_T = F_T
         self.f = f
@@ -66,7 +65,7 @@ class Model():
         self.F0 = F0
         self.alpha = alpha
         self.Eth = Eth
-        self.Eerr = Eerr
+        
 
     def _get_properties(self):
         """
@@ -83,7 +82,6 @@ class Model():
         self.properties['F0'] = self.F0
         self.properties['alpha'] = self.alpha
         self.properties['Eth'] = self.Eth
-        self.properties['Eerr'] = self.Eerr
 
         self.properties['sim_filename'] = self.sim_filename
         self.properties['model_filename'] = self.model_filename
