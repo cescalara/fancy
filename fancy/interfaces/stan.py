@@ -100,9 +100,11 @@ class Model():
         self._get_properties()
 
         for key, value in self.properties.items():
-            if value:
+            try:
                 file_handle.create_dataset(key, data = value)
-        
+            except:
+                pass
+                
 class Direction():
     """
     Input the unit vector vMF samples and 

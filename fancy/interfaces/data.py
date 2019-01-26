@@ -357,7 +357,6 @@ class Source():
         self._get_properties()
 
         for key, value in self.properties.items():
-            if value:
                 file_handle.create_dataset(key, data = value)
         
                 
@@ -533,8 +532,7 @@ class Uhecr():
         
         self._get_properties()
 
-        for key, value in self.properties.items():
-            if value: 
+        for key, value in self.properties.items(): 
                 file_handle.create_dataset(key, data = value)
             
                 
