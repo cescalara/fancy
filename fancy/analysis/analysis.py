@@ -379,14 +379,17 @@ class Analysis():
             
         with h5py.File(self.filename, 'r+') as f:
 
+            source_handle = f.create_group('source')
             if self.data.source:
-                self.data.source.save(f)
+                self.data.source.save(source_handle)
 
+            uhecr_handle = f.create_group('uhecr')
             if self.data.uhecr:
-                self.data.uhecr.save(f)
+                self.data.uhecr.save(uhecr_handle)
 
+            detector_handle = f.create_group('detector')
             if self.data.detector:
-                self.data.detector.save(f)
+                self.data.detector.save(detector_handle)
 
             if self.model:
                 self.model.save(f)
