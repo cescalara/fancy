@@ -23,8 +23,9 @@ NB: theta_m is up to 80 in later papers.
 # position of the PAO [rad]
 lat = np.deg2rad(-35.2)
 lon = np.deg2rad(-69.4)
+height = 1400 # [m]
 auger_location = EarthLocation(lat = lat * u.rad, lon = lon * u.rad,
-                               height = 1400 * u.m)
+                               height = height * u.m)
 
 # threshold incidence angle [rad]
 theta_m = np.deg2rad(60)
@@ -69,3 +70,15 @@ kappa_c = 9323
 
 # reconstruction uncertainty for energy
 f_E = 0.12
+
+# For convenience
+detector_properties = {}
+detector_properties['lat'] = lat
+detector_properties['lon'] = lon
+detector_properties['height'] = height
+detector_properties['theta_m'] = theta_m
+detector_properties['kappa_c'] = kappa_c
+detector_properties['f_E'] = f_E
+detector_properties['A'] = A
+detector_properties['alpha_T'] = alpha_T
+

@@ -16,29 +16,31 @@ class Detector():
     UHECR observatory information and instrument response. 
     """
 
-    def __init__(self, location, threshold_zenith_angle, area, total_exposure, kappa_c, label):
+    def __init__(self, detector_properties):
         """
         UHECR observatory information and instrument response. 
         
-        :param location: EarthLocation object
-        :param threshold_zenith_angle: maximum detectable
-                                       zenith angle in rad.
-        :param area: effective area in [km^2]
-        :param total_exposure: in [km^2 sr year]
-        :param label: identifier
+        :param detector_properties: dict of properties.
         """
 
-        self.label = label
+        self.label = detector_properties['label']
+
+        lat = detector_properties['lat'] # radians
+        lon = detector_properties['lon'] # radians
+        height = detector_properties['height'] # metres
         
-        self.location = location
+        self.location = EarthLocation(lat = lat * u.rad, lon = lon * u.rad,
+                               height = height * u.m)
         
-        self.threshold_zenith_angle = Angle(threshold_zenith_angle, 'rad')
+        self.threshold_zenith_angle = Angle(detector_properties['theta_m']) # radians
 
         self._view_options = ['map', 'decplot']
 
         # See Equation 9 in Capel & Mortlock (2019)
-        self.kappa_c = kappa_c
+        self.kappa_c = detector_properties['kappa_c']
         self.coord_uncertainty = np.sqrt(7552.0 / self.kappa_c)
+
+        self.energy_uncertainty = detector_properties['f_E']
         
         self.num_points = 500
 
@@ -48,9 +50,9 @@ class Detector():
 
         self.exposure()
 
-        self.area = area
+        self.area = detector_properties['A'] # km^2
 
-        self.alpha_T = total_exposure
+        self.alpha_T = detector_properties['alpha_T'] # km^2 sr yr
         
         self.M, err = integrate.quad(m_integrand, 0, np.pi, args = self.params)
         
