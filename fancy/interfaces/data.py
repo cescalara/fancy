@@ -131,15 +131,15 @@ class Data():
         skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0);
 
         # uhecr objects
-        if self.uhecr != {}:
+        if self.uhecr:
             self.uhecr.plot(style, skymap)
 
         # source objects
-        if self.source != {}:
+        if self.source:
             self.source.plot(style, skymap)
 
         # detector objects
-        #if self.detector != {}:
+        #if self.detector:
         #    self.detector.draw_exposure_lim(skymap)
                 
         # standard labels and background
