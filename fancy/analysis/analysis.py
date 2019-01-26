@@ -391,8 +391,9 @@ class Analysis():
             if self.data.detector:
                 self.data.detector.save(detector_handle)
 
+            model_handle = f.create_group('model')
             if self.model:
-                self.model.save(f)
+                self.model.save(model_handle)
                 
             
     def plot_simulation(self, type = None, cmap = None):

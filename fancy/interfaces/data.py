@@ -301,6 +301,7 @@ class Source():
         """
 
         self.properties = {}
+        self.properties['label'] = self.label
         self.properties['N'] = self.N
         self.properties['unit_vector'] = self.unit_vector
         self.properties['distance'] = self.distance
@@ -454,6 +455,7 @@ class Uhecr():
         """
         
         self.properties = {}
+        self.properties['label'] = self.label
         self.properties['N'] = self.N
         self.properties['unit_vector'] = self.unit_vector
         self.properties['energy'] = self.energy
