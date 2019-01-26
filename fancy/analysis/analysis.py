@@ -307,24 +307,19 @@ class Analysis():
         self.zenith_angles = self._simulate_zenith_angles()
         print('done')
 
-        # store outputs in dict
-        self.simulation_output = {'Ns' : self.data.source.N, 
-                           'varpi' :self.data .source.unit_vector,
-                           'D' : D, 
-                           'N' : self.N, 
-                           'arrival_direction' : self.arrival_direction.unit_vector, 
-                           'A' : np.tile(self.data.detector.area, self.N),
-                           'kappa_c' : self.data.detector.kappa_c,
-                           'alpha_T' : alpha_T, 
-                           'zenith_angle' : self.zenith_angles}
+        # Make uhecr object
+        uhecr_properties = {}
+        uhecr_properties['label'] = 'sim_uhecr'
+        uhecr_properties['N'] = self.N
+        uhecr_properties['unit_vector'] = self.arrival_direction.unit_vector
+        uhecr_properties['energy'] = self.Edet
+        uhecr_properties['zenith_angle'] = self.zenith_angles
+        uhecr_properties['A'] = np.tile(self.data.detector.area, self.N)       
 
-        if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
-            
-            self.simulation_output['E'] = self.E
-            self.simulation_output['Earr'] = self.Earr 
-            self.simulation_output['Edet'] = self.Edet
-            self.simulation_output['Eth'] = self.model.Eth
-            self.simulation_output['Eerr'] = self.model.Eerr
+        new_uhecr = Uhecr()
+        new_uhecr.from_properties(uhecr_properties)
+        
+        self.data.uhecr = new_uhecr
         
 
     def _prepare_fit_inputs(self):
