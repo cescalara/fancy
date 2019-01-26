@@ -23,6 +23,8 @@ class Detector():
         :param detector_properties: dict of properties.
         """
 
+        self.properties = detector_properties
+        
         self.label = detector_properties['label']
 
         lat = detector_properties['lat'] # radians
@@ -157,7 +159,20 @@ class Detector():
         if save:
             plt.savefig(savename, dpi = 1000,
                     bbox_inches = 'tight', pad_inches = 0.5)
-
+      
+            
+    def save(self, file_handle):
+        """
+        Save to the passed H5py file handle,
+        i.e. something that cna be used with 
+        file_handle.create_dataset()
+        
+        :param file_handle: file handle
+        """
+        
+        for key, value in self.properties.items():
+            file_handle.create_dataset(key, data = value)
+      
             
     def _exposure_colorbar(self, style):
         """

@@ -299,6 +299,16 @@ class Source():
                     
         self.unit_vector = coord_to_uv(self.coord)
 
+    def _get_properties(self):
+        """
+        Convenience function to pack object into dict.
+        """
+
+        self.properties = {}
+        self.properties['N'] = self.N
+        self.properties['unit_vector'] = self.unit_vector
+        self.properties['distance'] = self.distance
+        
         
     def from_properties(self, source_properties, label):
         """
@@ -312,7 +322,7 @@ class Source():
 
         self.N = source_properties['N']
         self.unit_vector = source_properties['unit_vector']
-        self.distance = source_properties['D']
+        self.distance = source_properties['distance']
 
         self.coord = uv_to_coord(self.unit_vector)
     
@@ -338,7 +348,22 @@ class Source():
             else:
                 skymap.tissot(lon, lat, size, 30, 
                               facecolor = 'k', alpha = style.alpha_level)
-            
+
+    def save(self, file_handle):
+        """
+        Save to the passed H5py file handle,
+        i.e. something that cna be used with 
+        file_handle.create_dataset()
+        
+        :param file_handle: file handle
+        """
+        
+        self._get_properties()
+
+        for key, value in self.properties.items():
+            file_handle.create_dataset(key, data = value)
+        
+                
     def select_sources(self, selection):
         """
         Select sources by providing certain indices from a list.
@@ -388,10 +413,13 @@ class Uhecr():
     """
 
     
-    def __init__(self, uhecr_properties, label):
+    def __init__(self):
         """
         Initialise empty container.
         """
+
+        self.properties = None
+        
 
     def from_data_file(self, filename, label):
         """
@@ -423,7 +451,19 @@ class Uhecr():
             self.unit_vector = coord_to_uv(self.coord)
             self.period = self._find_period()
             self.A = self._find_area()
-            
+
+    def _get_properties(self):
+        """
+        Convenience function to pack object into dict.
+        """
+        
+        self.properties = {}
+        self.properties['N'] = self.N
+        self.properties['unit_vector'] = self.unit_vector
+        self.properties['energy'] = self.energy
+        self.properties['A'] = self.A
+        self.properties['zenith_angle'] = self.zenith_angle 
+        
     
     def from_properties(self, uhecr_properties, label):
         """
@@ -438,7 +478,7 @@ class Uhecr():
         # Read from input dict
         self.N = uhecr_properties['N']
         self.unit_vector = uhecr_properties['unit_vector']
-        self.energy = uhecr_properties['Edet']
+        self.energy = uhecr_properties['energy']
         self.zenith_angle = uhecr_properties['zenith_angle']
         self.A = uhecr_properties['A']
 
@@ -484,6 +524,21 @@ class Uhecr():
                 skymap.tissot(lon, lat, size, 30, facecolor = color,
                               alpha = style.alpha_level)
 
+                
+    def save(self, file_handle):
+        """
+        Save to the passed H5py file handle,
+        i.e. something that cna be used with 
+        file_handle.create_dataset()
+        
+        :param file_handle: file handle
+        """
+        
+        self._get_properties()
+
+        for key, value in self.properties.items():
+            file_handle.create_dataset(key, data = value)
+            
                 
     def _find_area(self):
         """
