@@ -176,7 +176,7 @@ class Data():
         uhecr_properties = {}
         source_properties = {}
         detector_properties = {}
-        with h5py.File(sim_file_name, 'r') as f:
+        with h5py.File(filename, 'r') as f:
 
             uhecr = f['uhecr']
 
