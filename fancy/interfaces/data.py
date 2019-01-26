@@ -54,16 +54,14 @@ class Data():
 
     def add_uhecr(self, filename, label = None):
         """
-        Add a uhecr object to the data cotainer
+        Add a uhecr object to the data cotainer from file.
 
         :param filename: name of the file containing the object's data
         :param label: reference label for the uhecr dataset
         """
 
-        if label == None:
-            label = 'auger2010'  
-    
-        new_uhecr = Uhecr(filename, label)
+        new_uhecr = Uhecr()
+        new_uhecr.from_data_file(filename, label)
 
         # define uhecr object
         self.uhecr = new_uhecr
@@ -382,35 +380,61 @@ class Uhecr():
     """
 
     
-    def __init__(self, filename = None, label = None):
+    def __init__(self, uhecr_properties, label):
         """
-        Stores the data and parameters for UHECRs.
+        Initialise empty container.
+        """
+
+    def from_data_file(self, filename, label):
+        """
+        Define UHECR from data file of original information.
         
-        :param filename: name of UHECR data file
+        Handles calculation of observation periods and 
+        effective areas assuming the UHECR are detected 
+        by the Pierre Auger Observatory.
+        
+        :param filename: name of the data file
+        :param label: reference label for the UHECR data set 
+        """
+            
+        with h5py.File(filename, 'r') as f:
+
+            data = f[self.label]
+            
+            self.year = data['year'].value
+            self.day = data['day'].value
+            self.zenith_angle = data['theta'].value
+            self.energy = data['energy'].value
+            self.N = len(self.energy)
+            glon = data['glon'].value
+            glat = data['glat'].value
+            self.coord = get_coordinates(glon, glat)
+            
+            self.unit_vector = coord_to_uv(self.coord)
+            self.period = self._find_period()
+            self.A = self._find_area()
+            
+    
+    def from_properties(self, uhecr_properties, label):
+        """
+        Define UHECR from properties dict.
+            
+        :param uhecr_properties: dict containing UHECR properties.
         :param label: identifier
         """
 
         self.label = label
-    
-        # Read out from file, otherwise define manually
-        if filename:
-            
-            with h5py.File(filename, 'r') as f:
-                data = f[self.label]
 
-                self.year = data['year'].value
-                self.day = data['day'].value
-                self.incidence_angle = data['theta'].value
-                self.energy = data['energy'].value
-                self.N = len(self.energy)
-                glon = data['glon'].value
-                glat = data['glat'].value
-                self.coord = get_coordinates(glon, glat)
-                
-                self.unit_vector = coord_to_uv(self.coord)
-                self.period = self._find_period()
-                self.A = self._find_area()
-            
+        # Read from input dict
+        self.N = uhecr_properties['N']
+        self.unit_vector = uhecr_properties['unit_vector']
+        self.energy = uhecr_properties['Edet']
+        self.zenith_angle = uhecr_properties['zenith_angle']
+        self.A = uhecr_properties['A']
+
+        # Get SkyCoord from unit_vector
+        self.coord = uv_to_coord(self.unit_vector)
+
         
     def plot(self, style, skymap, size = 3):
         """
@@ -473,15 +497,15 @@ class Uhecr():
             # find area depending on period and incl
             area = []
             for i, p in enumerate(self.period):
-                if self.incidence_angle[i] <= 60:
+                if self.zenith_angle[i] <= 60:
                     area.append(possible_areas_vert[p - 1])
-                if self.incidence_angle[i] > 60:
+                if self.zenith_angle[i] > 60:
                     area.append(possible_areas_incl[p - 1])
 
         return area
 
                 
-    def _find_period(self):
+    def _find_period(self, year, day):
         """
         For a given year or day, find UHECR period based on dates
         in table 1 in Abreu et al. (2010) or in Collaboration et al. 2014.
@@ -539,6 +563,7 @@ class Uhecr():
 
         self.coord = self.coord[selection]
 
+        
     def select_energy(self, Eth):
         """
         Select out only UHECRs above a certain energy.
