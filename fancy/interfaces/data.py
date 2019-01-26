@@ -46,7 +46,8 @@ class Data():
         if label == None:
             label = 'VCV_AGN'
         
-        new_source = Source(filename, label)
+        new_source = Source()
+        new_source.from_data_file(filename, label)
     
         # define source object
         self.source = new_source
@@ -169,58 +170,45 @@ class Data():
         return fig, skymap
 
 
-    def from_simulation(self, sim_file_name):
+    def from_file(self, filename):
         """
-        Load data from a simulation file.
-        :param sim_file_name:
+        Load data from an Analysis output file.
+        :param filename: file name
         """
 
         # Read out information on data and detector
-        simulation_input = {}
-        simulation_output = {}
+        uhecr_properties = {}
+        source_properties = {}
+        detector_properties = {}
         with h5py.File(sim_file_name, 'r') as f:
 
-            sim_input = f['input/simulation']
+            uhecr = f['uhecr']
 
-            for key in sim_input:
-                simulation_input[key] = sim_input[key].value
+            for key in uhecr:
+                uhecr_properties[key] = uhecr[key].value
 
-            sim_output = f['output/simulation']
+            source = f['source']
 
-            for key in sim_output:
-                simulation_output[key] = sim_output[key].value
+            for key in source:
+                source_properties[key] = source[key].value
 
-        # Gather information into objects
-        # Uhecr
+            detector = f['detector']
+
+            for key in detector:
+                detector_properties[key] = detector[key].value
+
         uhecr = Uhecr()
-        uhecr.label = 'sim_uhecr'
-        uhecr.energy = simulation_output['Edet']
-        uhecr.N = simulation_output['N']
-        uhecr.A = simulation_input['A']
-        uhecr.zenith_angle = simulation_output['zenith_angle']
-        uhecr.unit_vector = simulation_output['arrival_direction']
-        uhecr.coord = uv_to_coord(uhecr.unit_vector) 
-        
-        # Sources
-        source = Source()
-        source.label = 'sim_source'
-        source.N = simulation_input['Ns']
-        source.distance = simulation_input['distance']
-        source.unit_vector = simulation_input['varpi']
-        source.coord = uv_to_coord(source.unit_vector)
-        
-        # Detector
-        lat = simulation_input['a0']
-        lon = simulation_input['lon']
-        location = EarthLocation(lat = lat * u.rad, lon = lon * u.rad)
-        alpha_T = simulation_input['alpha_T']
-        kappa_c = simulation_input['kappa_c']
-        theta_m = simulation_input['theta_m']
+        uhecr.from_properties(uhecr_properties)
 
+        source = Source()
+        source.from_properties(source_properties)
+
+        detector = Detector(detector_properties)
+        
         # Add to data object
         self.uhecr = uhecr
         self.source = source
-        self.add_detector(location, theta_m, simulation_output['A'], alpha_T, kappa_c, 'sim_detector')
+        self.detector = detector
         
 class RawData():
     """
@@ -279,7 +267,13 @@ class Source():
     """
 
     
-    def __init__(self, filename = None, label = None):
+    def __init__(self):
+        """
+        Initialise empty container.
+        """
+
+        
+    def from_data_file(self, filename, label):
         """
         Stores the data and parameters for sources.
         
@@ -288,27 +282,41 @@ class Source():
         """
 
         self.label = label
+    
+        with h5py.File(filename, 'r') as f:
+            data = f[self.label]
+            self.distance = data['D'].value
+            self.N = len(self.distance)
+            glon = data['glon'].value
+            glat = data['glat'].value
+            self.coord = get_coordinates(glon, glat)
+            
+            if self.label != 'cosmo_150' and self.label != 'VCV_AGN':
+                # Get names
+                self.name = []
+                for i in range(self.N):
+                    self.name.append(data['name'][i])
+                    
+        self.unit_vector = coord_to_uv(self.coord)
 
-        # Read out from file, otherwise define manually
-        if filename:
+        
+    def from_properties(self, source_properties, label):
+        """
+        Define sources from properties dict.
             
-            with h5py.File(filename, 'r') as f:
-                data = f[self.label]
-                self.distance = data['D'].value
-                self.N = len(self.distance)
-                glon = data['glon'].value
-                glat = data['glat'].value
-                self.coord = get_coordinates(glon, glat)
+        :param source_properties: dict containing source properties.
+        :param label: identifier
+        """
 
-                if self.label != 'cosmo_150' and self.label != 'VCV_AGN':
-                    # Get names
-                    self.name = []
-                    for i in range(self.N):
-                        self.name.append(data['name'][i])
-            
-            self.unit_vector = coord_to_uv(self.coord)
-            
-            
+        self.label = label
+
+        self.N = source_properties['N']
+        self.unit_vector = source_properties['unit_vector']
+        self.distance = source_properties['D']
+
+        self.coord = uv_to_coord(self.unit_vector)
+    
+        
     def plot(self, style, skymap, size = 2.0):
         """
         Plot the sources on a map of the sky. 
@@ -396,7 +404,9 @@ class Uhecr():
         :param filename: name of the data file
         :param label: reference label for the UHECR data set 
         """
-            
+
+        self.label = label
+        
         with h5py.File(filename, 'r') as f:
 
             data = f[self.label]
