@@ -77,7 +77,7 @@ class Analysis():
         Build the necessary integral tables.
         """
 
-        if not fit_only:
+        if sim_only:
             
             # kappa_true table for simulation
             if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
@@ -90,7 +90,7 @@ class Analysis():
 
             self.tables.build_for_sim(kappa_true, self.model.alpha, self.model.B, self.data.source.distance)
     
-        if not sim_only:
+        if fit_only:
 
             # logarithmically spcaed array with 60% of points between KAPPA_MIN and 100
             kappa_first = np.logspace(np.log(1), np.log(10), int(num_points * 0.7), base = np.e)

@@ -34,7 +34,7 @@ class Detector():
         self.location = EarthLocation(lat = lat * u.rad, lon = lon * u.rad,
                                height = height * u.m)
         
-        self.threshold_zenith_angle = Angle(detector_properties['theta_m']) # radians
+        self.threshold_zenith_angle = Angle(detector_properties['theta_m'], 'rad') # radians
 
         self._view_options = ['map', 'decplot']
 
