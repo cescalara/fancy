@@ -28,16 +28,15 @@ class Data():
         self._filename = None
         self._data = None
 
-        # uhecr, source and detector objects are stored in a
-        # dictionary with keys equal to their labels
-        self.uhecr = {}
-        self.source = {}        
-        self.detector = {}
+        # uhecr, source and detector objects
+        self.uhecr = None
+        self.source = None       
+        self.detector = None
 
         
     def add_source(self, filename, label = None):
         """
-        Add a source object to the data cotainer
+        Add a source object to the data cotainer from file.
 
         :param filename: name of the file containing the object's data
         :param label: reference label for the source object
@@ -55,7 +54,7 @@ class Data():
 
     def add_uhecr(self, filename, label = None):
         """
-        Add a uhecr object to the data cotainer from file.
+        Add a uhecr object to the data container from file.
 
         :param filename: name of the file containing the object's data
         :param label: reference label for the uhecr dataset
@@ -361,7 +360,8 @@ class Source():
         self._get_properties()
 
         for key, value in self.properties.items():
-            file_handle.create_dataset(key, data = value)
+            if value:
+                file_handle.create_dataset(key, data = value)
         
                 
     def select_sources(self, selection):
@@ -537,7 +537,8 @@ class Uhecr():
         self._get_properties()
 
         for key, value in self.properties.items():
-            file_handle.create_dataset(key, data = value)
+            if value: 
+                file_handle.create_dataset(key, data = value)
             
                 
     def _find_area(self):

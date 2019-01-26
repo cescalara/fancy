@@ -376,25 +376,24 @@ class Analysis():
         print('done')
         
         
-    def save_simulation(self):
+    def save(self):
         """
-        Write the simulated data to file.
+        Write the analysis to file.
         """
             
         with h5py.File(self.filename, 'r+') as f:
-            
-            # inputs
-            sim_inputs = f['input'].create_group('simulation')
 
-            for key, value in self.simulation_input.items():
-                sim_inputs.create_dataset(key, data = value)
+            if self.data.source:
+                self.data.source.save(f)
 
-            # outputs
-            sim_outputs = f['output'].create_group('simulation')
+            if self.data.uhecr:
+                self.data.uhecr.save(f)
 
-            for key, value in self.simulation_output.items():
-                sim_outputs.create_dataset(key, data = value)
-                
+            if self.data.detector:
+                self.data.detector.save(f)
+
+            if self.model:
+                self.model.save(f)
                 
             
     def plot_simulation(self, type = None, cmap = None):

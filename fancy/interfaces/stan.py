@@ -27,8 +27,7 @@ class Model():
         self.include_paths = include_paths
         
         self.simulation = None
-        self.fit_input = None
-                
+
         
     def compile(self):
         """
@@ -68,7 +67,43 @@ class Model():
         self.alpha = alpha
         self.Eth = Eth
         self.Eerr = Eerr
+
+    def _get_properties(self):
+        """
+        Convenience function to pack object into dict.
+        """
+
+        self.properties = {}
+        self.properties['F_T'] = self.F_T
+        self.properties['f'] = self.f
+        self.properties['kappa'] = self.kappa
+        self.properties['B'] = self.B
+        self.properties['L'] = self.L
+        self.properties['F0'] = self.F0
+        self.properties['F0'] = self.F0
+        self.properties['alpha'] = self.alpha
+        self.properties['Eth'] = self.Eth
+        self.properties['Eerr'] = self.Eerr
+
+        self.properties['sim_filename'] = self.sim_filename
+        self.properties['model_filename'] = self.model_filename
+        self.properties['include_paths'] = self.include_paths
         
+        
+    def save(self, file_handle):
+        """
+        Save to the passed H5py file handle,
+        i.e. something that cna be used with 
+        file_handle.create_dataset()
+        
+        :param file_handle: file handle
+        """
+        
+        self._get_properties()
+
+        for key, value in self.properties.items():
+            if value:
+                file_handle.create_dataset(key, data = value)
         
 class Direction():
     """
