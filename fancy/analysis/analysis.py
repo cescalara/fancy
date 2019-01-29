@@ -344,7 +344,6 @@ class Analysis():
         D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
             
         # prepare fit inputs
-        print('preparing fit inputs...')
         self.fit_input = {'Ns' : self.data.source.N, 
                           'varpi' :self.data.source.unit_vector,
                           'D' : D, 
@@ -366,8 +365,6 @@ class Analysis():
             self.fit_input['E_grid'] = E_grid
             self.fit_input['Earr_grid'] = Earr_grid
             
-        print('done')
-        
         
     def save(self):
         """
@@ -391,7 +388,32 @@ class Analysis():
             model_handle = f.create_group('model')
             if self.model:
                 self.model.save(model_handle)
-                
+
+            fit_handle = f.create_group('fit')
+            if self.fit:
+
+                # fit inputs
+                fit_input_handle = fit_handle.create_group('input')
+                for key, value in self.fit_input.items():
+                    fit_input_handle.create_dataset(key, data = value)
+
+                # diagnostics
+                diagnostics = fit_handle.create_group('diagnostics')
+                diagnostics.create_dataset('treedepth', data = self.fit_treedepth)
+                diagnostics.create_dataset('divergence', data = self.fit_div)
+                diagnostics.create_dataset('energy', data = self.fit_energy)
+                rhat = diagnostics.create_group('rhat')
+                for key, value in self.rhat.items():
+                    rhat.create_dataset(key, data = value)
+                n_eff = diagnostics.create_group('n_eff')
+                for key, value in self.n_eff.items():
+                    n_eff.create_dataset(key, data = value)      
+
+                # samples
+                samples = fit_handle.create_group('samples')
+                for key, value in self.chain.items():
+                    samples.create_dataset(key, data = value)                
+     
             
     def plot(self, type = None, cmap = None):
         """
@@ -447,7 +469,7 @@ class Analysis():
             if isinstance(self.Earr, (list, np.ndarray)):
                 ax.hist(self.Earr, bins = bins, alpha = 0.7, label = r'$E$', color = cmap(0.5 * cmap.N))
 
-            ax.hist(self.data.uhecr.energy, bins = bins, alpha = 0.7, label = r'$\hat{E}$', color = cmap(cmap.N))
+            ax.hist(self.data.uhecr.energy, bins = bins, alpha = 0.7, label = r'$\hat{E}$', color = cmap(0.9 * cmap.N))
 
             ax.set_xscale('log')
             ax.set_yscale('log')
@@ -631,4 +653,3 @@ class Analysis():
             print('Error: no fit to save')
         
         
-   

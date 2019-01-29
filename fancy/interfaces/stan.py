@@ -168,7 +168,7 @@ def coord_to_uv(coord):
 
     return uv
 
-def convert_scale(D, alpha_T, eps, F0 = None, L = None):
+def convert_scale(D, alpha_T, eps, F0 = None, L = None, to_stan = True):
     """
     Convenience function to convert parameters 
     to O(1) scale for sampling in Stan.
@@ -177,19 +177,42 @@ def convert_scale(D, alpha_T, eps, F0 = None, L = None):
     eps [km^2 yr] -> eps / 1000
     F [# km^-2 yr^-1] -> F * 1000
     L [# yr^-1] -> L / 1e39
+
+    Can also convert back by setting to_stan = False
     """
 
-    D = [(d * 3.086) / 100 for d in D]
-    alpha_T = alpha_T / 1000.0
-    eps = [e / 1000.0 for e in eps]
+    # Convert from physical units to Stan units
+    if to_stan:
     
-    if F0:
-        F0 = F0 * 1000.0
+        D = [(d * 3.086) / 100 for d in D]
+        alpha_T = alpha_T / 1000.0
+        eps = [e / 1000.0 for e in eps]
+    
+        if F0:
+            F0 = F0 * 1000.0
 
-    if isinstance(L, (list, np.ndarray)):
-        L = L / 1.0e39
+        if isinstance(L, (list, np.ndarray)):
+            L = L / 1.0e39
 
-    if F0 and isinstance(L, (list, np.ndarray)):
-        return D, alpha_T, eps, F0, L
+    # Convert from Stan units to physical units
     else:
+
+        D = [(d / 3.086) * 100 for d in D]
+        alpha_T = alpha_T * 1000.0
+        eps = [e * 1000.0 for e in eps]
+    
+        if F0:
+            F0 = F0 / 1000.0
+
+        if isinstance(L, (list, np.ndarray)):
+            L = L * 1.0e39
+        
+            
+    if F0 and isinstance(L, (list, np.ndarray)):
+
+        return D, alpha_T, eps, F0, L
+
+    else:
+
         return D, alpha_T, eps
+
