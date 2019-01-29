@@ -44,10 +44,12 @@ class Corner():
                     pairgrid.axes[i, k].spines['top'].set_visible(True) 
                 else:
                     sns.despine(ax = pairgrid.axes[i, k])
+                    
 
         # Tidy axes
+        sns.despine(ax = pairgrid.axes[0, 0], left = True)
         pairgrid.axes[0, 0].get_yaxis().set_visible(False)
-        plt.subplots_adjust(hspace=0.05, wspace=0.055)
+        plt.subplots_adjust(hspace = 0.05, wspace = 0.055)
 
 
     
