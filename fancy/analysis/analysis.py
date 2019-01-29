@@ -408,16 +408,17 @@ class Analysis():
         detection
         """
 
+        # plot style
+        if cmap == None:
+            cmap = plt.cm.get_cmap('viridis')
+            
+        
         # plot arrival directions by default
         if type == None:
             type == 'arrival direction'
         
         if type == 'arrival direction':
-
-            # plot style
-            if cmap == None:
-                cmap = plt.cm.get_cmap('viridis')
-                
+    
             # figure
             fig, ax = plt.subplots();
             fig.set_size_inches((12, 6))
@@ -444,12 +445,12 @@ class Analysis():
             if isinstance(self.E, (list, np.ndarray)):
                 ax.hist(self.E, bins = bins, alpha = 0.7, label = r'$\tilde{E}$', color = cmap(0.0))
             if isinstance(self.Earr, (list, np.ndarray)):
-                ax.hist(self.Earr, bins = bins, alpha = 0.7, label = r'$E$', color = cmap(0.5))
+                ax.hist(self.Earr, bins = bins, alpha = 0.7, label = r'$E$', color = cmap(0.5 * cmap.N))
 
-            ax.hist(self.data.uhecr.energy, bins = bins, alpha = 0.7, label = r'$\hat{E}$', color = cmap(1))
+            ax.hist(self.data.uhecr.energy, bins = bins, alpha = 0.7, label = r'$\hat{E}$', color = cmap(cmap.N))
 
             ax.set_xscale('log')
-            ax_set.yscale('log')
+            ax.set_yscale('log')
             ax.legend(frameon = False)
     
 

@@ -102,7 +102,7 @@ class Data():
         vals = np.linspace(min_energy, max_energy, 100)
         bar = matplotlib.colorbar.ColorbarBase(cb_ax, values = vals, norm = norm_E, cmap = cmap, 
                                                orientation = 'horizontal', drawedges = False, alpha = 1)
-        bar.ax.get_children()[1].set_linewidth(0)
+        #bar.ax.get_children()[1].set_linewidth(0)
         bar.set_label('UHECR Energy [EeV]')
 
         
@@ -525,13 +525,13 @@ class Uhecr():
 
                 color = cmap(norm_E(E))
                     
-            if write_label:
-                skymap.tissot(lon, lat, size, 30, facecolor = color, 
-                            alpha = alpha_level, label = self.label)
-                write_label = False
-            else:
-                skymap.tissot(lon, lat, size, 30, facecolor = color,
-                              alpha = alpha_level)
+                if write_label:
+                    skymap.tissot(lon, lat, size, 30, facecolor = color, 
+                                  alpha = alpha_level, label = self.label)
+                    write_label = False
+                else:
+                    skymap.tissot(lon, lat, size, 30, facecolor = color,
+                                  alpha = alpha_level)
 
             
 
