@@ -397,18 +397,6 @@ class Analysis():
                 for key, value in self.fit_input.items():
                     fit_input_handle.create_dataset(key, data = value)
 
-                # diagnostics
-                diagnostics = fit_handle.create_group('diagnostics')
-                diagnostics.create_dataset('treedepth', data = self.fit_treedepth)
-                diagnostics.create_dataset('divergence', data = self.fit_div)
-                diagnostics.create_dataset('energy', data = self.fit_energy)
-                rhat = diagnostics.create_group('rhat')
-                for key, value in self.rhat.items():
-                    rhat.create_dataset(key, data = value)
-                n_eff = diagnostics.create_group('n_eff')
-                for key, value in self.n_eff.items():
-                    n_eff.create_dataset(key, data = value)      
-
                 # samples
                 samples = fit_handle.create_group('samples')
                 for key, value in self.chain.items():
@@ -612,44 +600,9 @@ class Analysis():
                                              sample_file = sample_file, warmup = warmup)
 
         # Diagnositics
-        self.fit_treedepth = stan_utility.utils.check_treedepth(self.fit)
-        self.fit_div = stan_utility.utils.check_div(self.fit)
-        self.fit_energy = stan_utility.utils.check_energy(self.fit)
-        self.n_eff = stan_utility.utils.check_n_eff(self.fit)
-        self.rhat = stan_utility.utils.check_rhat(self.fit)
+        stan_utility.utils.check_all_diagnostics()
         
         self.chain = self.fit.extract(permuted = True)
         return self.fit
-
-    def save_fit(self):
-
-        if self.fit:
-
-            with h5py.File(self.filename, 'r+') as f:
-
-                fit_input = f['input'].create_group('fit')
-                for key, value in self.fit_input.items():
-                    fit_input.create_dataset(key, data = value)
-                fit_input.create_dataset('params', data = self.data.detector.params)
-                fit_input.create_dataset('theta_m', data = self.data.detector.threshold_zenith_angle.rad)
-                fit_input.create_dataset('a0', data = self.data.detector.location.lat.rad)
-                
-                fit_output = f['output'].create_group('fit')
-                diagnostics = fit_output.create_group('diagnostics')
-                diagnostics.create_dataset('treedepth', data = self.fit_treedepth)
-                diagnostics.create_dataset('divergence', data = self.fit_div)
-                diagnostics.create_dataset('energy', data = self.fit_energy)
-                rhat = diagnostics.create_group('rhat')
-                for key, value in self.rhat.items():
-                    rhat.create_dataset(key, data = value)
-                n_eff = diagnostics.create_group('n_eff')
-                for key, value in self.n_eff.items():
-                    n_eff.create_dataset(key, data = value)      
-                samples = fit_output.create_group('samples')
-                for key, value in self.chain.items():
-                    samples.create_dataset(key, data = value)
-                
-        else:
-            print('Error: no fit to save')
         
         
