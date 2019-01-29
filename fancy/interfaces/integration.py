@@ -1,5 +1,6 @@
 from scipy import integrate, interpolate
 import h5py
+from tqdm.autonotebook import tqdm as progress_bar
 
 from ..detector.exposure import *
 
@@ -51,12 +52,13 @@ class ExposureIntegralTable():
         if isinstance(self.sim_kappa, int) or isinstance(self.sim_kappa, float):
             k = self.sim_kappa
             results = []
-            for v in self.varpi:
+
+            for i in progress_bar(range(len(self.varpi)), desc = 'Precomputing exposure integral'):
+                v = self.varpi[i]
                 result, err = integrate.dblquad(integrand, 0, np.pi,
                                                 lambda phi : 0, lambda phi : 2 * np.pi,
                                                 args = (v, k, self.params))
 
-                print(k, result, err)
                 results.append(result)
             self.sim_table = results
             print()
@@ -64,12 +66,12 @@ class ExposureIntegralTable():
         # different kappa for each source
         else:
             results = []
-            for i, v in enumerate(self.varpi):
+            for i in progress_bar(range(len(self.varpi)), desc = 'Precomputing exposure integral'):
+                v = self.varpi[i]
                 result, err = integrate.dblquad(integrand, 0, np.pi,
                                                 lambda phi : 0, lambda phi : 2 * np.pi,
                                                 args = (v, self.sim_kappa[i], self.params))
 
-                print(self.sim_kappa[i], result, err)
                 results.append(result)
 
             self.sim_table = results
@@ -86,14 +88,15 @@ class ExposureIntegralTable():
         """
 
         self.kappa = kappa
-        for v in self.varpi:
+        for i in progress_bar(range(len(self.varpi)), desc = 'Precomputing exposure integral'):
+            v = self.varpi[i]
+            
             results = []
             for k in self.kappa:
                 result, err = integrate.dblquad(integrand, 0, np.pi,
                                                 lambda phi : 0, lambda phi : 2 * np.pi,
                                                 args = (v, k, self.params))
                 
-                print(k, result, err)
                 results.append(result)
             self.table.append(np.asarray(results))
             print()

@@ -10,7 +10,6 @@ import h5py
 from .stan import coord_to_uv, uv_to_coord
 from ..detector.detector import Detector
 from ..plotting import AllSkyMap
-from ..utils import PlotStyle, Solarized
 
 __all__ = ['Data', 'Source', 'Uhecr']
 
@@ -80,11 +79,11 @@ class Data():
         self.detector = new_detector
 
 
-    def _uhecr_colorbar(self, style):
+    def _uhecr_colorbar(self, cmap):
         """
         Add a colorbar normalised over all the Uhecr energies.
 
-        :param style: an instance of PlotStyle
+        :param cmap: matplotlib colorbar object
         """
 
         max_energies = []
@@ -97,7 +96,6 @@ class Data():
         min_energy = min(min_energies)
             
         norm_E = matplotlib.colors.Normalize(min_energy, max_energy)
-        cmap = style.cmap
 
         # colorbar
         cb_ax = plt.axes([0.25, 0, .5, .03], frameon = False)  
@@ -119,44 +117,36 @@ class Data():
 
         # plot style
         if cmap == None:
-            style = PlotStyle()
-        else:
-            style = PlotStyle(cmap_name = cmap)
+            cmap = plt.cm.get_cmap('viridis')
             
         # figure
-        fig = plt.figure(figsize = (12, 6));
-        ax = plt.gca()
+        fig, ax = plt.subplots();
+        fig.set_size_inches((12, 6))
 
         # skymap
         skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0);
 
-        # uhecr objects
+        # uhecr object
         if self.uhecr:
-            self.uhecr.plot(style, skymap)
+            self.uhecr.plot(skymap)
 
-        # source objects
+        # source object
         if self.source:
-            self.source.plot(style, skymap)
+            self.source.plot(skymap)
 
-        # detector objects
+        # detector object
         #if self.detector:
         #    self.detector.draw_exposure_lim(skymap)
                 
         # standard labels and background
-        skymap.draw_standard_labels(style.cmap, style.textcolor)
+        skymap.draw_standard_labels()
     
         # legend
-        plt.legend(bbox_to_anchor=(0.85, 0.85))
-        leg = ax.get_legend()
-        frame = leg.get_frame()
-        frame.set_linewidth(0)
-        frame.set_facecolor('None')
-        for text in leg.get_texts():
-            plt.setp(text, color = style.textcolor)
+        plt.legend(frameon = False, bbox_to_anchor=(0.85, 0.85))
         
         # add a colorbar if uhecr objects plotted
         if self.uhecr and self.uhecr.N != 1:
-            self._uhecr_colorbar(style)
+            self._uhecr_colorbar(cmap)
 
         if save:
             plt.savefig(savename, dpi = 1000,
@@ -324,27 +314,30 @@ class Source():
         self.coord = uv_to_coord(self.unit_vector)
     
         
-    def plot(self, style, skymap, size = 2.0):
+    def plot(self, skymap, size = 2.0, color = 'k'):
         """
         Plot the sources on a map of the sky. 
 
         Called by Data.show()
 
-        :param style: the PlotStyle instance
-        :param label: the object's label
+        :param skymap: the AllSkyMap
+        :param size: radius of tissots
+        :param color: colour of tissots
         """
-    
+        
+        alpha_level = 0.9
+        
         # plot the source locations
         write_label = True
         for lon, lat in np.nditer([self.coord.galactic.l.deg, self.coord.galactic.b.deg]):
             if write_label:
                 skymap.tissot(lon, lat, size, 30, 
                               facecolor = 'k', 
-                              alpha = style.alpha_level, label = self.label)
+                              alpha = alpha_level, label = self.label)
                 write_label = False
             else:
                 skymap.tissot(lon, lat, size, 30, 
-                              facecolor = 'k', alpha = style.alpha_level)
+                              facecolor = 'k', alpha = alpha_level)
 
     def save(self, file_handle):
         """
@@ -484,43 +477,63 @@ class Uhecr():
         self.coord = uv_to_coord(self.unit_vector)
 
         
-    def plot(self, style, skymap, size = 3):
+    def plot(self, skymap, size = 2, source_labels = None):
         """
         Plot the Uhecr instance on a skymap.
 
         Called by Data.show()
       
-        :param style: the PlotStyle instance
-        :param label: the object's label
-        :param coord_uncertainty: detection uncertainty (from Data.detector)
+        :param skymap: the AllSkyMap
+        :param size: tissot radius
+        :param source_labels: source labels (int)
         """
 
-        # plot the UHECR location
-        if self.N != 1:
+        lons = self.coord.galactic.l.deg
+        lats = self.coord.galactic.b.deg
+
+        alpha_level = 0.7
+        
+        # If source labels are provided, plot with colour
+        # indicating the source label.
+        if isinstance(source_labels, (list, np.ndarray)):
+
+            Nc = max(source_labels)
+
+            # Use a continuous cmap
+            cmap = plt.cm.get_cmap('plasma', Nc) 
+
+            write_label = True
+            
+            for lon, lat, lab in np.nditer([lons, lats, source_labels]):
+                color = cmap(lab)
+                if write_label:
+                    skymap.tissot(lon, lat, size, npts = 30, facecolor = color,
+                                  alpha = 0.5, label = self.label)
+                    write_label = False
+                else:
+                    skymap.tissot(lon, lat, size, npts = 30, facecolor = color, alpha = 0.5)
+
+        # Otherwise, use the cmap to show the UHECR energy. 
+        else:
+            
             # use colormap for energy
             norm_E = matplotlib.colors.Normalize(min(self.energy), max(self.energy))
-        cmap = style.cmap
-
-        lon = self.coord.galactic.l.deg
-        lat = self.coord.galactic.b.deg
+            cmap = plt.cm.get_cmap('viridis', len(self.energy))
         
-        write_label = True
-        for E, lon, lat in np.nditer([self.energy, lon, lat]):
+            write_label = True
+            for E, lon, lat in np.nditer([self.energy, lons, lats]):
 
-            if self.N != 1:
-                # shift up to top 4 colors in palette, using first for background
-                color = cmap(norm_E(E) + 0.2)
-            else:
-                color = cmap(0.5)
-
-            # just label once
+                color = cmap(norm_E(E))
+                    
             if write_label:
                 skymap.tissot(lon, lat, size, 30, facecolor = color, 
-                            alpha = style.alpha_level, label = self.label)
+                            alpha = alpha_level, label = self.label)
                 write_label = False
             else:
                 skymap.tissot(lon, lat, size, 30, facecolor = color,
-                              alpha = style.alpha_level)
+                              alpha = alpha_level)
+
+            
 
                 
     def save(self, file_handle):
@@ -565,6 +578,9 @@ class Uhecr():
                 if self.zenith_angle[i] > 60:
                     area.append(possible_areas_incl[p - 1])
 
+        else:
+            print('Error: effective areas and periods not defined')
+            
         return area
 
                 

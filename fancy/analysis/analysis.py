@@ -10,7 +10,6 @@ import stan_utility
 from ..interfaces.integration import ExposureIntegralTable
 from ..interfaces.stan import Direction, convert_scale
 from ..interfaces.data import Uhecr
-from ..utils import PlotStyle
 from ..plotting import AllSkyMap
 from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim, get_arrival_energy
 
@@ -41,9 +40,7 @@ class Analysis():
 
             with h5py.File(self.filename, 'w') as f:
                 desc = f.create_group('description')
-                desc.attrs['summary'] = b'Testing out the simulation.'
-                f.create_group('input')
-                f.create_group('output')
+                desc.attrs['summary'] = summary
             
         self.simulation_input = None
         self.fit_input = None
@@ -68,6 +65,7 @@ class Analysis():
             # find correspsonding Eth_src
             self.Eth_src = get_Eth_src(self.Eth_sim, self.data.source.distance)
 
+        # Set up integral tables
         params = self.data.detector.params
         varpi = self.data.source.unit_vector
         self.tables = ExposureIntegralTable(varpi = varpi, params = params)
@@ -225,7 +223,6 @@ class Analysis():
             # find lower energy threshold for the simulation, given Eth and Eerr
             if Eth_sim:
                 self.Eth_sim = Eth_sim
-            print('simulating down to', self.Eth_sim, 'EeV...')
 
             
         # compile inputs from Model and Data
@@ -268,20 +265,17 @@ class Analysis():
                 self.simulation_input['flux'] = np.zeros(self.data.source.N)
         except:
             self.simulation_input['flux'] = np.zeros(self.data.source.N)
-            print('No flux weights used in simulation.')
         
         # run simulation
-        print('running stan simulation...')
+        print('Running stan simulation...')
         self.simulation = self.model.simulation.sampling(data = self.simulation_input, iter = 1,
                                                          chains = 1, algorithm = "Fixed_param", seed = seed)
 
-        print('done')
-
         # extract output
-        print('extracting output...')
+        print('Extracting output...')
         self.Nex_sim = self.simulation.extract(['Nex_sim'])['Nex_sim']
         arrival_direction = self.simulation.extract(['arrival_direction'])['arrival_direction'][0]
-        self.labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
+        self.source_labels = (self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
     
         if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
             
@@ -290,23 +284,20 @@ class Analysis():
             self.E = self.simulation.extract(['E'])['E'][0]
 
             # make cut on Eth
-            print('making cut at Eth =', self.model.Eth, 'EeV...')
             inds = np.where(self.Edet >= self.model.Eth)
             self.Edet = self.Edet[inds]
             arrival_direction = arrival_direction[inds]
             self.labels = self.labels[inds]
-            print(len(arrival_direction), 'events above', self.model.Eth, 'EeV...')
         
         # convert to Direction object
         self.arrival_direction = Direction(arrival_direction)
         self.N = len(self.arrival_direction.unit_vector)
-        print('done')
 
         
         # simulate the zenith angles
-        print('simulating zenith angles...')
+        print('Simulating zenith angles...')
         self.zenith_angles = self._simulate_zenith_angles()
-        print('done')
+        print('Done!')
 
         # Make uhecr object
         uhecr_properties = {}
@@ -396,14 +387,14 @@ class Analysis():
                 self.model.save(model_handle)
                 
             
-    def plot_simulation(self, type = None, cmap = None):
+    def plot(self, type = None, cmap = None):
         """
-        Plot the simulated data.
+        Plot the data associated with the analysis object.
         
         type == 'arrival direction':
         Plot the arrival directions on a skymap, 
         with a colour scale describing which source 
-        the UHECR is from (background in black).
+        the UHECR is from.
 
         type == 'energy'
         Plot the simulated energy spectrum from the 
@@ -419,59 +410,38 @@ class Analysis():
 
             # plot style
             if cmap == None:
-                style = PlotStyle()
-            else:
-                style = PlotStyle(cmap_name = cmap)
-            
+                cmap = plt.cm.get_cmap('viridis')
+                
             # figure
-            fig = plt.figure(figsize = (12, 6));
-            ax = plt.gca()
+            fig, ax = plt.subplots();
+            fig.set_size_inches((12, 6))
 
             # skymap
             skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0);
 
             self.data.source.plot(style, skymap)
             self.data.detector.draw_exposure_lim(skymap)
-       
-            Ns = self.data.source.N
-            cmap = plt.cm.get_cmap('plasma', Ns + 2) 
-            label = True
-
-            try:
-                self.lables = self.labels
-            except:
-                self.labels = np.ones(len(self.arrival_direction.lons))
-
-            for lon, lat, lab in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats, self.labels]):
-                color = cmap(lab)
-                if label:
-                    skymap.tissot(lon, lat, 4.0, npts = 30, facecolor = color,
-                                  alpha = 0.5, label = 'simulated data')
-                    label = False
-                else:
-                    skymap.tissot(lon, lat, 4.0, npts = 30, facecolor = color, alpha = 0.5)
-
-            # standard labels and background
-            skymap.draw_standard_labels(style.cmap, style.textcolor)
+            self.data.uhecr.plot(style, skymap, source_labels = self.labels)
+        
+           # standard labels and background
+            skymap.draw_standard_labels()
 
             # legend
-            plt.legend(bbox_to_anchor = (0.85, 0.85))
-            leg = ax.get_legend()
-            frame = leg.get_frame()
-            frame.set_linewidth(0)
-            frame.set_facecolor('None')
-            for text in leg.get_texts():
-                plt.setp(text, color = style.textcolor)
+            ax.legend(frameon = False, bbox_to_anchor = (0.85, 0.85))
 
         if type == 'energy':
 
             bins = np.logspace(np.log(self.model.Eth), np.log(1e4), base = np.e)
-            plt.hist(self.E, bins = bins, alpha = 0.7, label = 'source')
-            plt.hist(self.Earr, bins = bins, alpha = 0.7, label = 'arrival')
-            plt.hist(self.Edet, bins = bins, alpha = 0.7, label = 'detection')
-            plt.xscale('log')
-            plt.yscale('log')
-            plt.legend()
+
+            fig, ax = plt.subplots()
+            
+            ax.hist(self.E, bins = bins, alpha = 0.7, label = r'$\tilde{E}$', color = cmap(0.0))
+            ax.hist(self.Earr, bins = bins, alpha = 0.7, label = r'$E$', color = cmap(0.5))
+            ax.hist(self.Edet, bins = bins, alpha = 0.7, label = r'$\hat{E}$', color = cmap(1))
+
+            ax.set_xscale('log')
+            ax_set.yscale('log')
+            ax.legend(frameon = False)
     
 
                 
@@ -651,151 +621,4 @@ class Analysis():
             print('Error: no fit to save')
         
         
-    def ppc(self, seed = None):
-        """
-        Run a posterior predictive check.
-        Use the fit parameters to simulate a dataset.
-        Meant to be a quick check having just run a fit.
-        """
-
-        if self.analysis_type == 'arrival direction':
-            print('No PPC implemented for arrival direction only analysis :( ')
-
-        if self.analysis_type == 'joint':
-
-            # extract fitted parameters
-            chain = self.fit.extract(permuted = True)
-            self.B_fit = np.mean(chain['B'])
-            self.alpha_fit = np.mean(chain['alpha'])
-            self.F0_fit = np.mean(chain['F0'])
-            self.L_fit = np.mean(np.transpose(chain['L']), axis = 1)
-        
-            # calculate eps integral
-            print('precomputing exposure integrals...')
-            self.Eex = get_Eex(self.Eth_src, self.alpha_fit)
-            self.kappa_ex = get_kappa_ex(self.Eex, self.B_fit, self.data.source.distance)        
-            kappa_true = self.kappa_ex
-            varpi = self.data.source.unit_vector
-            params = self.data.detector.params
-            self.ppc_table = ExposureIntegralTable(varpi = varpi, params = params)
-            self.ppc_table.build_for_sim(kappa, self.alpha_fit, self.B_fit, self.data.source.distance)
-            
-            eps = self.ppc_table.sim_table
-
-            # convert scale for sampling
-            D = self.data.source.distance
-            alpha_T = self.data.detector.alpha_T
-            L = self.model.L
-            F0 = self.model.F0
-            D, alpha_T, eps, F0, L = convert_scale(D, alpha_T, eps, F0, L)
-            
-            # compile inputs from Model, Data and self.fit
-            self.ppc_input = {
-                'kappa_c' : self.data.detector.kappa_c,
-                'Ns' : self.data.source.N,
-                'varpi' : self.data.source.unit_vector,
-                'D' : D,
-                'A' : self.data.detector.area,
-                'a0' : self.data.detector.location.lat.rad,
-                'theta_m' : self.data.detector.threshold_zenith_angle.rad,
-                'alpha_T' : alpha_T,
-                'eps' : eps}
-
-            self.ppc_input['B'] = self.B_fit
-            self.ppc_input['L'] = self.L_fit
-            self.ppc_input['F0'] = self.F0_fit
-            self.ppc_input['alpha'] = self.alpha_fit
-            
-            self.ppc_input['Eth'] = self.model.Eth
-            self.ppc_input['Eerr'] = self.data.detector.energy_uncertainty
-
-            # run simulation
-            print('running posterior predictive simulation...')
-            self.posterior_predictive = self.model.simulation.sampling(data = self.ppc_input, iter = 1,
-                                                                       chains = 1, algorithm = "Fixed_param", seed = seed)
-            print('done')
-
-            # extract output
-            print('extracting output...')
-            arrival_direction = self.posterior_predictive.extract(['arrival_direction'])['arrival_direction'][0]
-            self.arrival_direction_pred = Direction(arrival_direction)
-            self.Edet_pred = self.posterior_predictive.extract(['Edet'])['Edet'][0]
-            print('done')
-
-        return self.arrival_direction_pred, self.Edet_pred
-        
-    def plot_ppc(self, ppc_type = None, cmap = None, use_sim_data = False):
-        """
-        Plot the posterior predictive check against the data 
-        (or original simulation) for ppc_type == 'arrival direction' 
-        or ppc_type == 'energy'.
-        """
-
-        if ppc_type == None:
-            ppc_type = 'arrival direction'
-
-        if ppc_type == 'arrival direction':
-
-            # plot style
-            if cmap == None:
-                style = PlotStyle()
-            else:
-                style = PlotStyle(cmap_name = cmap)
-            
-            # figure
-            fig = plt.figure(figsize = (12, 6));
-            ax = plt.gca()
-
-            # skymap
-            skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0);
-
-            self.data.source.plot(style, skymap)
-            self.data.detector.draw_exposure_lim(skymap)
-       
-            label = True
-            if use_sim_data:
-                for lon, lat in np.nditer([self.arrival_direction.lons, self.arrival_direction.lats]):
-                    if label:
-                        skymap.tissot(lon, lat, 4.0, npts = 30, alpha = 0.5, label = 'data')
-                        label = False
-                    else:
-                        skymap.tissot(lon, lat, 4.0, npts = 30, alpha = 0.5)
-            else:
-                for lon, lat in np.nditer([self.data.uhecr.coord.galactic.l.deg, self.data.uhecr.coord.galactic.b.deg]):
-                    if label:
-                        skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, alpha = 0.5, label = 'data')
-                        label = False
-                    else:
-                        skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, alpha = 0.5)
-                
-            label = True
-            for lon, lat in np.nditer([self.arrival_direction_pred.lons, self.arrival_direction_pred.lats]):
-                if label: 
-                    skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, alpha = 0.5,
-                                  color = 'g', label = 'predicted')
-                    label = False
-                else:
-                    skymap.tissot(lon, lat, self.data.uhecr.coord_uncertainty, npts = 30, alpha = 0.5, color = 'g')
-
-            # standard labels and background
-            skymap.draw_standard_labels(style.cmap, style.textcolor)
-
-            # legend
-            plt.legend(bbox_to_anchor = (0.85, 0.85))
-            leg = ax.get_legend()
-            frame = leg.get_frame()
-            frame.set_linewidth(0)
-            frame.set_facecolor('None')
-            for text in leg.get_texts():
-                plt.setp(text, color = style.textcolor)
-
-        if ppc_type == 'energy':
-
-            bins = np.logspace(np.log(self.model.Eth), np.log(1e4), base = np.e)
-            plt.hist(self.Edet, bins = bins, alpha = 0.7, label = 'data')
-            plt.hist(self.Edet_pred, bins = bins, alpha = 0.7, label = 'predicted')
-            plt.xscale('log')
-            plt.yscale('log')
-            plt.legend()
-
-    
+   

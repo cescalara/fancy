@@ -263,7 +263,7 @@ class AllSkyMap(Basemap):
         return lines
 
 
-    def draw_standard_labels(self, cmap, textcolor):
+    def draw_standard_labels(self):
         """
         Add the standard labels for parallels and meridians to the map
         """

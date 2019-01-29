@@ -94,9 +94,7 @@ class Detector():
 
         # define the style
         if cmap == None:
-            style = PlotStyle(cmap_name = 'macplus')
-        else:
-            style = PlotStyle(cmap_name = cmap)
+            cmap = plt.cm.get_cmap('viridis')
             
         # default is skymap
         if view == None:
@@ -110,9 +108,9 @@ class Detector():
         if view == self._view_options[0]:
 
             # figure
-            fig = plt.figure(figsize = (12, 6))
-            ax = plt.gca()
-            
+            fig, ax = plt.subplots()
+            fig.set_size_inches((12, 6))
+    
             # skymap
             skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0)
 
@@ -121,7 +119,6 @@ class Detector():
             rightascensions = np.linspace(-np.pi, np.pi, self.num_points)
             declinations = self.declination
             
-            cmap = style.cmap
             norm_proj = matplotlib.colors.Normalize(self.exposure_factor.min(),
                                                     self.exposure_factor.max())
 
@@ -140,7 +137,7 @@ class Detector():
             self.draw_exposure_lim(skymap)
             
             # add labels
-            skymap.draw_standard_labels(style.cmap, style.textcolor)
+            skymap.draw_standard_labels()
 
             # add colorbar
             self._exposure_colorbar(style)
@@ -150,14 +147,14 @@ class Detector():
 
             # plot for all decs
  
-            plt.figure()
-            plt.plot(self.declination, self.exposure_factor, linewidth = 5, alpha = 0.7)
-            plt.xlabel('$\delta$');
-            plt.ylabel('m($\delta$)');
+            fig, ax = plt.subplots()
+            ax.plot(self.declination, self.exposure_factor, linewidth = 5, alpha = 0.7)
+            ax.set_xlabel('$\delta$');
+            ax.set_ylabel('m($\delta$)');
 
 
         if save:
-            plt.savefig(savename, dpi = 1000,
+            fig.savefig(savename, dpi = 1000,
                     bbox_inches = 'tight', pad_inches = 0.5)
       
             
@@ -209,9 +206,9 @@ class Detector():
         lon = c.galactic.l.deg
         lat = c.galactic.b.deg
 
-        skymap.scatter(lon, lat, latlon = True, s = 10, 
-                       color = 'k', alpha = 0.1,
-                       label = 'limit of ' + self.label + '\'s exposure')
+        skymap.scatter(lon, lat, latlon = True, s = 8, 
+                       color = 'grey', alpha = 1,
+                       label = 'Limit of ' + self.label + '\'s exposure', zorder = 1)
 
             
 class Angle():
