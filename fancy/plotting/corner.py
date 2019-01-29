@@ -1,6 +1,8 @@
+import numpy as np
 from matplotlib import pyplot as plt
 import seaborn as sns
 
+from .HPD_regions import plot_HPD_levels
 from .colours import purple
 
 __all__  = ['Corner']
@@ -11,7 +13,7 @@ class Corner():
     Simple corner plotting.
     """
 
-    def __init__(self, data_frame, truth, color = purple):
+    def __init__(self, data_frame, truth, color = purple, levels = [0.99, 0.9, 0.6, 0.3]):
         """
         Simple corner plotting.
         
@@ -20,7 +22,7 @@ class Corner():
         :param color: colour of plots
         """
         
-        pairgrid = sns.PairGrid(df, diag_sharey = False, despine = False)
+        pairgrid = sns.PairGrid(data_frame, diag_sharey = False, despine = False)
 
         # Lower triangle only
         for i, j in zip(*np.triu_indices_from(pairgrid.axes, 1)):
@@ -28,7 +30,7 @@ class Corner():
     
         # KDE plots
         pairgrid = pairgrid.map_diag(sns.kdeplot, color = purple, shade = True, lw = 2, zorder = 2)
-        pairgrid = g.map_offdiag(plot_HPD_levels, color = purple, shade = True, lw = 3)
+        pairgrid = pairgrid.map_offdiag(plot_HPD_levels, color = purple, shade = True, levels = levels)
 
         # truths
         N = len(truth)
@@ -38,15 +40,15 @@ class Corner():
             for k in range(N):
                 if i != k:
                     pairgrid.axes[i, k].axhline(t, lw = 2, color = 'k', zorder = 5, alpha = 0.7)
+                    pairgrid.axes[i, k].spines['right'].set_visible(True)
+                    pairgrid.axes[i, k].spines['top'].set_visible(True) 
                 else:
                     sns.despine(ax = pairgrid.axes[i, k])
 
         # Tidy axes
-        sns.despine(ax = pairgrid.axes[0, 0], left = True)
         pairgrid.axes[0, 0].get_yaxis().set_visible(False)
         plt.subplots_adjust(hspace=0.05, wspace=0.055)
 
-        return pairgrid
 
     
     def save(self, filename):
