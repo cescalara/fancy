@@ -287,7 +287,7 @@ class Analysis():
             inds = np.where(self.Edet >= self.model.Eth)
             self.Edet = self.Edet[inds]
             arrival_direction = arrival_direction[inds]
-            self.labels = self.labels[inds]
+            self.source_labels = self.source_labels[inds]
         
         # convert to Direction object
         self.arrival_direction = Direction(arrival_direction)
@@ -421,7 +421,7 @@ class Analysis():
 
             self.data.source.plot(style, skymap)
             self.data.detector.draw_exposure_lim(skymap)
-            self.data.uhecr.plot(style, skymap, source_labels = self.labels)
+            self.data.uhecr.plot(style, skymap, source_labels = self.source_labels)
         
            # standard labels and background
             skymap.draw_standard_labels()
