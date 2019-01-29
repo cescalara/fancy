@@ -65,7 +65,7 @@ class Model():
         self.F0 = F0
         self.alpha = alpha
         self.Eth = Eth
-        
+        self.Eth_sim = None # To be set by Analysis
 
     def _get_properties(self):
         """
@@ -82,7 +82,8 @@ class Model():
         self.properties['F0'] = self.F0
         self.properties['alpha'] = self.alpha
         self.properties['Eth'] = self.Eth
-
+        self.properties['Eth_sim'] = self.Eth_sim
+        
         self.properties['sim_filename'] = self.sim_filename
         self.properties['model_filename'] = self.model_filename
         self.properties['include_paths'] = self.include_paths

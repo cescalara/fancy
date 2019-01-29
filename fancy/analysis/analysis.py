@@ -66,7 +66,7 @@ class Analysis():
         if self.analysis_type == 'joint':
 
             # find lower energy threshold for the simulation, given Eth and Eerr
-            self.Eth_sim = get_Eth_sim(self.data.detector.energy_uncertainty, self.model.Eth)
+            self.model.Eth_sim = get_Eth_sim(self.data.detector.energy_uncertainty, self.model.Eth)
 
             # find correspsonding Eth_src
             self.Eth_src = get_Eth_src(self.Eth_sim, self.data.source.distance)
@@ -600,7 +600,7 @@ class Analysis():
                                              sample_file = sample_file, warmup = warmup)
 
         # Diagnositics
-        stan_utility.utils.check_all_diagnostics()
+        stan_utility.utils.check_all_diagnostics(self.fit)
         
         self.chain = self.fit.extract(permuted = True)
         return self.fit
