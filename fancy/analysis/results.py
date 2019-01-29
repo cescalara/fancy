@@ -8,7 +8,6 @@ import stan_utility
 from ..interfaces.stan import Direction
 from ..interfaces.integration import ExposureIntegralTable
 from ..propagation.energy_loss import get_Eth_src, get_Eex, get_kappa_ex, get_Eth_sim
-from ..utils import PlotStyle
 from ..plotting import AllSkyMap
 
 __all__ = ['Results', 'PPC']
@@ -262,10 +261,8 @@ class PPC():
 
             # plot style
             if cmap == None:
-                style = PlotStyle()
-            else:
-                style = PlotStyle(cmap_name = cmap)
-            
+                cmap = plt.cm.get_cmap('viridis')
+                
             # figure
             fig, ax = plt.subplots(N_rows, N_cols, figsize = (5 * N_rows, 4 * N_cols))
             flat_ax = ax.reshape(-1)

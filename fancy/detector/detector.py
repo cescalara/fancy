@@ -7,7 +7,6 @@ from scipy import integrate
 
 from .exposure import *
 from ..plotting import AllSkyMap
-from ..utils import PlotStyle, Solarized
 
 __all__ = ['Detector', 'Angle']
 
@@ -140,7 +139,7 @@ class Detector():
             skymap.draw_standard_labels()
 
             # add colorbar
-            self._exposure_colorbar(style)
+            self._exposure_colorbar(cmap)
 
         # decplot
         elif view == self._view_options[1]:
@@ -171,9 +170,11 @@ class Detector():
             file_handle.create_dataset(key, data = value)
       
             
-    def _exposure_colorbar(self, style):
+    def _exposure_colorbar(self, cmap):
         """
         Plot a colorbar for the exposure map
+        
+        :param cmap: matplotlib cmap object
         """
             
         cb_ax = plt.axes([0.25, 0, .5, .03], frameon = False)  
@@ -183,11 +184,11 @@ class Detector():
         norm_proj = matplotlib.colors.Normalize(self.exposure_factor.min(),
                                                 self.exposure_factor.max())
     
-        bar = matplotlib.colorbar.ColorbarBase(cb_ax, values = vals, norm = norm_proj, cmap = style.cmap, 
+        bar = matplotlib.colorbar.ColorbarBase(cb_ax, values = vals, norm = norm_proj, cmap = cmap, 
                                                orientation = 'horizontal', drawedges = False, alpha = 1)
 
         bar.ax.get_children()[1].set_linewidth(0)
-        bar.set_label('Relative exposure', color = style.textcolor)
+        bar.set_label('Relative exposure')
         
 
     def draw_exposure_lim(self, skymap):

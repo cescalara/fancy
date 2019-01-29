@@ -441,9 +441,9 @@ class Analysis():
 
             fig, ax = plt.subplots()
 
-            if self.E:
+            if isinstance(self.E, (list, np.ndarray)):
                 ax.hist(self.E, bins = bins, alpha = 0.7, label = r'$\tilde{E}$', color = cmap(0.0))
-            if self.Earr:
+            if isinstance(self.Earr, (list, np.ndarray)):
                 ax.hist(self.Earr, bins = bins, alpha = 0.7, label = r'$E$', color = cmap(0.5))
 
             ax.hist(self.data.uhecr.energy, bins = bins, alpha = 0.7, label = r'$\hat{E}$', color = cmap(1))

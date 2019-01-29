@@ -103,7 +103,7 @@ class Data():
         bar = matplotlib.colorbar.ColorbarBase(cb_ax, values = vals, norm = norm_E, cmap = cmap, 
                                                orientation = 'horizontal', drawedges = False, alpha = 1)
         bar.ax.get_children()[1].set_linewidth(0)
-        bar.set_label('UHECR Energy [EeV]', color = style.textcolor)
+        bar.set_label('UHECR Energy [EeV]')
 
         
     def show(self, save = False, savename = None, cmap = None):
@@ -142,7 +142,7 @@ class Data():
         skymap.draw_standard_labels()
     
         # legend
-        plt.legend(frameon = False, bbox_to_anchor=(0.85, 0.85))
+        ax.legend(frameon = False, bbox_to_anchor=(0.85, 0.85))
         
         # add a colorbar if uhecr objects plotted
         if self.uhecr and self.uhecr.N != 1:
