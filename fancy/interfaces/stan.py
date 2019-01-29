@@ -9,6 +9,9 @@ import stan_utility
 __all__ = ['Model', 'Direction', 'uv_to_coord', 'coord_to_uv']
         
 
+Mpc_to_km = 3.086E19
+
+
 class Model():
     """
     Simple wrapper for models defined in Stan.
@@ -217,3 +220,27 @@ def convert_scale(D, alpha_T, eps, F0 = None, L = None, to_stan = True):
 
         return D, alpha_T, eps
 
+    
+def get_simulation_input(Nsim, f, D, M, alpha_T):
+    """
+    For a given associated fraction and 
+    detector exposure, find the background flux and 
+    source luminosity as input to the simulation.
+    
+    :param Nsim: N simulated, ignoring exposure effects.
+    :param f: Associated fraction.
+    :param D: List of distances to sources [Mpc].
+    :param M: Integral over the angular exposure [sr].
+    :param alpha_T: Total exposure [km^2 sr yr].
+    """
+
+    FT = (Nsim * M) / alpha_T # km^-2 yr^-1
+    Fs = f * FT
+    F0 = (1 - f) * FT
+    
+    # Assume equal luminosities    
+    L = ( Fs / (sum([1 / (4 * np.pi * (d * Mpc_to_km)**2) for d in D])) ) 
+    L = np.tile(L, len(D)) # yr^-1
+    
+    return L, F0
+    

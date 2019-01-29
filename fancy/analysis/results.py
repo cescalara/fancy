@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 import stan_utility
 
-from ..interfaces.stan import Direction
+from ..interfaces.stan import Direction, Mpc_to_km
 from ..interfaces.integration import ExposureIntegralTable
 from ..propagation.energy_loss import get_Eth_src, get_Eex, get_kappa_ex, get_Eth_sim
 from ..plotting import AllSkyMap
@@ -54,8 +54,24 @@ class Results():
             try:
                 model = f['model']
                 for key in list_of_keys:
-                    truths[key] = sim_input[key].value
 
+                    if key == 'f':
+
+                        # reconstruct from other info
+                        F0 = model['F0'].value
+                        L = model['L'].value
+                        D = f['source/distance'].value
+                        D = [d * Mpc_to_km for d in D]
+
+                        Fs = sum([(l / (4 * np.pi * d**2))for l, d in zip(L, D)])
+                        f = Fs / (Fs + F0)    
+                        truths['f'] = f
+                        
+                    else:
+                        
+                        truths[key] = model[key].value
+
+                    
             except:
                 print('Error: file does not contain simulation inputs.')
         return truths

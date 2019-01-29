@@ -122,34 +122,6 @@ def constant_val(kappa):
     else:
         return kappa / (4 * np.pi * np.sinh(kappa))
 
-
-def get_simulation_input(Nsim, f, D, M, alpha_T):
-    """
-    For a given associated fraction and 
-    detector exposure, find the background flux and 
-    source luminosity as input to the simulation.
-    
-    :param Nsim: N simulated, ignoring exposure effects.
-    :param f: Associated fraction.
-    :param D: List of distances to sources [Mpc].
-    :param M: Integral over the angular exposure [sr].
-    :param alpha_T: Total exposure [km^2 sr yr].
-    """
-
-    FT = (Nsim * M) / alpha_T # km^-2 yr^-1
-    Fs = f * FT
-    F0 = (1 - f) * FT
-    
-    # Assume equal luminosities
-    Mpc_to_km = 3.086E19
-    
-    L = ( Fs / (sum([1 / (4 * np.pi * (d * Mpc_to_km)**2) for d in D])) ) 
-    L = np.tile(L, len(D)) # yr^-1
-    
-    return L, F0
-    
-
-
     
 """
 Exposure as a function of declination. 
