@@ -48,6 +48,12 @@ class Analysis():
         self.simulation = None
         self.fit = None
 
+        # Simulation outputs
+        self.source_labels = None
+        self.E = None
+        self.Earr = None
+        self.Edet = None
+
         self.arr_dir_type = 'arrival direction'
         self.E_loss_type = 'energy loss'
         self.joint_type = 'joint'
@@ -419,9 +425,9 @@ class Analysis():
             # skymap
             skymap = AllSkyMap(projection = 'hammer', lon_0 = 0, lat_0 = 0);
 
-            self.data.source.plot(style, skymap)
+            self.data.source.plot(skymap)
             self.data.detector.draw_exposure_lim(skymap)
-            self.data.uhecr.plot(style, skymap, source_labels = self.source_labels)
+            self.data.uhecr.plot(skymap, source_labels = self.source_labels)
         
            # standard labels and background
             skymap.draw_standard_labels()
@@ -434,10 +440,13 @@ class Analysis():
             bins = np.logspace(np.log(self.model.Eth), np.log(1e4), base = np.e)
 
             fig, ax = plt.subplots()
-            
-            ax.hist(self.E, bins = bins, alpha = 0.7, label = r'$\tilde{E}$', color = cmap(0.0))
-            ax.hist(self.Earr, bins = bins, alpha = 0.7, label = r'$E$', color = cmap(0.5))
-            ax.hist(self.Edet, bins = bins, alpha = 0.7, label = r'$\hat{E}$', color = cmap(1))
+
+            if self.E:
+                ax.hist(self.E, bins = bins, alpha = 0.7, label = r'$\tilde{E}$', color = cmap(0.0))
+            if self.Earr:
+                ax.hist(self.Earr, bins = bins, alpha = 0.7, label = r'$E$', color = cmap(0.5))
+
+            ax.hist(self.data.uhecr.energy, bins = bins, alpha = 0.7, label = r'$\hat{E}$', color = cmap(1))
 
             ax.set_xscale('log')
             ax_set.yscale('log')
