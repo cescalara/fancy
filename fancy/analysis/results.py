@@ -35,9 +35,9 @@ class Results():
 
         chain = {}
         with h5py.File(self.filename, 'r') as f:
-            fit_output = f['output/fit/samples']
+            samples = f['fit/samples']
             for key in list_of_keys:
-                chain[key] = fit_output[key].value
+                chain[key] = samples[key].value
 
         return chain
 
@@ -52,7 +52,7 @@ class Results():
         with h5py.File(self.filename, 'r') as f:
 
             try:
-                sim_input = f['input/simulation']
+                model = f['model']
                 for key in list_of_keys:
                     truths[key] = sim_input[key].value
 

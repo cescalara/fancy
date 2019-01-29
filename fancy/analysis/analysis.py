@@ -69,7 +69,7 @@ class Analysis():
             self.model.Eth_sim = get_Eth_sim(self.data.detector.energy_uncertainty, self.model.Eth)
 
             # find correspsonding Eth_src
-            self.Eth_src = get_Eth_src(self.Eth_sim, self.data.source.distance)
+            self.Eth_src = get_Eth_src(self.model.Eth_sim, self.data.source.distance)
 
         # Set up integral tables
         params = self.data.detector.params
@@ -228,7 +228,7 @@ class Analysis():
         if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
             # find lower energy threshold for the simulation, given Eth and Eerr
             if Eth_sim:
-                self.Eth_sim = Eth_sim
+                self.model.Eth_sim = Eth_sim
 
             
         # compile inputs from Model and Data
@@ -254,14 +254,14 @@ class Analysis():
         if self.analysis_type == self.E_loss_type:
 
             self.simulation_input['alpha'] = self.model.alpha
-            self.simulation_input['Eth'] = self.Eth_sim
+            self.simulation_input['Eth'] = self.model.Eth_sim
             self.simulation_input['Eerr'] = self.data.detector.energy_uncertainty
             
         if self.analysis_type == self.joint_type:
             
             self.simulation_input['B'] = self.model.B    
             self.simulation_input['alpha'] = self.model.alpha
-            self.simulation_input['Eth'] = self.Eth_sim
+            self.simulation_input['Eth'] = self.model.Eth_sim
             self.simulation_input['Eerr'] = self.data.detector.energy_uncertainty
 
         try:
@@ -455,9 +455,9 @@ class Analysis():
             if isinstance(self.E, (list, np.ndarray)):
                 ax.hist(self.E, bins = bins, alpha = 0.7, label = r'$\tilde{E}$', color = cmap(0.0))
             if isinstance(self.Earr, (list, np.ndarray)):
-                ax.hist(self.Earr, bins = bins, alpha = 0.7, label = r'$E$', color = cmap(0.5 * cmap.N))
+                ax.hist(self.Earr, bins = bins, alpha = 0.7, label = r'$E$', color = cmap(0.5))
 
-            ax.hist(self.data.uhecr.energy, bins = bins, alpha = 0.7, label = r'$\hat{E}$', color = cmap(0.9 * cmap.N))
+            ax.hist(self.data.uhecr.energy, bins = bins, alpha = 0.7, label = r'$\hat{E}$', color = cmap(1.0))
 
             ax.set_xscale('log')
             ax.set_yscale('log')
