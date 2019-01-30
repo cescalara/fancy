@@ -262,19 +262,49 @@ class AllSkyMap(Basemap):
                     line.set_color(c1)
         return lines
 
-
-    def draw_standard_labels(self):
+    
+    def draw_border(self, s = 2):
         """
-        Add the standard labels for parallels and meridians to the map
+        Hacky fix as seems to be a problem with drawmapboundary.
+        """
+        
+        border_lats = np.linspace(-90, 90, 1000)
+        border_left_lons = np.tile(180, 1000)
+        border_right_lons = np.tile(180.1, 1000)
+
+        self.scatter(border_left_lons, border_lats, latlon = True, s = s,
+                       color = 'k', alpha = 1, zorder = 3)
+        self.scatter(border_right_lons, border_lats, latlon = True, s = s,
+               color = 'k', alpha = 1, zorder = 3)
+        
+    
+    def draw_standard_labels(self, minimal = False, fontsize = 14):
+        """
+        Add the standard labels for parallels and meridians to the map.
+        
+        :param minimal: If True, draw less dense label grid.
         """
 
         patch = self.drawmapboundary(fill_color = 'w', linewidth = 2, color = None)
-        self.drawparallels(np.arange(-75, 76, 15), linewidth = 1, dashes = [2,4], latmax = 90,
-                             labels = [1, 0, 0, 0], textcolor = 'k', fontsize = 14);
-        self.drawmeridians(np.arange(-150, 151, 60), linewidth = 1, dashes = [2,4], latmax = 90, alpha = 0.5);
-        lons = np.arange(-150, 151, 60)
-        self.label_meridians(lons, fontsize = 14, vnudge = 1,
-                               halign = 'left', hnudge = -1, color = 'k')  
+
+
+        if minimal:
+
+            self.drawparallels(np.arange(-60, 61, 30), linewidth = 1, dashes = [2,4], latmax = 90,
+                                 labels = [1, 0, 0, 0], textcolor = 'k', fontsize = fontsize);
+            self.drawmeridians(np.arange(-150, 151, 60), linewidth = 1, dashes = [2,4], latmax = 90, alpha = 0.5);
+            lons = np.arange(-150, 151, 60)
+            self.label_meridians(lons, fontsize = fontsize, vnudge = 1,
+                                   halign = 'left', hnudge = -3, color = 'k')
+            
+        else:
+            
+            self.drawparallels(np.arange(-75, 76, 15), linewidth = 1, dashes = [2,4], latmax = 90,
+                               labels = [1, 0, 0, 0], textcolor = 'k', fontsize = fontsize);
+            self.drawmeridians(np.arange(-150, 151, 60), linewidth = 1, dashes = [2,4], latmax = 90, alpha = 0.5);
+            lons = np.arange(-150, 151, 60)
+            self.label_meridians(lons, fontsize = fontsize, vnudge = 1,
+                                 halign = 'left', hnudge = -1, color = 'k')  
 
 
     def tissot(self, lon_0, lat_0, radius_deg, npts, ax = None, **kwargs):
@@ -297,9 +327,9 @@ class AllSkyMap(Basemap):
         """
 
         # only use modified version if we are in a critical region
-        if (    (    (self.east_hem(lon_0) and self.east_hem(lon_0 + radius_deg+5))
-                     or (not self.east_hem(lon_0) and not self.east_hem(lon_0-radius_deg-5))    )
-                and abs(lat_0) + radius_deg <90    ):
+        if (    (    (self.east_hem(lon_0) and self.east_hem(lon_0 + radius_deg + 7))
+                     or (not self.east_hem(lon_0) and not self.east_hem(lon_0 - radius_deg - 7))    )
+                and abs(lat_0) + radius_deg < 90    ):
             
             return Basemap.tissot(self, lon_0, lat_0, radius_deg, npts, ax = None, **kwargs)
 
