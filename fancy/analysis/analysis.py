@@ -273,7 +273,7 @@ class Analysis():
             self.simulation_input['flux'] = np.zeros(self.data.source.N)
         
         # run simulation
-        print('Running stan simulation...')
+        print('Running Stan simulation...')
         self.simulation = self.model.simulation.sampling(data = self.simulation_input, iter = 1,
                                                          chains = 1, algorithm = "Fixed_param", seed = seed)
 
