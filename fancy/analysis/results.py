@@ -201,7 +201,7 @@ class PPC():
             
             # compile inputs 
             self.ppc_input = {
-                'kappa_c' : input_data['kappa_c'],
+                'kappa_d' : input_data['kappa_d'],
                 'Ns' : input_data['Ns'],
                 'varpi' : input_data['varpi'],
                 'D' : input_data['D'],

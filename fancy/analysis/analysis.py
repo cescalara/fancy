@@ -233,7 +233,7 @@ class Analysis():
             
         # compile inputs from Model and Data
         self.simulation_input = {
-            'kappa_c' : self.data.detector.kappa_c, 
+            'kappa_d' : self.data.detector.kappa_d, 
             'Ns' : len(self.data.source.distance),
             'varpi' : self.data.source.unit_vector, 
             'D' : D,
@@ -350,7 +350,7 @@ class Analysis():
                           'N' : self.data.uhecr.N, 
                           'arrival_direction' : self.data.uhecr.unit_vector, 
                           'A' : self.data.uhecr.A,
-                          'kappa_c' : self.data.detector.kappa_c,
+                          'kappa_d' : self.data.detector.kappa_d,
                           'alpha_T' : alpha_T, 
                           'Ngrid' : len(kappa_grid), 
                           'eps' : eps_fit, 
@@ -499,7 +499,7 @@ class Analysis():
                           'N' : self.data.uhecr.N,
                           'arrival_direction' : self.data.uhecr.unit_vector,
                           'A' : self.data.uhecr.A,
-                          'kappa_c' : self.data.detector.kappa_c,
+                          'kappa_d' : self.data.detector.kappa_d,
                           'alpha_T' : alpha_T,
                           'Ngrid' : len(kappa_grid),
                           'eps' : eps_fit,
@@ -560,7 +560,7 @@ class Analysis():
                           'N' : self.N,
                           'arrival_direction' : self.arrival_direction.unit_vector,
                           'A' : np.tile(self.data.detector.area, self.N),
-                          'kappa_c' : self.data.detector.kappa_c,
+                          'kappa_d' : self.data.detector.kappa_d,
                           'alpha_T' : alpha_T,
                           'Ngrid' : len(kappa_grid),
                           'eps' : eps_fit,

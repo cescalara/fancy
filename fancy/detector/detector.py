@@ -38,8 +38,8 @@ class Detector():
         self._view_options = ['map', 'decplot']
 
         # See Equation 9 in Capel & Mortlock (2019)
-        self.kappa_c = detector_properties['kappa_c']
-        self.coord_uncertainty = np.sqrt(7552.0 / self.kappa_c)
+        self.kappa_d = detector_properties['kappa_d']
+        self.coord_uncertainty = np.sqrt(7552.0 / self.kappa_d)
 
         self.energy_uncertainty = detector_properties['f_E']
         

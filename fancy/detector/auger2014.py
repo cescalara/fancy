@@ -84,7 +84,7 @@ A4_incl = alpha_T_4_incl / (M * deltat4)
 A = alpha_T / (M * deltat)
 
 # reconstruction uncertainty for arrival direction
-kappa_c = 9323
+kappa_d = 9323
 
 # reconstruction uncertainty for energy
 f_E = 0.12
@@ -96,7 +96,7 @@ detector_properties['lat'] = lat
 detector_properties['lon'] = lon
 detector_properties['height'] = height
 detector_properties['theta_m'] = theta_m
-detector_properties['kappa_c'] = kappa_c
+detector_properties['kappa_d'] = kappa_d
 detector_properties['f_E'] = f_E
 detector_properties['A'] = A
 detector_properties['alpha_T'] = alpha_T

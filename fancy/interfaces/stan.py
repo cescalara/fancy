@@ -56,7 +56,6 @@ class Model():
         :param f: associated fraction
         :param kappa: deflection parameter 
         :param B: rms B field strength [nG]
-        :param kappa_c: reconstruction parameter
         :param alpha: source spectral index
         :param Eth: threshold energy of study [EeV]
         """
