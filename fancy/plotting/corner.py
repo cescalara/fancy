@@ -13,7 +13,7 @@ class Corner():
     Simple corner plotting.
     """
 
-    def __init__(self, data_frame, truth, color = purple, levels = [0.99, 0.9, 0.6, 0.3]):
+    def __init__(self, data_frame, truth, color = purple, levels = [0.99, 0.9, 0.6, 0.3], fontsize = 22):
         """
         Simple corner plotting.
         
@@ -21,6 +21,12 @@ class Corner():
         :param truth: list of true values
         :param color: colour of plots
         """
+
+        # Fontsize
+        plt.rcParams['font.size'] = fontsize
+        plt.rcParams['axes.labelsize'] = fontsize
+        plt.rcParams['xtick.labelsize'] = fontsize - 2
+        plt.rcParams['ytick.labelsize'] = fontsize - 2
         
         pairgrid = sns.PairGrid(data_frame, diag_sharey = False, despine = False)
 
