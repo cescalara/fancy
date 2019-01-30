@@ -409,7 +409,7 @@ class Uhecr():
         """
 
         self.properties = None
-        
+        self.source_labels = None
 
     def from_data_file(self, filename, label):
         """
@@ -454,7 +454,10 @@ class Uhecr():
         self.properties['energy'] = self.energy
         self.properties['A'] = self.A
         self.properties['zenith_angle'] = self.zenith_angle 
-        
+
+        # Only if simulated UHECRs
+        if isinstance(self.source_labels, (list, np.ndarray)):
+            self.properties['source_labels'] = self.source_labels
     
     def from_properties(self, uhecr_properties):
         """
@@ -473,11 +476,17 @@ class Uhecr():
         self.zenith_angle = uhecr_properties['zenith_angle']
         self.A = uhecr_properties['A']
 
+        # Only if simulated UHECRs
+        try:
+            self.source_labels = uhecr_properties['source_labels']
+        except:
+            pass
+        
         # Get SkyCoord from unit_vector
         self.coord = uv_to_coord(self.unit_vector)
 
         
-    def plot(self, skymap, size = 2, source_labels = None):
+    def plot(self, skymap, size = 2):
         """
         Plot the Uhecr instance on a skymap.
 
@@ -495,16 +504,16 @@ class Uhecr():
         
         # If source labels are provided, plot with colour
         # indicating the source label.
-        if isinstance(source_labels, (list, np.ndarray)):
+        if isinstance(self.source_labels, (list, np.ndarray)):
 
-            Nc = max(source_labels)
+            Nc = max(self.source_labels)
 
             # Use a continuous cmap
             cmap = plt.cm.get_cmap('plasma', Nc) 
 
             write_label = True
             
-            for lon, lat, lab in np.nditer([lons, lats, source_labels]):
+            for lon, lat, lab in np.nditer([lons, lats, self.source_labels]):
                 color = cmap(lab)
                 if write_label:
                     skymap.tissot(lon, lat, size, npts = 30, facecolor = color,

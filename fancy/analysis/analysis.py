@@ -313,7 +313,8 @@ class Analysis():
         uhecr_properties['energy'] = self.Edet
         uhecr_properties['zenith_angle'] = self.zenith_angles
         uhecr_properties['A'] = np.tile(self.data.detector.area, self.N)       
-
+        uhecr_properties['source_labels'] = self.source_labels
+        
         new_uhecr = Uhecr()
         new_uhecr.from_properties(uhecr_properties)
         
@@ -438,7 +439,7 @@ class Analysis():
 
             self.data.source.plot(skymap)
             self.data.detector.draw_exposure_lim(skymap)
-            self.data.uhecr.plot(skymap, source_labels = self.source_labels)
+            self.data.uhecr.plot(skymap)
         
            # standard labels and background
             skymap.draw_standard_labels()
