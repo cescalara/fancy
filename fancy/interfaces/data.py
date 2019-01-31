@@ -373,8 +373,8 @@ class Source():
             self.flux = self.flux[selection]
             self.flux_weight = self.flux_weight[selection]
         except:
-            print('No fluxes to select on.')
-            
+            pass
+        
     def select_distance(self, Dth):
         """
         Select sources with distance <= Dth. 
