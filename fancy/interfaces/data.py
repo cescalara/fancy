@@ -431,7 +431,7 @@ class Uhecr():
             
             self.year = data['year'].value
             self.day = data['day'].value
-            self.zenith_angle = data['theta'].value
+            self.zenith_angle = np.deg2rad(data['theta'].value)
             self.energy = data['energy'].value
             self.N = len(self.energy)
             glon = data['glon'].value
