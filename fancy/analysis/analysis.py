@@ -4,6 +4,7 @@ from astropy.time import Time
 from astropy import units as u
 from matplotlib import pyplot as plt
 import h5py
+from tqdm.autonotebook import tqdm as progress_bar
 
 import stan_utility
 
@@ -106,20 +107,20 @@ class Analysis():
             # full table for fit
             self.tables.build_for_fit(kappa)
 
-    def build_energy_table(self, num_points = 50, input_filename = None):
+    def build_energy_table(self, num_points = 50, table_file = None):
         """
         Build the energy interpolation tables.
         """
 
         self.E_grid = np.logspace(np.log(self.model.Eth), np.log(1.0e4), num_points, base = np.e)
         self.Earr_grid = []
-        
-        for i, d in enumerate(self.data.source.distance):
-            print(i, d)
+
+        for i in progress_bar(range(len(self.data.source.distance)), desc = 'Precomputing exposure integral'):
+            d = data.source.distance[i]
             self.Earr_grid.append([get_arrival_energy(e, d)[0] for e in self.E_grid])
 
-        if input_filename:
-            with h5py.File(input_filename, 'r+') as f:
+        if table_file:
+            with h5py.File(table_file, 'r+') as f:
                 E_group = f.create_group('energy')
                 E_group.create_dataset('E_grid', data = self.E_grid)
                 E_group.create_dataset('Earr_grid', data = self.Earr_grid)
