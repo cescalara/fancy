@@ -58,7 +58,7 @@ class Corner():
             for i in range(N):
                 for j in range(N):
                     for k in range(N):
-                        if j != k:
+                        if i != k:
                             pairgrid.axes[i, k].spines['right'].set_visible(True)
                             pairgrid.axes[i, k].spines['top'].set_visible(True) 
                         else:                   
