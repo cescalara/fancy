@@ -465,65 +465,6 @@ class Analysis():
             ax.set_yscale('log')
             ax.legend(frameon = False)
     
-
-                
-    def use_uhecr_data(self):
-        """
-        Build fit inputs from the UHECR dataset.
-        """
-
-        eps_fit = self.tables.table
-        kappa_grid = self.tables.kappa
-
-        if self.analysis_type == self.joint_type:
-            E_grid = self.E_grid
-            Earr_grid = list(self.Earr_grid)
-        
-        # handle selected sources
-        if (self.data.source.N < len(eps_fit)):
-            eps_fit = [eps_fit[i] for i in self.data.source.selection]
-            if self.analysis_type == self.joint_type:
-                Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
-
-        if self.analysis_type == self.joint_type:
-            # add E interpolation for background component (possible extension with Dbg)
-            Earr_grid.append([0 for e in E_grid])
-            
-        # convert scale for sampling
-        D = self.data.source.distance
-        alpha_T = self.data.detector.alpha_T
-        D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
-                
-        print('preparing fit inputs...')
-        self.fit_input = {'Ns' : self.data.source.N,
-                          'varpi' :self.data.source.unit_vector,
-                          'D' : D,
-                          'N' : self.data.uhecr.N,
-                          'arrival_direction' : self.data.uhecr.unit_vector,
-                          'A' : self.data.uhecr.A,
-                          'kappa_d' : self.data.detector.kappa_d,
-                          'alpha_T' : alpha_T,
-                          'Ngrid' : len(kappa_grid),
-                          'eps' : eps_fit,
-                          'kappa_grid' : kappa_grid,
-                          'zenith_angle' : np.deg2rad(self.data.uhecr.zenith_angle)}
-        
-        try:
-            self.fit_input['flux'] = self.data.source.flux
-        except:
-            print('No flux weights available for sources.')
-        
-        if self.analysis_type == self.joint_type:
-
-            self.fit_input['Edet'] = self.data.uhecr.energy
-            self.fit_input['Eth'] = self.model.Eth
-            self.fit_input['Eerr'] = self.data.detector.energy_uncertainty
-            self.fit_input['E_grid'] = E_grid
-            self.fit_input['Earr_grid'] = Earr_grid
-            
-        print('done')
-
-
         
     def use_crpropa_data(self, energy, unit_vector):
         """
