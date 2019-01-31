@@ -593,7 +593,7 @@ class Uhecr():
         return area
 
                 
-    def _find_period(self, year, day):
+    def _find_period(self):
         """
         For a given year or day, find UHECR period based on dates
         in table 1 in Abreu et al. (2010) or in Collaboration et al. 2014.

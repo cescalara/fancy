@@ -116,7 +116,7 @@ class Analysis():
         self.Earr_grid = []
 
         for i in progress_bar(range(len(self.data.source.distance)), desc = 'Precomputing energy grids'):
-            d = data.source.distance[i]
+            d = self.data.source.distance[i]
             self.Earr_grid.append([get_arrival_energy(e, d)[0] for e in self.E_grid])
 
         if table_file:
