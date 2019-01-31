@@ -57,7 +57,7 @@ class Corner():
             N = np.shape(data_frame)[1]
             for j in range(N):
                 for k in range(N):
-                    if i != k:
+                    if j != k:
                         pairgrid.axes[i, k].spines['right'].set_visible(True)
                         pairgrid.axes[i, k].spines['top'].set_visible(True) 
                     else:                   
