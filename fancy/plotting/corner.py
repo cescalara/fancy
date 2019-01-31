@@ -55,13 +55,14 @@ class Corner():
         else:
 
             N = np.shape(data_frame)[1]
-            for j in range(N):
-                for k in range(N):
-                    if j != k:
-                        pairgrid.axes[i, k].spines['right'].set_visible(True)
-                        pairgrid.axes[i, k].spines['top'].set_visible(True) 
-                    else:                   
-                        sns.despine(ax = pairgrid.axes[i, k])
+            for i in range(N):
+                for j in range(N):
+                    for k in range(N):
+                        if j != k:
+                            pairgrid.axes[i, k].spines['right'].set_visible(True)
+                            pairgrid.axes[i, k].spines['top'].set_visible(True) 
+                        else:                   
+                            sns.despine(ax = pairgrid.axes[i, k])
      
         # Tidy axes
         sns.despine(ax = pairgrid.axes[0, 0], left = True)
