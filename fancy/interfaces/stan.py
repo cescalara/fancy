@@ -38,11 +38,11 @@ class Model():
         """
 
         if self.model_filename:
-            self.model = stan_utility.compile_model(filename = self.model_filename, model_name = 'sim',
+            self.model = stan_utility.compile_model(filename = self.model_filename, model_name = 'model',
                                                     include_paths = self.include_paths)
 
         if self.sim_filename:
-            self.simulation = stan_utility.compile_model(filename = self.sim_filename, model_name = 'model',
+            self.simulation = stan_utility.compile_model(filename = self.sim_filename, model_name = 'sim',
                                                          include_paths = self.include_paths)
 
             
