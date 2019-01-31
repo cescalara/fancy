@@ -35,8 +35,8 @@ class Corner():
             pairgrid.axes[i, j].set_visible(False)
     
         # KDE plots
-        pairgrid = pairgrid.map_diag(sns.kdeplot, color = purple, shade = True, lw = 2, zorder = 2)
-        pairgrid = pairgrid.map_offdiag(plot_HPD_levels, color = purple, shade = True, levels = levels)
+        pairgrid = pairgrid.map_diag(sns.kdeplot, color = color, shade = True, lw = 2, zorder = 2)
+        pairgrid = pairgrid.map_offdiag(plot_HPD_levels, color = color, shade = True, levels = levels)
 
         # truths
         N = len(truth)

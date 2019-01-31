@@ -522,67 +522,35 @@ class Analysis():
             
         print('done')
 
-    def use_crpropa_data(self, energy, arrival_direction):
+
+        
+    def use_crpropa_data(self, energy, unit_vector):
         """
         Build fit inputs from the UHECR dataset.
         """
 
         self.N = len(energy)
-        self.arrival_direction = arrival_direction 
-        self.energy = energy
+        self.arrival_direction = Direction(unit_vector)
         
-        eps_fit = self.tables.table
-        kappa_grid = self.tables.kappa
-        E_grid = self.E_grid
-        Earr_grid = list(self.Earr_grid)
-        
-        # handle selected sources
-        if (self.data.source.N < len(eps_fit)):
-            eps_fit = [eps_fit[i] for i in self.data.source.selection]
-            Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
-
-        # add E interpolation for background component
-        Earr_grid.append([0 for e in E_grid])
-            
-        # convert scale for sampling
-        D = self.data.source.distance
-        alpha_T = self.data.detector.alpha_T
-        D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
-
         # simulate the zenith angles
-        print('simulating zenith angles...')
+        print('Simulating zenith angles...')
         self.zenith_angles = self._simulate_zenith_angles()
-        print('done')
+        print('Done!')
         
-        print('preparing fit inputs...')
-        self.fit_input = {'Ns' : self.data.source.N,
-                          'varpi' :self.data.source.unit_vector,
-                          'D' : D,
-                          'N' : self.N,
-                          'arrival_direction' : self.arrival_direction.unit_vector,
-                          'A' : np.tile(self.data.detector.area, self.N),
-                          'kappa_d' : self.data.detector.kappa_d,
-                          'alpha_T' : alpha_T,
-                          'Ngrid' : len(kappa_grid),
-                          'eps' : eps_fit,
-                          'kappa_grid' : kappa_grid,
-                          'zenith_angle' : self.zenith_angles}
+        # Make Uhecr object
+        uhecr_properties = {}
+        uhecr_properties['label'] = 'sim_uhecr'
+        uhecr_properties['N'] = self.N
+        uhecr_properties['unit_vector'] = self.arrival_direction.unit_vector
+        uhecr_properties['energy'] = energy
+        uhecr_properties['zenith_angle'] = self.zenith_angles
+        uhecr_properties['A'] = np.tile(self.data.detector.area, self.N)       
+    
+        new_uhecr = Uhecr()
+        new_uhecr.from_properties(uhecr_properties)
         
-        try:
-            self.fit_input['flux'] = self.data.source.flux
-        except:
-            print('No flux weights available for sources.')
+        self.data.uhecr = new_uhecr
         
-        if self.analysis_type == self.joint_type:
-
-            self.fit_input['Edet'] = energy
-            self.fit_input['Eth'] = self.model.Eth
-            self.fit_input['Eerr'] = self.data.detector.energy_uncertainty
-            self.fit_input['E_grid'] = E_grid
-            self.fit_input['Earr_grid'] = Earr_grid
-            
-        print('done')
-
         
     def fit_model(self, iterations = 1000, chains = 4, seed = None, sample_file = None, warmup = None):
         """
