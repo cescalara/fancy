@@ -115,7 +115,7 @@ class Analysis():
         self.E_grid = np.logspace(np.log(self.model.Eth), np.log(1.0e4), num_points, base = np.e)
         self.Earr_grid = []
 
-        for i in progress_bar(range(len(self.data.source.distance)), desc = 'Precomputing exposure integral'):
+        for i in progress_bar(range(len(self.data.source.distance)), desc = 'Precomputing energy grids'):
             d = data.source.distance[i]
             self.Earr_grid.append([get_arrival_energy(e, d)[0] for e in self.E_grid])
 
