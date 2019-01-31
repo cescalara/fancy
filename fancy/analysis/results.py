@@ -115,6 +115,7 @@ class Results():
         Return fit input data.
         """
 
+        # NEEDS TO BE UPDATED TO MATCH NEW FILE FORMAT
         fit_input = {}
         with h5py.File(self.filename, 'r') as f:
             fit_input_from_file = f['input/fit']
