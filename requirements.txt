@@ -1,0 +1,13 @@
+basemap==1.1.0
+vapeplot==0.0.7
+seaborn==0.9.0
+pyproj==1.9.5.1
+scipy==1.0.1
+matplotlib==2.2.2
+pandas==0.22.0
+pystan==2.18.0.0
+setuptools==39.2.0
+astropy==3.0.1
+h5py==2.7.1
+numpy==1.14.2
+tqdm==4.30.0
