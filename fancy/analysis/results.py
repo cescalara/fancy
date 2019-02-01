@@ -1,11 +1,14 @@
 import h5py
 from math import ceil
 import numpy as np
+from scipy import integrate
 from matplotlib import pyplot as plt
+from tqdm.autonotebook import tqdm as progress_bar
 
 import stan_utility
 
-from ..interfaces.stan import Direction, Mpc_to_km
+from ..interfaces.stan import Direction, Mpc_to_km, convert_scale
+from ..detector.exposure import m_integrand
 from ..interfaces.integration import ExposureIntegralTable
 from ..propagation.energy_loss import get_Eth_src, get_Eex, get_kappa_ex, get_Eth_sim
 from ..plotting import AllSkyMap
@@ -77,19 +80,6 @@ class Results():
         return truths
     
 
-    def traceplot(self, list_of_keys):
-        """
-        Plot the traceplot for parameters specified by list_of_keys.
-        """
-        return 0
-    
-
-    def summary(self):
-        """
-        Print a summary of the results.
-        """
-        return 0
-
     def get_fit_parameters(self):
         """
         Return mean values of all main fit parameters.
@@ -115,27 +105,37 @@ class Results():
         Return fit input data.
         """
 
-        # NEEDS TO BE UPDATED TO MATCH NEW FILE FORMAT
         fit_input = {}
+        detector = {}
+        source = {}
         with h5py.File(self.filename, 'r') as f:
-            fit_input_from_file = f['input/fit']
-            for key in fit_input_from_file:
-                fit_input[key] = fit_input_from_file[key].value
+            fit_input_handle = f['fit/input']
+            for key in fit_input_handle:
+                fit_input[key] = fit_input_handle[key].value
+
+            detector_handle = f['detector']
+            for key in detector_handle:
+                detector[key] = detector_handle[key].value
+
+            source_handle = f['source']
+            for key in source_handle:
+                source[key] = source_handle[key].value
                 
-        return fit_input
+        return fit_input, detector, source
     
-    def run_ppc(self, stan_sim_file, include_paths, N = 3):
+    
+    def run_ppc(self, stan_sim_file, include_paths, N = 3, seed = None):
         """
         Run N posterior predictive simulations.
         """
 
         keys = ['L', 'F0', 'alpha', 'B']
         fit_chain = self.get_chain(keys)
-        input_data = self.get_input_data()
+        input_data, detector, source = self.get_input_data()
     
         self.ppc = PPC(stan_sim_file, include_paths)
         
-        self.ppc.simulate(fit_chain, input_data, N = N)
+        self.ppc.simulate(fit_chain, input_data, detector, source, N = N, seed = seed)
 
     
     
@@ -152,14 +152,14 @@ class PPC():
         """
 
         # compile the stan model
-        self.simulation = stan_utility.compile_model(filename = stan_sim_file, model_name = 'ppc_sim', inlclude_paths = include_paths)
+        self.simulation = stan_utility.compile_model(filename = stan_sim_file, model_name = 'ppc_sim', include_paths = include_paths)
 
         self.arrival_direction_preds = []
         self.Edet_preds = []
         self.Nex_preds = []
         self.labels_preds = []
         
-    def simulate(self, fit_chain, input_data, seed = None, N = 3):
+    def simulate(self, fit_chain, input_data, detector, source, seed = None, N = 3):
         """
         Simulate from the posterior predictive distribution. 
         """
@@ -171,17 +171,22 @@ class PPC():
     
         self.arrival_direction = Direction(input_data['arrival_direction'])
         self.Edet = input_data['Edet']
-        self.Eth = input_data['Eth']
-
-        # rescale to [Mpc]
-        D = [(d / 3.086) * 100 for d in input_data['D']]
-        self.Eth_src = get_Eth_src(self.Eth, D)
+        self.Eth = input_data['Eth']    
+        self.Eth_src = get_Eth_src(self.Eth, source['distance'])
         self.varpi = input_data['varpi']
-        self.params = input_data['params']
-            
-        print('simulating down to', self.Eth, 'EeV...')  
-        
-        for i in range(N):
+
+        # Get params from detector for exposure integral calculation
+        self.params = []
+        self.params.append(np.cos(detector['lat']))
+        self.params.append(np.sin(detector['lat']))
+        self.params.append(np.cos(detector['theta_m']))
+        self.params.append(detector['alpha_T'])
+        M, Merr = integrate.quad(m_integrand, 0, np.pi, args = self.params)
+        self.params.append(M)
+
+
+        for i in progress_bar(range(N), desc = 'Posterior predictive simulation(s)'):
+
 
             # sample parameters from chain
             alpha = np.random.choice(self.alpha)
@@ -190,56 +195,48 @@ class PPC():
             L = np.random.choice(self.L)
             
             # calculate eps integral
-            print('precomputing exposure integrals...')
             Eex = get_Eex(self.Eth_src, alpha)
-            kappa_ex = get_kappa_ex(Eex, np.mean(self.B), D)        
+            kappa_ex = get_kappa_ex(Eex, np.mean(self.B), source['distance'])        
             self.ppc_table = ExposureIntegralTable(varpi = self.varpi, params = self.params)
-            self.ppc_table.build_for_sim(kappa_ex, alpha, B, D)
+            self.ppc_table.build_for_sim(kappa_ex, alpha, B, source['distance'])
             
             eps = self.ppc_table.sim_table
-            # convert scale for sampling
-            eps = [e / 1000 for e in eps]
-            
+
+            # rescale to Stan units
+            D, alpha_T, eps = convert_scale(source['distance'], detector['alpha_T'], eps)
+    
             # compile inputs 
             self.ppc_input = {
                 'kappa_d' : input_data['kappa_d'],
                 'Ns' : input_data['Ns'],
                 'varpi' : input_data['varpi'],
-                'D' : input_data['D'],
+                'D' : D,
                 'A' : input_data['A'][0],
-                'a0' : input_data['a0'],
-                'theta_m' : input_data['theta_m'],
-                'alpha_T' : input_data['alpha_T'],
+                'a0' : detector['lat'],
+                'theta_m' : detector['theta_m'],
+                'alpha_T' : alpha_T,
                 'eps' : eps}
             self.ppc_input['B'] = B
             self.ppc_input['L'] = np.tile(L, input_data['Ns'])  
             self.ppc_input['F0'] = F0  
             self.ppc_input['alpha'] = alpha
             self.ppc_input['Eerr'] = input_data['Eerr']
-            self.ppc_input['Dbg'] = input_data['Dbg']
             self.ppc_input['Eth'] = self.Eth       
             
             # run simulation
-            print('running posterior predictive simulation(s)...')
             self.posterior_predictive = self.simulation.sampling(data = self.ppc_input, iter = 1,
                                                        chains = 1, algorithm = "Fixed_param", seed = seed)
             
-            print('done')
 
             # extract output
-            print('extracting output...')
             self.Nex_preds.append(self.posterior_predictive.extract(['Nex_sim'])['Nex_sim'])
             labels_pred = self.posterior_predictive.extract(['lambda'])['lambda'][0]
             arrival_direction = self.posterior_predictive.extract(['arrival_direction'])['arrival_direction'][0]
             Edet_pred = self.posterior_predictive.extract(['Edet'])['Edet'][0]
             arr_dir_pred = Direction(arrival_direction)
-            print(len(arrival_direction), 'events above', self.Eth, 'EeV...')
             self.Edet_preds.append(Edet_pred)
             self.labels_preds.append(labels_pred)
             self.arrival_direction_preds.append(arr_dir_pred)
-            print('done')
-        
-            print(i + 1, 'completed')
 
 
     def save(self, filename):
