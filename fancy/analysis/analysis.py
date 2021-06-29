@@ -4,7 +4,7 @@ from astropy.time import Time
 from astropy import units as u
 from matplotlib import pyplot as plt
 import h5py
-from tqdm.autonotebook import tqdm as progress_bar
+from tqdm import tqdm as progress_bar
 
 import stan_utility
 

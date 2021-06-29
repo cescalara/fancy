@@ -3,7 +3,7 @@ from math import ceil
 import numpy as np
 from scipy import integrate
 from matplotlib import pyplot as plt
-from tqdm.autonotebook import tqdm as progress_bar
+from tqdm import tqdm as progress_bar
 
 import stan_utility
 

@@ -1,6 +1,6 @@
 from scipy import integrate, interpolate
 import h5py
-from tqdm.autonotebook import tqdm as progress_bar
+from tqdm import tqdm as progress_bar
 
 from ..detector.exposure import *
 
