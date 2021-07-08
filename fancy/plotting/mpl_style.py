@@ -14,7 +14,8 @@ def config_mplstyle(clear=False):
 
     Source: https://matplotlib.org/stable/tutorials/introductory/customizing.html 
     '''
-    mplstyles_dir = osp.join(os.getcwd(), "mplstyles")
+    # __file__ is the path of the python script (i.e. path to this file)
+    mplstyles_dir = osp.join(osp.dirname(__file__), "mplstyles")
 
     stylelib_dir = osp.join(osp.abspath(mpl.get_configdir()), "stylelib")
 
@@ -33,7 +34,7 @@ def config_mplstyle(clear=False):
                         osp.join(stylelib_dir, fname))
 
     # '''not really sure why the above doesnt want to work, temporary workaround by using the full path to the location where mplstyles is located below'''
-    # mplstyles_dir = osp.join(os.getcwd(), "mplstyles")
+    # mplstyles_dir = osp.join(osp.dirname(__file__), "mplstyles")
 
     # # a list of paths going to the mplstyles directory
     # mplstyle_filelist = [osp.join(mplstyles_dir, fname) for fname in os.listdir(mplstyles_dir)]
@@ -42,7 +43,8 @@ def config_mplstyle(clear=False):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
+    # import matplotlib.pyplot as plt
+    # print(osp.dirname(__file__))
     # run the main function
     config_mplstyle(clear=True)
 
