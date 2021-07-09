@@ -136,3 +136,6 @@ Temporary Items
 
 # cached stan models
 *.pkl
+
+# vscode related files
+.vscode/**
