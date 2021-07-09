@@ -26,6 +26,10 @@ def HPD_contours(xdata, ydata, levels, bins=50):
     """
     Estimate the HPD contours from sample chains (xdata, ydata).
     Output are levels which can be input into seaborn KDE plots.
+
+    KW: Obtained from https://stackoverflow.com/questions/35225307/set-confidence-levels-in-seaborn-kdeplot 
+    KW: This somehow returns a weird series of levels that start with 1e-5 to 1e-3, and she uses n_levels instead of levels (which strangely passes to plt.contourf as levels), additionally her 6 contour levels only show 4 in the resulting plot. 
+    All in all, after some playing around we can ignore this code and simply use her arbitrarily set levels in the core code.
     """
 
     # 2D normed histogram
