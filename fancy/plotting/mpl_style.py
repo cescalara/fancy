@@ -15,7 +15,7 @@ def config_mplstyle(clear=False):
     Source: https://matplotlib.org/stable/tutorials/introductory/customizing.html 
     '''
     # __file__ is the path of the python script (i.e. path to this file)
-    mplstyles_dir = osp.join(osp.dirname(__file__), "mplstyles")
+    mplstyles_dir = osp.join(osp.abspath(osp.dirname(__file__)), "mplstyles")
 
     stylelib_dir = osp.join(osp.abspath(mpl.get_configdir()), "stylelib")
 
