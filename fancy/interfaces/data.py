@@ -171,17 +171,17 @@ class Data():
             uhecr = f['uhecr']
 
             for key in uhecr:
-                uhecr_properties[key] = uhecr[key][...]
+                uhecr_properties[key] = uhecr[key][()]
 
             source = f['source']
 
             for key in source:
-                source_properties[key] = source[key][...]
+                source_properties[key] = source[key][()]
 
             detector = f['detector']
 
             for key in detector:
-                detector_properties[key] = detector[key][...]
+                detector_properties[key] = detector[key][()]
 
         uhecr = Uhecr()
         uhecr.from_properties(uhecr_properties)
@@ -267,10 +267,10 @@ class Source():
 
         with h5py.File(filename, 'r') as f:
             data = f[self.label]
-            self.distance = data['D'][...]
+            self.distance = data['D'][()]
             self.N = len(self.distance)
-            glon = data['glon'][...]
-            glat = data['glat'][...]
+            glon = data['glon'][()]
+            glat = data['glat'][()]
             self.coord = get_coordinates(glon, glat)
 
             if self.label != 'cosmo_150' and self.label != 'VCV_AGN':
@@ -429,13 +429,13 @@ class Uhecr():
 
             data = f[self.label]
 
-            self.year = data['year'][...]
-            self.day = data['day'][...]
-            self.zenith_angle = np.deg2rad(data['theta'][...])
-            self.energy = data['energy'][...]
+            self.year = data['year'][()]
+            self.day = data['day'][()]
+            self.zenith_angle = np.deg2rad(data['theta'][()])
+            self.energy = data['energy'][()]
             self.N = len(self.energy)
-            glon = data['glon'][...]
-            glat = data['glat'][...]
+            glon = data['glon'][()]
+            glat = data['glat'][()]
             self.coord = get_coordinates(glon, glat)
 
             self.unit_vector = coord_to_uv(self.coord)
