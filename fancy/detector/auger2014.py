@@ -4,7 +4,7 @@ from scipy import integrate
 from astropy import units as u
 from astropy.coordinates import EarthLocation
 
-from .exposure import m_integrand
+from .exposure import m_integrand, kappa_dval
 
 """
 Constants from information provided in Auger Collabration publications on the 2014 dataset.
@@ -84,7 +84,8 @@ A4_incl = alpha_T_4_incl / (M * deltat4)
 A = alpha_T / (M * deltat)
 
 # reconstruction uncertainty for arrival direction
-kappa_d = 9323
+sig_omega = 0.9
+kappa_d = kappa_dval(sig_omega)
 
 # reconstruction uncertainty for energy
 f_E = 0.12
