@@ -77,12 +77,18 @@ class Detector():
         m = np.asarray([m_dec(d, self.params) for d in self.declination])
 
         # normalise to a maximum at 1
-        self.exposure_factor = (m / m_dec(-np.pi / 2, self.params))
+        # max value of exposure factor is normalization constant
+        self.exposure_factor = (m / np.max(m))
+        # self.exposure_factor = m
 
         # find the point at which the exposure factor is 0
-        self.limiting_dec = Angle((self.declination[m == 0])[0], 'rad')
+        # indexing value depends on TA or PAO
+        # since TA only sees from dec ~ -10deg, 
+        # PAO only sees until dec ~ +45 deg
+        declim_index = -1 if self.label == "TA" else 0
+        self.limiting_dec = Angle((self.declination[m == 0])[declim_index], 'rad')
 
-    def show(self, view=None, save=False, savename=None, cmap=None):
+    def show(self, view=None, coord="gal", save=False, savename=None, cmap=None):
         """
         Make a plot of the detector's exposure
         
@@ -129,8 +135,16 @@ class Detector():
                 c = SkyCoord(ra=rightascensions * u.rad,
                              dec=decs * u.rad,
                              frame='icrs')
-                lon = c.galactic.l.deg
-                lat = c.galactic.b.deg
+
+                if coord == "gal":             
+                    lon = c.galactic.l.deg
+                    lat = c.galactic.b.deg
+                elif coord == "eq":
+                    lon = c.ra.degree
+                    lat = c.dec.degree
+                else:
+                    raise Exception("Coordinate {0} is not defined.".format(coord))
+
                 skymap.scatter(lon,
                                lat,
                                latlon=True,
@@ -139,7 +153,7 @@ class Detector():
                                alpha=0.7)
 
             # plot exposure boundary
-            self.draw_exposure_lim(skymap)
+            self.draw_exposure_lim(skymap, coord=coord)
 
             # add labels
             skymap.draw_standard_labels()
@@ -203,7 +217,7 @@ class Detector():
         bar.ax.get_children()[1].set_linewidth(0)
         bar.set_label('Relative exposure')
 
-    def draw_exposure_lim(self, skymap):
+    def draw_exposure_lim(self, skymap, coord="gal"):
         """
         Draw a line marking the edge of the detector's exposure.
         
@@ -217,8 +231,14 @@ class Detector():
         c = SkyCoord(ra=rightascensions * u.degree,
                      dec=boundary_decs * u.degree,
                      frame='icrs')
-        lon = c.galactic.l.deg
-        lat = c.galactic.b.deg
+        if coord == "gal":             
+            lon = c.galactic.l.deg
+            lat = c.galactic.b.deg
+        elif coord == "eq":
+            lon = c.ra.degree
+            lat = c.dec.degree
+        else:
+            raise Exception("Coordinate {0} is not defined.".format(coord))
 
         skymap.scatter(lon,
                        lat,
@@ -238,7 +258,7 @@ class Angle():
         """
         Store angles as degree or radian for convenience.
        
-        :param angle: a single angle or 
+        :param angle: a single angle or array of angles
         """
 
         self._defined_types = ['deg', 'rad']
@@ -259,3 +279,15 @@ class Angle():
             else:
                 self.deg = [np.rad2deg(a) for a in angle]
             self.rad = angle
+
+
+
+if __name__ == "__main__":
+    # import auger2014 data
+    from fancy.detector.auger2014 import detector_properties
+
+    # create Detector object
+    detector = Detector(detector_properties)
+
+    # show the exposure skymap
+    detector.show(view="map", coord="gal")
