@@ -18,6 +18,15 @@ with _dec appended to the function name.
 @date June 2018
 """
 
+'''
+For reference:
+p[0] = np.cos(lat)
+p[1] = np.sin(lat)
+p[2] = np.cos(theta_m)
+p[3] = alpha_T
+p[4] = M
+'''
+
 def xi(theta, p):
     return (p[2] - (p[1] * np.cos(theta))) / (p[0] * np.sin(theta)) 
 
