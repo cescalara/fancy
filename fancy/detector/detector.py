@@ -79,7 +79,6 @@ class Detector():
         # normalise to a maximum at 1
         # max value of exposure factor is normalization constant
         self.exposure_factor = (m / np.max(m))
-        # self.exposure_factor = m
 
         # find the point at which the exposure factor is 0
         # indexing value depends on TA or PAO
