@@ -589,7 +589,7 @@ class Uhecr():
             possible_areas = [A1, A2, A3]
             area = [possible_areas[i - 1] for i in self.period]
 
-        if self.label == 'auger2014':
+        elif self.label == 'auger2014':
             from ..detector.auger2014 import A1, A2, A3, A4, A1_incl, A2_incl, A3_incl, A4_incl
             possible_areas_vert = [A1, A2, A3, A4]
             possible_areas_incl = [A1_incl, A2_incl, A3_incl, A4_incl]
@@ -602,6 +602,11 @@ class Uhecr():
                 if self.zenith_angle[i] > 60:
                     area.append(possible_areas_incl[p - 1])
 
+        elif self.label == 'TA2015':
+            from ..detector.TA2015 import A1, A2
+            possible_areas = [A1, A2]
+            area = [possible_areas[i - 1] for i in self.period]
+
         else:
             print('Error: effective areas and periods not defined')
 
@@ -613,28 +618,46 @@ class Uhecr():
         in table 1 in Abreu et al. (2010) or in Collaboration et al. 2014.
         """
 
-        from ..detector.auger2014 import (period_1_start, period_1_end,
-                                          period_2_start, period_2_end,
-                                          period_3_start, period_3_end,
-                                          period_4_start, period_4_end)
-
-        # check dates
         period = []
-        for y, d in np.nditer([self.year, self.day]):
-            d = int(d)
-            test_date = date(y, 1, 1) + timedelta(d)
+        if self.label == "auger2014":
+            from ..detector.auger2014 import (period_1_start, period_1_end,
+                                            period_2_start, period_2_end,
+                                            period_3_start, period_3_end,
+                                            period_4_start, period_4_end)
 
-            if period_1_start <= test_date <= period_1_end:
-                period.append(1)
-            elif period_2_start <= test_date <= period_2_end:
-                period.append(2)
-            elif period_3_start <= test_date <= period_3_end:
-                period.append(3)
-            elif test_date >= period_3_end:
-                period.append(4)
-            else:
-                print('Error: cannot determine period for year', y, 'and day',
-                      d)
+            # check dates
+            for y, d in np.nditer([self.year, self.day]):
+                d = int(d)
+                test_date = date(y, 1, 1) + timedelta(d)
+
+                if period_1_start <= test_date <= period_1_end:
+                    period.append(1)
+                elif period_2_start <= test_date <= period_2_end:
+                    period.append(2)
+                elif period_3_start <= test_date <= period_3_end:
+                    period.append(3)
+                elif test_date >= period_3_end:
+                    period.append(4)
+                else:
+                    print('Error: cannot determine period for year', y, 'and day',
+                        d)
+
+        elif self.label == "TA2015":
+            from ..detector.TA2015 import (period_1_start, period_1_end,
+                                            period_2_start, period_2_end)
+            for y, d in np.nditer([self.year, self.day]):
+                d = int(d)
+                test_date = date(y, 1, 1) + timedelta(d)
+
+                if period_1_start <= test_date <= period_1_end:
+                    period.append(1)
+                elif period_2_start <= test_date <= period_2_end:
+                    period.append(2)
+                elif test_date >= period_2_end:
+                    period.append(2)
+                else:
+                    print('Error: cannot determine period for year', y, 'and day',
+                        d)    
 
         return period
 
