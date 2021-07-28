@@ -181,7 +181,8 @@ class Analysis():
         Simulate zenith angles for a set of arrival_directions.
         """
 
-        start_time = 2004
+        # start_time = 2004
+        start_time = 2008
 
         if len(self.arrival_direction.d.icrs) == 1:
             c_icrs = self.arrival_direction.d.icrs[0]
