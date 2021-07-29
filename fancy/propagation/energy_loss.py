@@ -226,6 +226,36 @@ def dEdr_rev(r, E, D):
     z = r_rev / DH
     return E / Ltot(z, E) 
 
+def get_arrival_energy_vec(args):
+    """
+    Get the arrival energy for a given initial energy.
+    Takes into account all propagation affects.
+    Solves the ODE dE/dr = - E / Lloss. 
+    NB: input and output E in EeV!
+
+    Loops over each source energy contained in array Evec.
+    - Probably a better way to do this with np.vectorize or something...
+    """
+    Evec, D = args
+
+    Earr_vec = []
+    for E in Evec:
+        E = E * 1.0e18
+        integrator = integrate.ode(dEdr).set_integrator('lsoda', method = 'bdf')
+        integrator.set_initial_value(E, 0)
+        r1 = D
+        #dr = 1
+        dr = 10
+        
+        while integrator.successful() and integrator.t < r1:
+            integrator.integrate(integrator.t + dr)
+            #print("%g %g" % (integrator.t, integrator.y))
+
+        Earr = integrator.y / 1.0e18
+
+        Earr_vec.append(Earr[0])
+    return Earr_vec
+
 
 def get_arrival_energy(E, D):
     """

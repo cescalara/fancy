@@ -5,6 +5,7 @@ from astropy import units as u
 from matplotlib import pyplot as plt
 import h5py
 from tqdm import tqdm as progress_bar
+from multiprocessing import Pool, cpu_count
 
 import stan_utility
 
@@ -12,7 +13,7 @@ from ..interfaces.integration import ExposureIntegralTable
 from ..interfaces.stan import Direction, convert_scale
 from ..interfaces.data import Uhecr
 from ..plotting import AllSkyMap
-from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim, get_arrival_energy
+from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim, get_arrival_energy, get_arrival_energy_vec
 
 __all__ = ['Analysis']
 
@@ -21,6 +22,9 @@ class Analysis():
     """
     To manage the running of simulations and fits based on Data and Model objects.
     """
+
+    nthreads = int(cpu_count() * 0.75)
+
     def __init__(self,
                  data,
                  model,
@@ -82,7 +86,10 @@ class Analysis():
         varpi = self.data.source.unit_vector
         self.tables = ExposureIntegralTable(varpi=varpi, params=params)
 
-    def build_tables(self, num_points=50, sim_only=False, fit_only=False):
+        # cpu count
+
+
+    def build_tables(self, num_points=50, sim_only=False, fit_only=False, parallel=True):
         """
         Build the necessary integral tables.
         """
@@ -99,8 +106,12 @@ class Analysis():
                                              self.data.source.distance)
                 kappa_true = self.kappa_ex
 
-            self.tables.build_for_sim(kappa_true, self.model.alpha,
+            if parallel:
+                self.tables.build_for_sim_parallel(kappa_true, self.model.alpha,
                                       self.model.B, self.data.source.distance)
+            else:
+                self.tables.build_for_sim(kappa_true, self.model.alpha,
+                                        self.model.B, self.data.source.distance)
 
         if fit_only:
 
@@ -121,9 +132,13 @@ class Analysis():
                 (kappa_first, kappa_second[1:], kappa_third[1:]), axis=0)
 
             # full table for fit
-            self.tables.build_for_fit(kappa)
+            if parallel:
+            # self.tables.build_for_fit(kappa)
+                self.tables.build_for_fit_parallel(kappa)
+            else:
+                self.tables.build_for_fit(kappa)
 
-    def build_energy_table(self, num_points=50, table_file=None):
+    def build_energy_table(self, num_points=50, table_file=None, parallel=True):
         """
         Build the energy interpolation tables.
         """
@@ -134,11 +149,24 @@ class Analysis():
                                   base=np.e)
         self.Earr_grid = []
 
-        for i in progress_bar(range(len(self.data.source.distance)),
-                              desc='Precomputing energy grids'):
-            d = self.data.source.distance[i]
-            self.Earr_grid.append(
-                [get_arrival_energy(e, d)[0] for e in self.E_grid])
+        if parallel:
+
+            args_list = [(self.E_grid, d) for d in self.data.source.distance]
+            # parallelize for each source distance
+            with Pool(self.nthreads) as mpool:
+                results = list(progress_bar(
+                    mpool.imap(get_arrival_energy_vec, args_list), total=len(args_list),
+                    desc='Precomputing exposure integral'
+                ))
+
+                self.Earr_grid = results
+            
+        else:
+            for i in progress_bar(range(len(self.data.source.distance)),
+                                desc='Precomputing energy grids'):
+                d = self.data.source.distance[i]
+                self.Earr_grid.append(
+                    [get_arrival_energy(e, d)[0] for e in self.E_grid])
 
         if table_file:
             with h5py.File(table_file, 'r+') as f:
@@ -356,6 +384,10 @@ class Analysis():
         kappa_grid = self.tables.kappa
         E_grid = self.E_grid
         Earr_grid = list(self.Earr_grid)
+
+        # KW: due to multiprocessing appending,
+        # collapse dimension from (1, 23, 50) -> (23, 50)
+        eps_fit.resize(self.Earr_grid.shape)
 
         # handle selected sources
         if (self.data.source.N < len(eps_fit)):
