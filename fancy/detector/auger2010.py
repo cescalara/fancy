@@ -72,6 +72,9 @@ kappa_d = kappa_dval(sig_omega)
 # reconstruction uncertainty for energy
 f_E = 0.12
 
+# threshold energy [EeV]
+Eth = 52
+
 # For convenience
 detector_properties = {}
 detector_properties['label'] = 'PAO'
@@ -83,4 +86,5 @@ detector_properties['kappa_d'] = kappa_d
 detector_properties['f_E'] = f_E
 detector_properties['A'] = A
 detector_properties['alpha_T'] = alpha_T
+detector_properties['Eth'] = Eth
 
