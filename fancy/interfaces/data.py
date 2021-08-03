@@ -411,13 +411,13 @@ class Uhecr():
         self.properties = None
         self.source_labels = None
 
-    def from_data_file(self, filename, label):
+    def from_data_file(self, filename, label, exp_factor = 1.):
         """
         Define UHECR from data file of original information.
         
         Handles calculation of observation periods and 
         effective areas assuming the UHECR are detected 
-        by the Pierre Auger Observatory.
+        by the Pierre Auger Observatory or TA.
         
         :param filename: name of the data file
         :param label: reference label for the UHECR data set 
@@ -440,7 +440,7 @@ class Uhecr():
 
             self.unit_vector = coord_to_uv(self.coord)
             self.period = self._find_period()
-            self.A = self._find_area()
+            self.A = self._find_area(exp_factor)
 
     def _get_properties(self):
         """
@@ -575,7 +575,7 @@ class Uhecr():
         for key, value in self.properties.items():
             file_handle.create_dataset(key, data=value)
 
-    def _find_area(self):
+    def _find_area(self, exp_factor):
         """
         Find the effective area of the observatory at 
         the time of detection.
@@ -587,7 +587,7 @@ class Uhecr():
         if self.label == 'auger2010':
             from ..detector.auger2010 import A1, A2, A3
             possible_areas = [A1, A2, A3]
-            area = [possible_areas[i - 1] for i in self.period]
+            area = [possible_areas[i - 1]* exp_factor  for i in self.period]
 
         elif self.label == 'auger2014':
             from ..detector.auger2014 import A1, A2, A3, A4, A1_incl, A2_incl, A3_incl, A4_incl
@@ -598,14 +598,14 @@ class Uhecr():
             area = []
             for i, p in enumerate(self.period):
                 if self.zenith_angle[i] <= 60:
-                    area.append(possible_areas_vert[p - 1])
+                    area.append(possible_areas_vert[p - 1]* exp_factor )
                 if self.zenith_angle[i] > 60:
-                    area.append(possible_areas_incl[p - 1])
+                    area.append(possible_areas_incl[p - 1]* exp_factor )
 
         elif self.label == 'TA2015':
             from ..detector.TA2015 import A1, A2
             possible_areas = [A1, A2]
-            area = [possible_areas[i - 1] for i in self.period]
+            area = [possible_areas[i - 1] * exp_factor for i in self.period]
 
         else:
             print('Error: effective areas and periods not defined')
