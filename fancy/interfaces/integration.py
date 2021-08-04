@@ -1,8 +1,11 @@
+from re import T
 from scipy import integrate, interpolate
 import h5py
 from tqdm import tqdm as progress_bar
 
 from ..detector.exposure import *
+
+from multiprocessing import Pool, cpu_count
 
 __all__ = ['ExposureIntegralTable']
 
@@ -12,6 +15,11 @@ class ExposureIntegralTable():
     Handles the building and storage of exposure integral tables 
     that are passed to Stan to be interpolated over.
     """
+
+    # number of threads, take 3/4 so that CPU doesnt overload
+    nthreads = int(cpu_count() * 0.75)
+
+
     def __init__(self, varpi=None, params=None, input_filename=None):
         """
         Handles the building and storage of integral tables 
@@ -71,7 +79,7 @@ class ExposureIntegralTable():
         else:
             results = []
             for i in progress_bar(range(len(self.varpi)),
-                                  desc='Precomputing exposure integral'):
+                                desc='Precomputing exposure integral'):
                 v = self.varpi[i]
                 result, err = integrate.dblquad(integrand,
                                                 0,
@@ -79,12 +87,72 @@ class ExposureIntegralTable():
                                                 lambda phi: 0,
                                                 lambda phi: 2 * np.pi,
                                                 args=(v, self.sim_kappa[i],
-                                                      self.params))
+                                                    self.params))
 
                 results.append(result)
 
             self.sim_table = results
             print()
+
+    def build_for_sim_parallel(self, kappa, alpha, B, D):
+        """
+        Build the tabulated integrals to be used for simulations and posterior predictive checks.
+        Save with the filename given.
+
+        This parallelizes the exposure integral evaluation used to simulate events.
+        
+        Expects self.kappa to be either a fixed value or a list of values of length equal to the 
+        total number of sources. The integral is evaluated once for each source. 
+        """
+
+        self.sim_kappa = kappa
+        self.sim_alpha = alpha
+        self.sim_B = B
+        self.sim_D = D
+
+        # single fixed kappa
+        if isinstance(self.sim_kappa, int) or isinstance(
+                self.sim_kappa, float):
+            k = self.sim_kappa
+
+            args = [(v, k, self.params) for v in self.varpi]
+
+            with Pool(self.nthreads) as mpool:
+                results = list(progress_bar(
+                    mpool.imap(self.eps_per_source_sim, args), total=len(self.varpi),
+                    desc='Precomputing exposure integral'
+                ))           
+
+            self.sim_table = results
+            print()
+
+        # different kappa for each source
+        else:
+            args = [(v, k, self.params) for v, k in zip(self.varpi, self.sim_kappa)]
+
+            with Pool(self.nthreads) as mpool:
+                results = list(progress_bar(
+                    mpool.imap(self.eps_per_source_sim, args), total=len(self.varpi),
+                    desc='Precomputing exposure integral'
+                ))           
+                
+            self.sim_table = results
+            print()
+
+    def eps_per_source_sim(self, args):
+        '''
+        The exposure integral using the source direction and simulated magnetic deflections
+        for each source. 
+
+        :param: args : tuple containing source unit vector, simulated kappa, and self.params
+        '''
+        result, err = integrate.dblquad(integrand,
+                                0,
+                                np.pi,
+                                lambda phi: 0,
+                                lambda phi: 2 * np.pi,
+                                args=args)
+        return result
 
     def build_for_fit(self, kappa):
         """
@@ -110,6 +178,52 @@ class ExposureIntegralTable():
                                                 args=(v, k, self.params))
 
                 results.append(result)
+            self.table.append(np.asarray(results))
+            print()
+        self.table = np.asarray(self.table)
+
+    def eps_per_source(self, v):
+        '''
+        Evaluate exposure integral per source. This corresponds to the inner for loop
+        that contains the double integral evaluation for each kappa.
+
+        :param: v : source unit vector
+        '''
+
+        results = []
+        for k in self.kappa:
+            result, err = integrate.dblquad(integrand,
+                                            0,
+                                            np.pi,
+                                            lambda phi: 0,
+                                            lambda phi: 2 * np.pi,
+                                            args=(v, k, self.params))
+
+            results.append(result)
+
+        return results
+
+    def build_for_fit_parallel(self, kappa):
+        """
+        Build the tabulated integrals to be interpolated over in the fit.
+        Save with filename given.
+
+        This is the parallelized version, using multiprocessing over each source
+        in the provided source catalogue.
+
+        For SBG, runtime decreases from 30 min -> 1.5 min with ~28 cores
+        
+        Expects self.kappa to be a list of kappa values to evaluate the integral for, 
+        for each source individually.
+        """
+
+        self.kappa = kappa
+
+        with Pool(self.nthreads) as mpool:
+            results = list(progress_bar(
+                mpool.imap(self.eps_per_source, self.varpi), total=len(self.varpi),
+                 desc='Precomputing exposure integral'
+            ))
             self.table.append(np.asarray(results))
             print()
         self.table = np.asarray(self.table)
