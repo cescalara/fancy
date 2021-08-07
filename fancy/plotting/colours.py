@@ -8,6 +8,7 @@ lightblue = '#6DA5AF'
 lightlightblue = "#aacad0"
 lightpurple = '#875F74'
 purple = '#592441'
+darkpurple = "#200e18"
 grey = '#BEC1C2'
 lightgrey = '#F9F9F9'
 darkgrey = '#464747'
