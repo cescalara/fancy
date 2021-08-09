@@ -204,13 +204,12 @@ class Analysis():
         c_altaz = c_icrs.transform_to(AltAz(obstime=time, location=loc))
         return (np.pi / 2 - c_altaz.alt.rad)
 
-    def _simulate_zenith_angles(self):
+    def _simulate_zenith_angles(self, start_year=2004):
         """
         Simulate zenith angles for a set of arrival_directions.
-        """
 
-        # start_time = 2004
-        start_time = 2008
+        :params: start_year: year in which measurements started.
+        """
 
         if len(self.arrival_direction.d.icrs) == 1:
             c_icrs = self.arrival_direction.d.icrs[0]
@@ -229,7 +228,7 @@ class Analysis():
             while (za > self.data.detector.threshold_zenith_angle.rad):
                 dt = np.random.exponential(1 / self.N)
                 if (first):
-                    t = start_time + dt
+                    t = start_year + dt
                 else:
                     t = time[-1] + dt
                 tdy = Time(t, format='decimalyear')
@@ -357,7 +356,7 @@ class Analysis():
 
         # simulate the zenith angles
         print('Simulating zenith angles...')
-        self.zenith_angles = self._simulate_zenith_angles()
+        self.zenith_angles = self._simulate_zenith_angles(self.data.detector.start_year)
         print('Done!')
 
         # Make uhecr object
