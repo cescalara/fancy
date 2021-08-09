@@ -38,6 +38,9 @@ period_2_end = date(2007, 8, 31)
 period_3_start = date(2007, 9, 1)
 period_3_end = date(2009, 12, 31)
 
+# start year of observation
+start_year = 2004
+
 # find length of each period in units of years
 deltat1 = (period_1_end - period_1_start).days / 365.25
 deltat2 = (period_2_end - period_2_start).days / 365.25
@@ -87,4 +90,5 @@ detector_properties['f_E'] = f_E
 detector_properties['A'] = A
 detector_properties['alpha_T'] = alpha_T
 detector_properties['Eth'] = Eth
+detector_properties["start_year"] = start_year
 
