@@ -409,7 +409,7 @@ class Analysis():
             'N': self.data.uhecr.N,
             'arrival_direction': self.data.uhecr.unit_vector,
             'A': self.data.uhecr.A,
-            'kappa_d': self.data.detector.kappa_d,
+            'kappa_d': self.data.uhecr.kappa_d,
             'alpha_T': alpha_T,
             'Ngrid': len(kappa_grid),
             'eps': eps_fit,
