@@ -61,7 +61,8 @@ class Model():
               L=None,
               F0=None,
               alpha=None,
-              Eth=None):
+              Eth=None,
+              ptype=None):
         """
         Get simulation inputs.
 
@@ -71,6 +72,7 @@ class Model():
         :param B: rms B field strength [nG]
         :param alpha: source spectral index
         :param Eth: threshold energy of study [EeV]
+        :param ptype: element of composition
         """
         self.F_T = F_T
         self.f = f
@@ -81,6 +83,7 @@ class Model():
         self.alpha = alpha
         self.Eth = Eth
         self.Eth_sim = None  # To be set by Analysis
+        self.ptype = ptype
 
     def _get_properties(self):
         """

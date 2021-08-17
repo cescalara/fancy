@@ -49,16 +49,17 @@ class Data():
         # define source object
         self.source = new_source
 
-    def add_uhecr(self, filename, label=None):
+    def add_uhecr(self, filename, label=None, ptype="p"):
         """
         Add a uhecr object to the data container from file.
 
         :param filename: name of the file containing the object's data
         :param label: reference label for the uhecr dataset
+        :param ptype: composition type, this should be contained in the dataset itself
         """
 
         new_uhecr = Uhecr()
-        new_uhecr.from_data_file(filename, label)
+        new_uhecr.from_data_file(filename, label, ptype)
 
         # define uhecr object
         self.uhecr = new_uhecr

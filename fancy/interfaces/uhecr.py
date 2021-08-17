@@ -7,10 +7,12 @@ from astropy.coordinates import SkyCoord, EarthLocation
 from datetime import date, timedelta
 import h5py
 from scipy.optimize import root
+from tqdm import tqdm as progress_bar
 
 from .stan import coord_to_uv, uv_to_coord
 from ..detector.detector import Detector
 from ..plotting import AllSkyMap
+from .utils import get_nucleartable
 
 # importing crpropa, need to append system path
 import sys
@@ -32,7 +34,9 @@ class Uhecr():
         self.properties = None
         self.source_labels = None
 
-    def get_angerr(self):
+        self.nuc_table = get_nucleartable()
+
+    def _get_angerr(self):
         '''Get angular reconstruction uncertainty from label'''
 
         if self.label == "TA2015":
@@ -47,7 +51,7 @@ class Uhecr():
         return np.deg2rad(sig_omega)
         
 
-    def from_data_file(self, filename, label, exp_factor = 1.):
+    def from_data_file(self, filename, label,  ptype="p", exp_factor = 1.):
         """
         Define UHECR from data file of original information.
         
@@ -78,11 +82,7 @@ class Uhecr():
             self.period = self._find_period()
             self.A = self._find_area(exp_factor)
 
-            if "kappa_d" in list(data.keys()):
-                self.kappa_d = data["kappa_d"][()]
-            else:
-                self.kappa_d = self.eval_kappad(plot=False)
-                data.create_dataset("kappa_d", data=self.kappa_d)
+        self.ptype = ptype
 
     def _get_properties(self):
         """
@@ -96,6 +96,7 @@ class Uhecr():
         self.properties['energy'] = self.energy
         self.properties['A'] = self.A
         self.properties['zenith_angle'] = self.zenith_angle
+        self.properties["ptype"] = self.ptype
 
         # Only if simulated UHECRs
         if isinstance(self.source_labels, (list, np.ndarray)):
@@ -117,6 +118,7 @@ class Uhecr():
         self.energy = uhecr_properties['energy']
         self.zenith_angle = uhecr_properties['zenith_angle']
         self.A = uhecr_properties['A']
+        self.ptype = uhecr_properties['ptype']
 
         # Only if simulated UHECRs
         try:
@@ -126,7 +128,6 @@ class Uhecr():
 
         # Get SkyCoord from unit_vector
         self.coord = uv_to_coord(self.unit_vector)
-        self.kappa_d = self.eval_kappad()
 
     def plot(self, skymap, size=2):
         """
@@ -388,16 +389,25 @@ class Uhecr():
             uhecr_vector3d.append(v)
         return uhecr_vector3d
 
+    # def get_AZ(self, nuc="p"):
+    #     '''Return (A, Z) of the given nuclear element. Note that 'p'=='H'.'''
+    #     return self.nuc_table[nuc]
+
     def _prepare_crpropasim(self, particle_type="p", model_name="JF12", seed=691342):
         '''Set up CRPropa simulation with some magnetic field model'''
         sim = crpropa.ModuleList()
 
         # setup magnetic field
-        if model_name == "JF12":
+        if model_name == "JF12":  # JanssonFarrar2012
             gmf = crpropa.JF12Field()
             gmf.randomStriated(seed)
             gmf.randomTurbulent(seed)
-        else:
+
+        elif model_name == "PT11":  # Pshirkov2011 
+            gmf = crpropa.PT11Field()
+            gmf.setUseASS(True)  # Axisymmetric
+
+        else:  # default with JF12
             gmf = crpropa.JF12Field()
             gmf.randomStriated(seed)
             gmf.randomTurbulent(seed)
@@ -408,14 +418,13 @@ class Uhecr():
 
         # observer at galactic boundary (20 kpc)
         obs.add(crpropa.ObserverSurface( crpropa.Sphere(crpropa.Vector3d(0), 20 * crpropa.kpc) ))
-        # obs.onDetection(TextOutput('galactic_backtracking.txt', Output.Event3D))
         sim.add(obs)
-        # print(sim)
 
-        # composition, assume proton for now
-        # - nucleusId(A, Z)
-        pid = - crpropa.nucleusId(1, 1)
-        # pid = - crpropa.nucleusId(28, 14)
+        # A, Z = self.get_AZ(nuc=particle_type)
+        A, Z = self.nuc_table[particle_type]
+
+        # composition
+        pid = - crpropa.nucleusId(A, Z)
 
         # CRPropa random number generator
         crpropa_randgen = crpropa.Random() 
@@ -425,8 +434,8 @@ class Uhecr():
 
         return sim, pid, crpropa_randgen, pos_earth
 
-    def _plot_deflections(self, defl_arrdirs, rand_arrdirs):
-        '''Plot deflections for particulat UHECR dataset'''
+    def plot_deflections(self, defl_arrdirs, rand_arrdirs):
+        '''Plot deflections for particular UHECR dataset'''
         # check with basic mpl mollweide projection
         plt.figure(figsize=(12,7))
         ax = plt.subplot(111, projection = 'mollweide')
@@ -445,19 +454,23 @@ class Uhecr():
         ax.grid()
 
 
-    def eval_kappad(self, Nrand = 100, particle_type="p", plot=False):
+    def eval_kappad(self, kappad_args):
         '''
         Evaluate spread parameter between arrival direction
-        and deflected direction at galactic magnetic field
+        and deflected direction at galactic magnetic field.
+        Returns kappa_d, deflected and undeflected arrival vectors
         '''
 
+        particle_type, Nrand, gmf, plot = kappad_args
+
         # get angular reconstruction uncertainty
-        ang_err = self.get_angerr()
+        ang_err = self._get_angerr()
         # evaluate vector3d object of arrival direction
         uhecr_vector3d = self.coord_to_vector3d()
         # prepare inputs / initializations for CRPropa simulation
-        sim, pid, R, pos = self._prepare_crpropasim(particle_type)
+        sim, pid, R, pos = self._prepare_crpropasim(particle_type, gmf)
 
+        # arrival directions, mainly for plotting
         rand_arrdirs = np.zeros((self.N, Nrand, 2))
         defl_arrdirs = np.zeros((self.N, Nrand, 2))
 
@@ -468,7 +481,6 @@ class Uhecr():
             energy = self.energy[i] * crpropa.EeV
             for j in range(Nrand):
                 rand_arrdir = R.randVectorAroundMean(arr_dir, ang_err)
-
                 c = crpropa.Candidate(crpropa.ParticleState(pid, energy, pos, rand_arrdir))
                 sim.run(c)
 
@@ -484,8 +496,7 @@ class Uhecr():
                 # dot exists with Vector3d() objects
                 cos_theta = rand_arrdir.dot(defl_dir)
 
-                # use scipy.optimize.root to get kappa_d using
-                # dot product
+                # use scipy.optimize.root to get kappa_d using dot product
                 # P = 0.683 as per Soiaporn paper
                 sol = root(fischer_int_eq_P, x0=100, args=(cos_theta, 0.683))
                 # print(sol)   # check solution
@@ -493,12 +504,12 @@ class Uhecr():
                 kappa_ds[i, j] = sol.x[0]
 
         if plot:
-            self._plot_deflections(defl_arrdirs, rand_arrdirs)
+            self.plot_deflections(defl_arrdirs, rand_arrdirs)
 
         # evaluate mean kappa_d for each uhecr
         kappa_d_mean = np.mean(kappa_ds, axis=1)
 
-        return kappa_d_mean
+        return kappa_d_mean, defl_arrdirs, rand_arrdirs
 
 
 '''Integral of Fischer distribution used to evaluate kappa_d'''

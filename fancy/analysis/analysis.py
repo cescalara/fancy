@@ -14,6 +14,7 @@ from ..interfaces.stan import Direction, convert_scale
 from ..interfaces.data import Uhecr
 from ..plotting import AllSkyMap
 from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim, get_arrival_energy, get_arrival_energy_vec
+from ..interfaces.utils import get_nucleartable
 
 __all__ = ['Analysis']
 
@@ -33,7 +34,7 @@ class Analysis():
                  summary=b''):
         """
         To manage the running of simulations and fits based on Data and Model objects.
-        
+
         :param data: a Data object
         :param model: a Model object
         :param analysis_type: type of analysis
@@ -65,13 +66,14 @@ class Analysis():
         self.arr_dir_type = 'arrival direction'
         self.E_loss_type = 'energy loss'
         self.joint_type = 'joint'
+        self.gmf_type = "joint_gmf"
 
         if analysis_type == None:
             analysis_type = self.arr_dir_type
 
         self.analysis_type = analysis_type
 
-        if self.analysis_type == 'joint':
+        if self.analysis_type.find('joint') != -1:
 
             # find lower energy threshold for the simulation, given Eth and Eerr
             self.model.Eth_sim = get_Eth_sim(
@@ -86,8 +88,8 @@ class Analysis():
         varpi = self.data.source.unit_vector
         self.tables = ExposureIntegralTable(varpi=varpi, params=params)
 
-        # cpu count
-
+        # table containing (A, Z) of each element
+        self.nuc_table = get_nucleartable()
 
     def build_tables(self, num_points=50, sim_only=False, fit_only=False, parallel=True):
         """
@@ -100,7 +102,7 @@ class Analysis():
             if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
                 kappa_true = self.model.kappa
 
-            if self.analysis_type == self.joint_type:
+            if self.analysis_type == self.joint_type or self.analysis_type == self.gmf_type:
                 self.Eex = get_Eex(self.Eth_src, self.model.alpha)
                 self.kappa_ex = get_kappa_ex(self.Eex, self.model.B,
                                              self.data.source.distance)
@@ -108,10 +110,10 @@ class Analysis():
 
             if parallel:
                 self.tables.build_for_sim_parallel(kappa_true, self.model.alpha,
-                                      self.model.B, self.data.source.distance)
+                                                   self.model.B, self.data.source.distance)
             else:
                 self.tables.build_for_sim(kappa_true, self.model.alpha,
-                                        self.model.B, self.data.source.distance)
+                                          self.model.B, self.data.source.distance)
 
         if fit_only:
 
@@ -133,7 +135,6 @@ class Analysis():
 
             # full table for fit
             if parallel:
-            # self.tables.build_for_fit(kappa)
                 self.tables.build_for_fit_parallel(kappa)
             else:
                 self.tables.build_for_fit(kappa)
@@ -156,14 +157,14 @@ class Analysis():
             with Pool(self.nthreads) as mpool:
                 results = list(progress_bar(
                     mpool.imap(get_arrival_energy_vec, args_list), total=len(args_list),
-                    desc='Precomputing exposure integral'
+                    desc='Precomputing energy grids'
                 ))
 
                 self.Earr_grid = results
-            
+
         else:
             for i in progress_bar(range(len(self.data.source.distance)),
-                                desc='Precomputing energy grids'):
+                                  desc='Precomputing energy grids'):
                 d = self.data.source.distance[i]
                 self.Earr_grid.append(
                     [get_arrival_energy(e, d)[0] for e in self.E_grid])
@@ -173,6 +174,68 @@ class Analysis():
                 E_group = f.create_group('energy')
                 E_group.create_dataset('E_grid', data=self.E_grid)
                 E_group.create_dataset('Earr_grid', data=self.Earr_grid)
+
+    def build_kappad(self, table_file=None, particle_type="all", args=None):
+        '''
+        Evaluate spread parameter for GMF for each UHECR dataset. 
+        Note that as of now, UHECR dataset label coincides with
+        names from fancy/detector. The output is written to table_file,
+        which can then be accessed later with analysis.use_tables().
+
+        If all_particles is True, create kappa_d tables for each element given in
+        fancy/interfaces/nuclear_table.pkl. 
+
+        All arrival directions are given in terms of galactic coordinates (lon, lat)
+        with respect to mpl: lon \in [-pi,pi], lat \in [-pi/2, pi/2]
+        '''
+        # there must be a better way to do this...
+        if args is not None:
+            Nrand, gmf, plot_true = args
+        else:
+            Nrand, gmf, plot_true = 100, "JF12", False
+
+        omega_true = np.zeros((len(self.data.uhecr.coord.galactic.l.rad), 2))
+        omega_true[:, 0] = np.pi - self.data.uhecr.coord.galactic.l.rad
+        omega_true[:, 1] = self.data.uhecr.coord.galactic.b.rad
+
+        if particle_type == "all":
+            kappad_args_list = [(ptype, Nrand, gmf, plot_true)
+                         for ptype in list(self.nuc_table.keys())]
+
+            with Pool(self.nthreads) as mpool:
+                results = list(progress_bar(
+                    mpool.imap(self.data.uhecr.eval_kappad, kappad_args_list), total=len(kappad_args_list),
+                    desc='Precomputing kappa_d for each composition'
+                ))
+
+            with h5py.File(table_file, 'r+') as f:
+                kappad_group = f.create_group('kappa_d')
+
+                for i, ptype in enumerate(list(self.nuc_table.keys())):
+                    particle_group = kappad_group.create_group(ptype)
+                    particle_group.create_dataset('kappa_d', data=results[i][0])
+                    particle_group.create_dataset(
+                        'omega_gal', data=results[i][1])
+                    particle_group.create_dataset(
+                        'omega_rand', data=results[i][2])
+                    particle_group.create_dataset(
+                        'omega_true', data=omega_true)
+
+        else:
+            kappad_args = (particle_type, Nrand, gmf, plot_true)
+            kappa_d, omega_rand, omega_gal = self.data.uhecr.eval_kappad(
+                kappad_args = kappad_args)
+
+            if table_file:
+                with h5py.File(table_file, 'r+') as f:
+                    kappad_group = f.create_group('kappa_d')
+                    particle_group = kappad_group.create_group(particle_type)
+                    particle_group.create_dataset('kappa_d', data=kappa_d)
+                    particle_group.create_dataset('omega_gal', data=omega_gal)
+                    particle_group.create_dataset(
+                        'omega_rand', data=omega_rand)
+                    particle_group.create_dataset(
+                        'omega_true', data=omega_true)
 
     def use_tables(self, input_filename, main_only=True):
         """
@@ -187,10 +250,15 @@ class Analysis():
             self.tables.table = input_table.table
             self.tables.kappa = input_table.kappa
 
-            if self.analysis_type == self.joint_type:
+            if self.analysis_type.find("joint") != -1:
                 with h5py.File(input_filename, 'r') as f:
                     self.E_grid = f['energy/E_grid'][()]
                     self.Earr_grid = f['energy/Earr_grid'][()]
+
+            if self.analysis_type == self.gmf_type:
+                self.ptype = self.data.uhecr.ptype
+                with h5py.File(input_filename, 'r') as f:
+                    self.kappa_d = f['kappa_d'][self.ptype]["kappa_d"][()]
 
         else:
             self.tables = ExposureIntegralTable(input_filename=input_filename)
@@ -272,7 +340,9 @@ class Analysis():
         F0 = self.model.F0
         D, alpha_T, eps, F0, L = convert_scale(D, alpha_T, eps, F0, L)
 
-        if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
+        if self.analysis_type == self.joint_type \
+            or self.analysis_type == self.E_loss_type \
+                or self.analysis_type == self.gmf_type:
             # find lower energy threshold for the simulation, given Eth and Eerr
             if Eth_sim:
                 self.model.Eth_sim = Eth_sim
@@ -294,6 +364,7 @@ class Analysis():
         self.simulation_input['L'] = L
         self.simulation_input['F0'] = F0
         self.simulation_input['distance'] = self.data.source.distance
+
         if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
 
             self.simulation_input['kappa'] = self.model.kappa
@@ -312,6 +383,19 @@ class Analysis():
             self.simulation_input['Eth'] = self.model.Eth_sim
             self.simulation_input[
                 'Eerr'] = self.data.detector.energy_uncertainty
+
+        if self.analysis_type == self.gmf_type:
+
+            self.simulation_input['B'] = self.model.B
+            self.simulation_input['alpha'] = self.model.alpha
+            self.simulation_input['Eth'] = self.model.Eth_sim
+            self.simulation_input[
+                'Eerr'] = self.data.detector.energy_uncertainty
+
+            # get particle type we intialize simulation with
+            ptype = self.model.ptype
+            A, Z = self.nuc_table[ptype]
+            self.simulation_input["Z"] = Z
 
         try:
             if self.data.source.flux:
@@ -338,7 +422,9 @@ class Analysis():
         self.source_labels = (
             self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
 
-        if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
+        if self.analysis_type == self.joint_type \
+            or self.analysis_type == self.E_loss_type \
+                or self.analysis_type == self.gmf_type:
 
             self.Edet = self.simulation.extract(['Edet'])['Edet'][0]
             self.Earr = self.simulation.extract(['Earr'])['Earr'][0]
@@ -356,7 +442,8 @@ class Analysis():
 
         # simulate the zenith angles
         print('Simulating zenith angles...')
-        self.zenith_angles = self._simulate_zenith_angles(self.data.detector.start_year)
+        self.zenith_angles = self._simulate_zenith_angles(
+            self.data.detector.start_year)
         print('Done!')
 
         # Make uhecr object
@@ -368,6 +455,8 @@ class Analysis():
         uhecr_properties['zenith_angle'] = self.zenith_angles
         uhecr_properties['A'] = np.tile(self.data.detector.area, self.N)
         uhecr_properties['source_labels'] = self.source_labels
+
+        uhecr_properties["ptype"] = self.model.ptype if self.analysis_type == self.gmf_type else "p"
 
         new_uhecr = Uhecr()
         new_uhecr.from_properties(uhecr_properties)
@@ -409,7 +498,6 @@ class Analysis():
             'N': self.data.uhecr.N,
             'arrival_direction': self.data.uhecr.unit_vector,
             'A': self.data.uhecr.A,
-            'kappa_d': self.data.uhecr.kappa_d,
             'alpha_T': alpha_T,
             'Ngrid': len(kappa_grid),
             'eps': eps_fit,
@@ -417,13 +505,21 @@ class Analysis():
             'zenith_angle': self.data.uhecr.zenith_angle
         }
 
-        if self.analysis_type == self.joint_type or self.analysis_type == self.E_loss_type:
+        if self.analysis_type == self.joint_type \
+                or self.analysis_type == self.E_loss_type \
+                or self.analysis_type == self.gmf_type:
 
             self.fit_input['Edet'] = self.data.uhecr.energy
             self.fit_input['Eth'] = self.model.Eth
             self.fit_input['Eerr'] = self.data.detector.energy_uncertainty
             self.fit_input['E_grid'] = E_grid
             self.fit_input['Earr_grid'] = Earr_grid
+
+        if self.analysis_type == self.gmf_type:
+            _, self.fit_input["Z"] = self.nuc_table[self.ptype]
+            self.fit_input["kappa_d"] = self.kappa_d
+        else:
+            self.fit_input["kappa_d"] = self.data.detector.kappa_d
 
     def save(self):
         """
@@ -464,7 +560,7 @@ class Analysis():
     def plot(self, type=None, cmap=None):
         """
         Plot the data associated with the analysis object.
-        
+
         type == 'arrival direction':
         Plot the arrival directions on a skymap, 
         with a colour scale describing which source 
