@@ -7,6 +7,7 @@ from astropy.coordinates import SkyCoord, EarthLocation
 from datetime import date, timedelta
 import h5py
 
+from .uhecr import Uhecr
 from .stan import coord_to_uv, uv_to_coord
 from ..detector.detector import Detector
 from ..plotting import AllSkyMap
@@ -48,16 +49,17 @@ class Data():
         # define source object
         self.source = new_source
 
-    def add_uhecr(self, filename, label=None):
+    def add_uhecr(self, filename, label=None, ptype="p"):
         """
         Add a uhecr object to the data container from file.
 
         :param filename: name of the file containing the object's data
         :param label: reference label for the uhecr dataset
+        :param ptype: composition type, this should be contained in the dataset itself
         """
 
         new_uhecr = Uhecr()
-        new_uhecr.from_data_file(filename, label)
+        new_uhecr.from_data_file(filename, label, ptype)
 
         # define uhecr object
         self.uhecr = new_uhecr
@@ -271,7 +273,7 @@ class Source():
             self.N = len(self.distance)
             glon = data['glon'][()]
             glat = data['glat'][()]
-            self.coord = get_coordinates(glon, glat)
+            self.coord = self.get_coordinates(glon, glat)
 
             if self.label != 'cosmo_150' and self.label != 'VCV_AGN':
                 # Get names
@@ -399,338 +401,21 @@ class Source():
             print('No fluxes to select on.')
 
 
-class Uhecr():
-    """
-    Stores the data and parameters for UHECRs
-    """
-    def __init__(self):
-        """
-        Initialise empty container.
-        """
-
-        self.properties = None
-        self.source_labels = None
-
-    def from_data_file(self, filename, label, exp_factor = 1.):
-        """
-        Define UHECR from data file of original information.
-        
-        Handles calculation of observation periods and 
-        effective areas assuming the UHECR are detected 
-        by the Pierre Auger Observatory or TA.
-        
-        :param filename: name of the data file
-        :param label: reference label for the UHECR data set 
-        """
-
-        self.label = label
-
-        with h5py.File(filename, 'r') as f:
-
-            data = f[self.label]
-
-            self.year = data['year'][()]
-            self.day = data['day'][()]
-            self.zenith_angle = np.deg2rad(data['theta'][()])
-            self.energy = data['energy'][()]
-            self.N = len(self.energy)
-            glon = data['glon'][()]
-            glat = data['glat'][()]
-            self.coord = get_coordinates(glon, glat)
-
-            self.unit_vector = coord_to_uv(self.coord)
-            self.period = self._find_period()
-            self.A = self._find_area(exp_factor)
-
-    def _get_properties(self):
-        """
-        Convenience function to pack object into dict.
-        """
-
-        self.properties = {}
-        self.properties['label'] = self.label
-        self.properties['N'] = self.N
-        self.properties['unit_vector'] = self.unit_vector
-        self.properties['energy'] = self.energy
-        self.properties['A'] = self.A
-        self.properties['zenith_angle'] = self.zenith_angle
-
-        # Only if simulated UHECRs
-        if isinstance(self.source_labels, (list, np.ndarray)):
-            self.properties['source_labels'] = self.source_labels
-
-    def from_properties(self, uhecr_properties):
-        """
-        Define UHECR from properties dict.
-            
-        :param uhecr_properties: dict containing UHECR properties.
-        :param label: identifier
-        """
-
-        self.label = uhecr_properties['label']
-
-        # Read from input dict
-        self.N = uhecr_properties['N']
-        self.unit_vector = uhecr_properties['unit_vector']
-        self.energy = uhecr_properties['energy']
-        self.zenith_angle = uhecr_properties['zenith_angle']
-        self.A = uhecr_properties['A']
-
-        # Only if simulated UHECRs
-        try:
-            self.source_labels = uhecr_properties['source_labels']
-        except:
-            pass
-
-        # Get SkyCoord from unit_vector
-        self.coord = uv_to_coord(self.unit_vector)
-
-    def plot(self, skymap, size=2):
-        """
-        Plot the Uhecr instance on a skymap.
-
-        Called by Data.show()
-      
-        :param skymap: the AllSkyMap
-        :param size: tissot radius
-        :param source_labels: source labels (int)
-        """
-
-        lons = self.coord.galactic.l.deg
-        lats = self.coord.galactic.b.deg
-
-        alpha_level = 0.7
-
-        # If source labels are provided, plot with colour
-        # indicating the source label.
-        if isinstance(self.source_labels, (list, np.ndarray)):
-
-            Nc = max(self.source_labels)
-
-            # Use a continuous cmap
-            cmap = plt.cm.get_cmap('plasma', Nc)
-
-            write_label = True
-
-            for lon, lat, lab in np.nditer([lons, lats, self.source_labels]):
-                color = cmap(lab)
-                if write_label:
-                    skymap.tissot(lon,
-                                  lat,
-                                  size,
-                                  npts=30,
-                                  facecolor=color,
-                                  alpha=0.5,
-                                  label=self.label)
-                    write_label = False
-                else:
-                    skymap.tissot(lon,
-                                  lat,
-                                  size,
-                                  npts=30,
-                                  facecolor=color,
-                                  alpha=0.5)
-
-        # Otherwise, use the cmap to show the UHECR energy.
-        else:
-
-            # use colormap for energy
-            norm_E = matplotlib.colors.Normalize(min(self.energy),
-                                                 max(self.energy))
-            cmap = plt.cm.get_cmap('viridis', len(self.energy))
-
-            write_label = True
-            for E, lon, lat in np.nditer([self.energy, lons, lats]):
-
-                color = cmap(norm_E(E))
-
-                if write_label:
-                    skymap.tissot(lon,
-                                  lat,
-                                  size,
-                                  30,
-                                  facecolor=color,
-                                  alpha=alpha_level,
-                                  label=self.label)
-                    write_label = False
-                else:
-                    skymap.tissot(lon,
-                                  lat,
-                                  size,
-                                  30,
-                                  facecolor=color,
-                                  alpha=alpha_level)
-
-    def save(self, file_handle):
-        """
-        Save to the passed H5py file handle,
-        i.e. something that cna be used with 
-        file_handle.create_dataset()
-        
-        :param file_handle: file handle
-        """
-
-        self._get_properties()
-
-        for key, value in self.properties.items():
-            file_handle.create_dataset(key, data=value)
-
-    def _find_area(self, exp_factor):
-        """
-        Find the effective area of the observatory at 
-        the time of detection.
-
-        Possible areas are calculated from the exposure reported
-        in Abreu et al. (2010) or Collaboration et al. 2014.
-        """
-
-        if self.label == 'auger2010':
-            from ..detector.auger2010 import A1, A2, A3
-            possible_areas = [A1, A2, A3]
-            area = [possible_areas[i - 1]* exp_factor  for i in self.period]
-
-        elif self.label == 'auger2014':
-            from ..detector.auger2014 import A1, A2, A3, A4, A1_incl, A2_incl, A3_incl, A4_incl
-            possible_areas_vert = [A1, A2, A3, A4]
-            possible_areas_incl = [A1_incl, A2_incl, A3_incl, A4_incl]
-
-            # find area depending on period and incl
-            area = []
-            for i, p in enumerate(self.period):
-                if self.zenith_angle[i] <= 60:
-                    area.append(possible_areas_vert[p - 1]* exp_factor )
-                if self.zenith_angle[i] > 60:
-                    area.append(possible_areas_incl[p - 1]* exp_factor )
-
-        elif self.label == 'TA2015':
-            from ..detector.TA2015 import A1, A2
-            possible_areas = [A1, A2]
-            area = [possible_areas[i - 1] * exp_factor for i in self.period]
-
-        else:
-            print('Error: effective areas and periods not defined')
-
-        return area
-
-    def _find_period(self):
-        """
-        For a given year or day, find UHECR period based on dates
-        in table 1 in Abreu et al. (2010) or in Collaboration et al. 2014.
-        """
-
-        period = []
-        if self.label == "auger2014":
-            from ..detector.auger2014 import (period_1_start, period_1_end,
-                                            period_2_start, period_2_end,
-                                            period_3_start, period_3_end,
-                                            period_4_start, period_4_end)
-
-            # check dates
-            for y, d in np.nditer([self.year, self.day]):
-                d = int(d)
-                test_date = date(y, 1, 1) + timedelta(d)
-
-                if period_1_start <= test_date <= period_1_end:
-                    period.append(1)
-                elif period_2_start <= test_date <= period_2_end:
-                    period.append(2)
-                elif period_3_start <= test_date <= period_3_end:
-                    period.append(3)
-                elif test_date >= period_3_end:
-                    period.append(4)
-                else:
-                    print('Error: cannot determine period for year', y, 'and day',
-                        d)
-
-        elif self.label == "TA2015":
-            from ..detector.TA2015 import (period_1_start, period_1_end,
-                                            period_2_start, period_2_end)
-            for y, d in np.nditer([self.year, self.day]):
-                d = int(d)
-                test_date = date(y, 1, 1) + timedelta(d)
-
-                if period_1_start <= test_date <= period_1_end:
-                    period.append(1)
-                elif period_2_start <= test_date <= period_2_end:
-                    period.append(2)
-                elif test_date >= period_2_end:
-                    period.append(2)
-                else:
-                    print('Error: cannot determine period for year', y, 'and day',
-                        d)    
-
-        return period
-
-    def select_period(self, period):
-        """
-        Select certain periods for analysis, other periods will be discarded. 
-        """
-
-        # find selected periods
-        if len(period) == 1:
-            selection = np.where(np.asarray(self.period) == period[0])
-        if len(period) == 2:
-            selection = np.concatenate([
-                np.where(np.asarray(self.period) == period[0]),
-                np.where(np.asarray(self.period) == period[1])
-            ],
-                                       axis=1)
-
-        # keep things as lists
-        selection = selection[0].tolist()
-
-        # make selection
-        self.A = [self.A[i] for i in selection]
-        self.period = [self.period[i] for i in selection]
-        self.energy = [self.energy[i] for i in selection]
-        self.incidence_angle = [self.incidence_angle[i] for i in selection]
-        self.unit_vector = [self.unit_vector[i] for i in selection]
-
-        self.N = len(self.period)
-
-        self.day = [self.day[i] for i in selection]
-        self.year = [self.year[i] for i in selection]
-
-        self.coord = self.coord[selection]
-
-    def select_energy(self, Eth):
-        """
-        Select out only UHECRs above a certain energy.
-        """
-
-        selection = np.where(np.asarray(self.energy) >= Eth)
-        selection = selection[0].tolist()
-
-        # make selection
-        self.A = [self.A[i] for i in selection]
-        self.period = [self.period[i] for i in selection]
-        self.energy = [self.energy[i] for i in selection]
-        self.incidence_angle = [self.incidence_angle[i] for i in selection]
-        self.unit_vector = [self.unit_vector[i] for i in selection]
-
-        self.N = len(self.period)
-
-        self.day = [self.day[i] for i in selection]
-        self.year = [self.year[i] for i in selection]
-
-        self.coord = self.coord[selection]
-
-
 # convenience functions
 
 
-def get_coordinates(glon, glat, D=None):
-    """
-    Convert glon and glat to astropy SkyCoord
-    Add distance if possible (allows conversion to cartesian coords)
-        
-    :return: astropy.coordinates.SkyCoord
-    """
+    def get_coordinates(self, glon, glat, D=None):
+        """
+        Convert glon and glat to astropy SkyCoord
+        Add distance if possible (allows conversion to cartesian coords)
+            
+        :return: astropy.coordinates.SkyCoord
+        """
 
-    if D:
-        return SkyCoord(l=glon * u.degree,
-                        b=glat * u.degree,
-                        frame='galactic',
-                        distance=D * u.mpc)
-    else:
-        return SkyCoord(l=glon * u.degree, b=glat * u.degree, frame='galactic')
+        if D:
+            return SkyCoord(l=glon * u.degree,
+                            b=glat * u.degree,
+                            frame='galactic',
+                            distance=D * u.mpc)
+        else:
+            return SkyCoord(l=glon * u.degree, b=glat * u.degree, frame='galactic')
