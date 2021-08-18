@@ -63,8 +63,8 @@ class Analysis():
         self.Earr = None
         self.Edet = None
 
-        self.arr_dir_type = 'arrival direction'
-        self.E_loss_type = 'energy loss'
+        self.arr_dir_type = 'arrival_direction'
+        self.E_loss_type = 'energy_loss'
         self.joint_type = 'joint'
         self.gmf_type = "joint_gmf"
 
@@ -578,9 +578,9 @@ class Analysis():
 
         # plot arrival directions by default
         if type == None:
-            type == 'arrival direction'
+            type == 'arrival_direction'
 
-        if type == 'arrival direction':
+        if type == 'arrival_direction':
 
             # figure
             fig, ax = plt.subplots()

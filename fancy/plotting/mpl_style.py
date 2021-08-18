@@ -1,5 +1,4 @@
-''' Move the mplstyle files located in ./mplstyles to the appropriate mpl_configdir in the local file system so that the styles "minimalist" and "blues" can be used
-'''
+''' Move the mplstyle files located in ./mplstyles to the appropriate mpl_configdir in the local file system so that the styles "minimalist" and "blues" can be used.'''
 import os
 import shutil
 import os.path as osp
@@ -16,7 +15,6 @@ def config_mplstyle(clear=False):
     '''
     # __file__ is the path of the python script (i.e. path to this file)
     mplstyles_dir = osp.join(osp.abspath(osp.dirname(__file__)), "mplstyles")
-
     stylelib_dir = osp.join(osp.abspath(mpl.get_configdir()), "stylelib")
 
     # first check if the path to the stylelib and mpl_config directory exists, if not then create that directory
@@ -33,18 +31,8 @@ def config_mplstyle(clear=False):
         shutil.copyfile(osp.join(mplstyles_dir, fname),
                         osp.join(stylelib_dir, fname))
 
-    # '''not really sure why the above doesnt want to work, temporary workaround by using the full path to the location where mplstyles is located below'''
-    # mplstyles_dir = osp.join(osp.dirname(__file__), "mplstyles")
-
-    # # a list of paths going to the mplstyles directory
-    # mplstyle_filelist = [osp.join(mplstyles_dir, fname) for fname in os.listdir(mplstyles_dir)]
-
-    # return mplstyle_filelist
-
 
 if __name__ == "__main__":
-    # import matplotlib.pyplot as plt
-    # print(osp.dirname(__file__))
     # run the main function
     config_mplstyle(clear=True)
 
