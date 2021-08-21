@@ -23,6 +23,8 @@ Installation is done via `pip`:
 ```
 pip install fancy
 ```
+Additionally, in order to utilize the plotting styles in `uhecr-project/uhecr_model`, run `init_config.sh`. This also
+allows one to download the galactic field model utilized with the GMF model implemented.
 
 ## License
 
