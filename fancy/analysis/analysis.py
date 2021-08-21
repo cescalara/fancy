@@ -6,15 +6,24 @@ from matplotlib import pyplot as plt
 import h5py
 from tqdm import tqdm as progress_bar
 from multiprocessing import Pool, cpu_count
+from scipy.stats import bernoulli
+import os
 
 import stan_utility
 
 from ..interfaces.integration import ExposureIntegralTable
-from ..interfaces.stan import Direction, convert_scale
+from ..interfaces.stan import Direction, convert_scale, coord_to_uv, uv_to_coord
 from ..interfaces.data import Uhecr
+from ..interfaces.utils import get_nucleartable
 from ..plotting import AllSkyMap
 from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim, get_arrival_energy, get_arrival_energy_vec
-from ..interfaces.utils import get_nucleartable
+from ..detector.vMF.vmf import sample_vMF, sample_sphere
+from ..detector.exposure import m_dec
+
+# import crpropa
+import sys
+sys.path.append("/opt/CRPropa3/lib/python3.8/site-packages")
+import crpropa
 
 __all__ = ['Analysis']
 
@@ -101,19 +110,32 @@ class Analysis():
             # kappa_true table for simulation
             if self.analysis_type == self.arr_dir_type or self.analysis_type == self.E_loss_type:
                 kappa_true = self.model.kappa
+                D_src = self.data.source.distance
 
-            if self.analysis_type == self.joint_type or self.analysis_type == self.gmf_type:
+            if self.analysis_type == self.joint_type:
+                D_src = self.data.source.distance
                 self.Eex = get_Eex(self.Eth_src, self.model.alpha)
                 self.kappa_ex = get_kappa_ex(self.Eex, self.model.B,
-                                             self.data.source.distance)
+                                             D_src)
                 kappa_true = self.kappa_ex
+            
+            if  self.analysis_type == self.gmf_type:
+                # shift by 0.02 to get kappa_ex at g.b.
+                D_src = self.data.source.distance - 0.02
+                self.Eex = get_Eex(self.Eth_src, self.model.alpha)
+                
+                self.kappa_ex = get_kappa_ex(self.Eex, self.model.B,
+                                             D_src)
+                kappa_true = self.kappa_ex
+
+                # evaluate for kappa_d
 
             if parallel:
                 self.tables.build_for_sim_parallel(kappa_true, self.model.alpha,
-                                                   self.model.B, self.data.source.distance)
+                                                   self.model.B, D_src)
             else:
                 self.tables.build_for_sim(kappa_true, self.model.alpha,
-                                          self.model.B, self.data.source.distance)
+                                          self.model.B, D_src)
 
         if fit_only:
 
@@ -175,68 +197,6 @@ class Analysis():
                 E_group.create_dataset('E_grid', data=self.E_grid)
                 E_group.create_dataset('Earr_grid', data=self.Earr_grid)
 
-    def build_kappad(self, table_file=None, particle_type="all", args=None):
-        '''
-        Evaluate spread parameter for GMF for each UHECR dataset. 
-        Note that as of now, UHECR dataset label coincides with
-        names from fancy/detector. The output is written to table_file,
-        which can then be accessed later with analysis.use_tables().
-
-        If all_particles is True, create kappa_d tables for each element given in
-        fancy/interfaces/nuclear_table.pkl. 
-
-        All arrival directions are given in terms of galactic coordinates (lon, lat)
-        with respect to mpl: lon \in [-pi,pi], lat \in [-pi/2, pi/2]
-        '''
-        # there must be a better way to do this...
-        if args is not None:
-            Nrand, gmf, plot_true = args
-        else:
-            Nrand, gmf, plot_true = 100, "JF12", False
-
-        omega_true = np.zeros((len(self.data.uhecr.coord.galactic.l.rad), 2))
-        omega_true[:, 0] = np.pi - self.data.uhecr.coord.galactic.l.rad
-        omega_true[:, 1] = self.data.uhecr.coord.galactic.b.rad
-
-        if particle_type == "all":
-            kappad_args_list = [(ptype, Nrand, gmf, plot_true)
-                         for ptype in list(self.nuc_table.keys())]
-
-            with Pool(self.nthreads) as mpool:
-                results = list(progress_bar(
-                    mpool.imap(self.data.uhecr.eval_kappad, kappad_args_list), total=len(kappad_args_list),
-                    desc='Precomputing kappa_d for each composition'
-                ))
-
-            with h5py.File(table_file, 'r+') as f:
-                kappad_group = f.create_group('kappa_d')
-
-                for i, ptype in enumerate(list(self.nuc_table.keys())):
-                    particle_group = kappad_group.create_group(ptype)
-                    particle_group.create_dataset('kappa_d', data=results[i][0])
-                    particle_group.create_dataset(
-                        'omega_gal', data=results[i][1])
-                    particle_group.create_dataset(
-                        'omega_rand', data=results[i][2])
-                    particle_group.create_dataset(
-                        'omega_true', data=omega_true)
-
-        else:
-            kappad_args = (particle_type, Nrand, gmf, plot_true)
-            kappa_d, omega_rand, omega_gal = self.data.uhecr.eval_kappad(
-                kappad_args = kappad_args)
-
-            if table_file:
-                with h5py.File(table_file, 'r+') as f:
-                    kappad_group = f.create_group('kappa_d')
-                    particle_group = kappad_group.create_group(particle_type)
-                    particle_group.create_dataset('kappa_d', data=kappa_d)
-                    particle_group.create_dataset('omega_gal', data=omega_gal)
-                    particle_group.create_dataset(
-                        'omega_rand', data=omega_rand)
-                    particle_group.create_dataset(
-                        'omega_true', data=omega_true)
-
     def use_tables(self, input_filename, main_only=True):
         """
         Pass in names of integral tables that have already been made.
@@ -254,11 +214,6 @@ class Analysis():
                 with h5py.File(input_filename, 'r') as f:
                     self.E_grid = f['energy/E_grid'][()]
                     self.Earr_grid = f['energy/Earr_grid'][()]
-
-            if self.analysis_type == self.gmf_type:
-                self.ptype = self.data.uhecr.ptype
-                with h5py.File(input_filename, 'r') as f:
-                    self.kappa_d = f['kappa_d'][self.ptype]["kappa_d"][()]
 
         else:
             self.tables = ExposureIntegralTable(input_filename=input_filename)
@@ -325,6 +280,7 @@ class Analysis():
 
         :param seed: seed for RNG
         :param Eth_sim: the minimun energy simulated
+        :param gmf: enable galactic magnetic field deflections
         """
 
         eps = self.tables.sim_table
@@ -393,8 +349,8 @@ class Analysis():
                 'Eerr'] = self.data.detector.energy_uncertainty
 
             # get particle type we intialize simulation with
-            ptype = self.model.ptype
-            A, Z = self.nuc_table[ptype]
+            self.ptype = self.model.ptype
+            _, Z = self.nuc_table[self.ptype]
             self.simulation_input["Z"] = Z
 
         try:
@@ -416,19 +372,37 @@ class Analysis():
 
         # extract output
         print('Extracting output...')
+
         self.Nex_sim = self.simulation.extract(['Nex_sim'])['Nex_sim']
-        arrival_direction = self.simulation.extract(['arrival_direction'
-                                                     ])['arrival_direction'][0]
+        # source_labels: to which source label each UHECR is associated with
         self.source_labels = (
             self.simulation.extract(['lambda'])['lambda'][0] - 1).astype(int)
 
-        if self.analysis_type == self.joint_type \
+        if self.analysis_type == self.arr_dir_type:
+            arrival_direction = self.simulation.extract(['arrival_direction'
+                                                ])['arrival_direction'][0]
+
+        elif self.analysis_type == self.joint_type \
             or self.analysis_type == self.E_loss_type \
                 or self.analysis_type == self.gmf_type:
 
-            self.Edet = self.simulation.extract(['Edet'])['Edet'][0]
-            self.Earr = self.simulation.extract(['Earr'])['Earr'][0]
-            self.E = self.simulation.extract(['E'])['E'][0]
+            self.Earr = self.simulation.extract(
+                ['Earr'])['Earr'][0]  # arrival energy
+            self.E = self.simulation.extract(
+                ['E'])['E'][0]  # sampled from spectrum
+
+            # simulate with deflections with GMF
+            if self.analysis_type == self.gmf_type:
+                kappas = self.simulation.extract(['kappa'])['kappa'][0]
+                print("Simulating deflections...")
+                arrival_direction, self.Edet = self._simulate_deflections(
+                    kappas)
+
+            else:
+                arrival_direction = self.simulation.extract(['arrival_direction'
+                                                             ])['arrival_direction'][0]
+
+                self.Edet = self.simulation.extract(['Edet'])['Edet'][0]
 
             # make cut on Eth
             inds = np.where(self.Edet >= self.model.Eth)
@@ -444,11 +418,10 @@ class Analysis():
         print('Simulating zenith angles...')
         self.zenith_angles = self._simulate_zenith_angles(
             self.data.detector.start_year)
-        print('Done!')
 
         # Make uhecr object
         uhecr_properties = {}
-        uhecr_properties['label'] = 'sim_uhecr'
+        uhecr_properties['label'] = self.data.detector.label
         uhecr_properties['N'] = self.N
         uhecr_properties['unit_vector'] = self.arrival_direction.unit_vector
         uhecr_properties['energy'] = self.Edet
@@ -456,12 +429,201 @@ class Analysis():
         uhecr_properties['A'] = np.tile(self.data.detector.area, self.N)
         uhecr_properties['source_labels'] = self.source_labels
 
-        uhecr_properties["ptype"] = self.model.ptype if self.analysis_type == self.gmf_type else "p"
+        if self.analysis_type == self.gmf_type:
+            uhecr_properties["ptype"] = self.model.ptype
 
         new_uhecr = Uhecr()
-        new_uhecr.from_properties(uhecr_properties)
+        new_uhecr.from_simulation(uhecr_properties)
 
         self.data.uhecr = new_uhecr
+
+        print('Done!')
+
+
+    def _simulate_deflections(self, kappas, Nrand=100, plot=False, path_to_lens=None):
+        '''
+        Simulate the forward propagation of UHECR in the galactic magnetic field using
+        CRPropa healpix maps and galactic lensing. The simulation performs (in essence)
+        the following:
+        1. sample from vMF distribution with the given kappa (deflections from EGMF)
+        2. Create map of particles and apply lensing given from CRPropa
+        3. Sample energies and directions from lensed map
+        4. Limit directions and corrsp. energies based on exposure of detector
+        This then returns the simulated arrival directions and detected energies
+        at Earth after deflection.
+
+        Currently only (anti-)protons are supported. This needs to be fixed for the future
+        if one wants to simulate for different compositions.
+
+        :param kappas: array of vMF spread parameter for each UHECR originating from a source
+        :param Nrand: number of samples performed per true UHECR for vMF, higher means more precise lensing
+        :param plot: plot the resulting skymaps
+        '''
+        N_uhecr = len(kappas)  # number of UHECRS at gal. boundary
+
+        # sample from vMF distribution with obtained kappas to get
+        # coordinates at boundary
+        coords_gb = self._sample_at_gb(kappas, Nrand)
+
+        # apply magnetic lensing to get energies and coordinates at Earth
+        # path to lens is by default "./JF12full_Gamale/lens.cfg", but can be set to anywhere
+        # if one wishes to construct more lenses
+
+        path_to_lens = os.path.join(os.path.abspath(os.path.dirname(__file__)), "JF12full_Gamale", "lens.cfg")
+        coords_earth, energies_earth = self._apply_lensing(coords_gb, N_uhecr, Nrand, path_to_lens)
+
+        # limit using detector exposure
+        # energies needed since those will also be truncated by rejected UHECRs
+        omega_det_exp_limited, energies_exp_limited = self._apply_exposure_limits(coords_earth, energies_earth, N_uhecr)
+
+        # apply normal sampling to energies based on detector energy uncertainty
+        energies_exp_limited = energies_exp_limited * 1e-18  # convert back to EeV
+        Eerr = self.data.detector.energy_uncertainty
+        energies_det_exp_limited = np.random.normal(loc=energies_exp_limited, scale=Eerr * energies_exp_limited)
+
+        return omega_det_exp_limited, energies_det_exp_limited
+
+    def _sample_at_gb(self, kappas, Nrand):
+        '''Sample from the vMF distribution at the galactic boundary. 
+
+        This is identical to what is done in the no_gmf simulation at Earth. 
+        '''
+        source_labels = self.source_labels
+        varpi = self.data.source.unit_vector
+
+        # get source vector in which uhecr is associated with
+        # otherwise the UHECR is associated with background
+        varpi_per_uhecr = []
+        for lmbda in source_labels:
+            if lmbda == len(varpi):  # if background
+                varpi_per_uhecr.append(None)
+            else:
+                varpi_per_uhecr.append(np.array(varpi[lmbda]))                
+
+        # obtain arrival directions at the galactic boundary
+        # convert to SkyCoord to easily get glon / glat
+        coords_gb = []
+        for i, lmbda in enumerate(source_labels):
+            if lmbda == len(varpi):  # from background, sample from sphere uniformly
+                coords_gb.append(uv_to_coord(sample_sphere(1, Nrand)))
+            else:   # from source, sample from vmf
+                coords_gb.append(uv_to_coord(
+                    sample_vMF(varpi_per_uhecr[i], kappas[i], Nrand)))
+
+        return coords_gb
+
+    def _apply_lensing(self, coords_gb, N_uhecr, Nrand, path_to_lens):
+        '''
+        Apply lensing from GMF obtained from https://www.desy.de/~crpropa/data/magnetic_lenses/ 
+        to the arrival directions at the galactic boundary. We use the JF12 model by default.
+        Returns energies and arrival directions (SkyCoord) at Earth after deflection.
+
+        Note that we can also construct our own magnetic field lens, however, this can be performed
+        for future projects.
+        (check https://crpropa.github.io/CRPropa3/pages/example_notebooks/galactic_backtracking/galactic_backtracking.v4.html#
+        for details.)
+
+        :param coords_gb: list of SkyCoord arrival directions at galactic boundary
+        '''
+
+        energies_gb = self.Earr * crpropa.EeV  # UHECR energy at gal. boundary
+        pid = crpropa.nucleusId(*self.nuc_table[self.ptype])  
+
+        map_container = crpropa.ParticleMapsContainer(bin0lowerEdge=np.log10(1e19))
+
+        # add particle to map container
+        # coordinate transformation is set to that based on making the final sampling
+        # from lensed map to be correct.
+        # this part takes ~30 secs
+        for i in progress_bar(range(N_uhecr), total=N_uhecr, desc="Adding UHECR to Map Container"):
+            for j in range(Nrand):
+                c_gal = coords_gb[i][j].galactic
+                map_container.addParticle(pid, np.float64(energies_gb[i]), np.pi - c_gal.l.rad,  c_gal.b.rad)
+
+        # apply lens of b-field model to get map of uhecrs at earth
+        # full lens to account for turbulent effects
+        lens = crpropa.MagneticLens(path_to_lens)
+        lens.normalizeLens()
+        map_container.applyLens(lens)
+
+        # now generate individual particles from lensed map
+        # lon \in [-pi, pi], lats \in [-pi/2, pi/2]
+        _, energies_earth, lons_earth, lats_earth = map_container.getRandomParticles(N_uhecr)
+
+        # convert to SkyCoord coordinates 
+        # lon \in [0, 2pi], lats \in [-pi/2, pi/2]
+        coords_earth = SkyCoord((np.pi - lons_earth) * u.rad, lats_earth * u.rad, frame="galactic")
+
+        return coords_earth, energies_earth
+
+    def _apply_exposure_limits(self, coords_earth, energies_earth, N_uhecr, count_limit=1e3):
+        '''
+        Apply the exposure from the corresponding detector to the coordinates and energies
+        obtained at Earth after lensing. This is done via rejection sampling with as with 
+        `exposure_limited_vMF_rng` in `vMF.stan`. 
+        Returns an array of unit vectors + energies, corresponding to those limited by the exposure
+        of the detector.
+
+        Basic algorithm for rejection + vMF sampling (the Pythonic way, based on same stan code):
+        0. Initialize an accepted-rejected container, full of zeros. This will be updated for each iteration with 1's, and 
+        loop terminates when this array only contains 1's (i.e. all directions accepted).
+        1. sample from vMF distribution with ang_err as spread for ALL directions
+        2. evaluate the probability to detect the UHECR at that declination based on exposure function m(dec_det) (given as pdet)
+        3. use Bernoulli distribution (2-D categorical distribution) to sample accepted (1) or rejected (0) for
+        each sampled direction, based on pdet above.
+        4. find the indices that are (a) are not accepted by the accepted-rejected container, and (b) where the sampled values
+        are only the accepted ones
+        5. append them to the container with same indices
+        6. append the corresponding omega_det with those indices only.
+        7. terminate when either (a) all values in container are accepted ones, or (b) the count limit is exceeded (1e7 in stan code)
+        '''
+
+        # get unit vector of coordinates at earth
+        omega_true = np.array(coord_to_uv(coords_earth))
+
+        # initialization of algorithm
+        omega_det_exp_limited = np.zeros((N_uhecr, 3))
+        accepted_rejected_container = np.zeros(N_uhecr)
+        count = 0
+
+        print("Performing truncations due to exposure...")
+        while len(np.nonzero(accepted_rejected_container)) != N_uhecr:
+            # sample from vMF distribution with angular uncertainty
+            omega_det = np.array([sample_vMF(omega_true_i, self.data.detector.kappa_d, 1) for omega_true_i in omega_true])
+            omega_det = omega_det[:, 0, :]  # to collapse the array size 
+            
+            # evaluate probability to detect omega with given exposure using exposure function
+            dec_det = np.pi / 2. - np.arccos(omega_det[:, 2])  # shift since arccos \in [0, pi]
+            m_omega = np.array([m_dec(d, self.data.detector.params) for d in dec_det])
+            pdet = (m_omega / self.data.detector.exposure_max)
+            
+            # sample from bernoulli distribution (2-D categorical distribution)
+            samples = bernoulli.rvs(pdet, size=N_uhecr)
+            
+            # get indices where samples != 0 and where container == 0
+            # i.e. accepted indices in this loop which are not accounted for in accepted yet
+            sample_nonzero_indices = np.argwhere((accepted_rejected_container == 0) & (samples != 0))[:, 0]
+            
+            # append to locations where accepted_rejected_container == 0
+            accepted_rejected_container[sample_nonzero_indices] = samples[sample_nonzero_indices]
+            
+            # append the evaluated omega_det in this iteration to the same locations where
+            # sampling != 0 and container == 0
+            omega_det_exp_limited[sample_nonzero_indices, :] = omega_det[sample_nonzero_indices, :]
+            
+            count += 1
+            # if count exceeds some truncation limit, break the loop
+            if count > count_limit:
+                break
+
+        # remove all directions that are stuck (i.e. container == 0), as well as corresp. energies
+        container_nonzero_indices = np.nonzero(accepted_rejected_container)[0]
+        omega_det_exp_limited = omega_det_exp_limited[container_nonzero_indices]
+        energies_exp_limited = energies_earth[container_nonzero_indices]
+
+        return omega_det_exp_limited, energies_exp_limited
+
+
 
     def _prepare_fit_inputs(self):
         """
@@ -516,10 +678,12 @@ class Analysis():
             self.fit_input['Earr_grid'] = Earr_grid
 
         if self.analysis_type == self.gmf_type:
-            _, self.fit_input["Z"] = self.nuc_table[self.ptype]
-            self.fit_input["kappa_d"] = self.kappa_d
+            ptype = str(self.data.uhecr.ptype)
+            _, self.fit_input["Z"] = self.nuc_table[ptype]
+            self.fit_input["kappa_gmf"] = self.data.uhecr.kappa_gmf
         else:
             self.fit_input["kappa_d"] = self.data.detector.kappa_d
+            
 
     def save(self):
         """
@@ -673,6 +837,7 @@ class Analysis():
         self._prepare_fit_inputs()
 
         # fit
+        print("Performing fitting...")
         self.fit = self.model.model.sampling(data=self.fit_input,
                                              iter=iterations,
                                              chains=chains,
@@ -681,7 +846,9 @@ class Analysis():
                                              warmup=warmup)
 
         # Diagnositics
+        print("Checking all diagnostics...")
         stan_utility.utils.check_all_diagnostics(self.fit)
 
         self.chain = self.fit.extract(permuted=True)
+        print("Done!")
         return self.fit
