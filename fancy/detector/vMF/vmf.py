@@ -57,3 +57,16 @@ def _sample_orthonormal_to(mu):
     proj_mu_v = mu * np.dot(mu, v) / np.linalg.norm(mu)
     orthto = v - proj_mu_v
     return orthto / np.linalg.norm(orthto)
+
+
+def sample_sphere(radius, num_samples):
+    '''Sample points from a sphere of radius radius uniformly'''
+    u = np.random.rand(num_samples)
+    v = np.random.rand(num_samples)
+
+    theta = 2. * np.pi * u
+    phi = np.arccos(2 * v - 1.)
+
+    result = radius * np.array([np.cos(theta) * np.sin(phi), np.sin(theta) * np.sin(phi), np.cos(phi)]).T
+    return result
+

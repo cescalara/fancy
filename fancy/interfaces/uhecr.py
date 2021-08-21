@@ -8,11 +8,12 @@ from datetime import date, timedelta
 import h5py
 from scipy.optimize import root
 from tqdm import tqdm as progress_bar
+from multiprocessing import Pool, cpu_count
 
 from .stan import coord_to_uv, uv_to_coord
 from ..detector.detector import Detector
 from ..plotting import AllSkyMap
-from .utils import get_nucleartable
+from .utils import get_nucleartable, fischer_int_eq_P
 
 # importing crpropa, need to append system path
 import sys
@@ -35,6 +36,7 @@ class Uhecr():
         self.source_labels = None
 
         self.nuc_table = get_nucleartable()
+        self.nthreads = int(0.75 * cpu_count())
 
     def _get_angerr(self):
         '''Get angular reconstruction uncertainty from label'''
@@ -51,7 +53,7 @@ class Uhecr():
         return np.deg2rad(sig_omega)
         
 
-    def from_data_file(self, filename, label,  ptype="p", exp_factor = 1.):
+    def from_data_file(self, filename, label, ptype="p", exp_factor = 1.):
         """
         Define UHECR from data file of original information.
         
@@ -82,7 +84,10 @@ class Uhecr():
             self.period = self._find_period()
             self.A = self._find_area(exp_factor)
 
-        self.ptype = ptype
+            self.ptype = ptype
+            self.kappa_gmf = data['kappa_gmf'][ptype]['kappa_gmf'][()]
+
+        
 
     def _get_properties(self):
         """
@@ -97,6 +102,7 @@ class Uhecr():
         self.properties['A'] = self.A
         self.properties['zenith_angle'] = self.zenith_angle
         self.properties["ptype"] = self.ptype
+        self.properties["kappa_gmf"] = self.kappa_gmf
 
         # Only if simulated UHECRs
         if isinstance(self.source_labels, (list, np.ndarray)):
@@ -118,7 +124,11 @@ class Uhecr():
         self.energy = uhecr_properties['energy']
         self.zenith_angle = uhecr_properties['zenith_angle']
         self.A = uhecr_properties['A']
-        self.ptype = uhecr_properties['ptype']
+        self.kappa_gmf = uhecr_properties['kappa_gmf']
+
+        # decode byte string if uhecr_properties is read from h5 file
+        ptype_from_file = uhecr_properties["ptype"]
+        self.ptype = ptype_from_file.decode('UTF-8') if isinstance(ptype_from_file, bytes) else ptype_from_file
 
         # Only if simulated UHECRs
         try:
@@ -128,6 +138,45 @@ class Uhecr():
 
         # Get SkyCoord from unit_vector
         self.coord = uv_to_coord(self.unit_vector)
+
+    def from_simulation(self, uhecr_properties):
+        """
+        Define UHECR from properties dict, evaluated from simulating
+        dataset.
+
+        Only real difference to from_properties() is in kappa_gmf, 
+        since evaluation of it depends on the parameters initialized 
+        for Uhecr().
+            
+        :param uhecr_properties: dict containing UHECR properties.
+        :param label: identifier
+        """
+
+        self.label = uhecr_properties['label']
+
+        # Read from input dict
+        self.N = uhecr_properties['N']
+        self.unit_vector = uhecr_properties['unit_vector']
+        self.energy = uhecr_properties['energy']
+        self.zenith_angle = uhecr_properties['zenith_angle']
+        self.A = uhecr_properties['A']
+
+        # decode byte string if uhecr_properties is read from h5 file
+        ptype_from_file = uhecr_properties["ptype"]
+        self.ptype = ptype_from_file.decode('UTF-8') if isinstance(ptype_from_file, bytes) else ptype_from_file
+
+        # Only if simulated UHECRs
+        try:
+            self.source_labels = uhecr_properties['source_labels']
+        except:
+            pass
+
+        # Get SkyCoord from unit_vector
+        self.coord = uv_to_coord(self.unit_vector)
+
+        # evaluate kappa_gmf manually here
+        print("Computing kappa_gmf...")
+        self.kappa_gmf, _, _ = self.eval_kappa_gmf(particle_type=self.ptype, Nrand=100, gmf="JF12", plot=False)
 
     def plot(self, skymap, size=2):
         """
@@ -376,10 +425,134 @@ class Uhecr():
         else:
             return SkyCoord(l=glon * u.degree, b=glat * u.degree, frame='galactic')
 
+    def build_kappa_gmf(self, uhecr_file=None, particle_type="all", args=None):
+        '''
+        Evaluate spread parameter for GMF for each UHECR dataset. 
+        Note that as of now, UHECR dataset label coincides with
+        names from fancy/detector. The output is written to uhecr_file,
+        which can then be accessed later with analysis.use_tables().
+
+        If all_particles is True, create kappa_gmf tables for each element given in
+        fancy/interfaces/nuclear_table.pkl. 
+
+        All arrival directions are given in terms of galactic coordinates (lon, lat)
+        with respect to mpl: lon \in [-pi,pi], lat \in [-pi/2, pi/2]
+        '''
+        # there must be a better way to do this...
+        if args is not None:
+            Nrand, gmf, plot_true = args
+        else:
+            Nrand, gmf, plot_true = 100, "JF12", False
+
+        omega_true = np.zeros((len(self.coord.galactic.l.rad), 2))
+        omega_true[:, 0] = np.pi - self.coord.galactic.l.rad
+        omega_true[:, 1] = self.coord.galactic.b.rad
+
+        if particle_type == "all":
+            kappa_gmf_args_list = [(ptype, Nrand, gmf, plot_true)
+                                for ptype in list(self.nuc_table.keys())]
+
+            with Pool(self.nthreads) as mpool:
+                results = list(progress_bar(
+                    mpool.imap(self.build_kappa_gmf_ptype, kappa_gmf_args_list), total=len(kappa_gmf_args_list),
+                    desc='Precomputing kappa_gmf for each composition'
+                ))
+
+            with h5py.File(uhecr_file, 'r+') as f:
+                uhecr_dataset_group = f[self.label]
+                kappa_gmf_group = uhecr_dataset_group.create_group('kappa_gmf')
+
+                for i, ptype in enumerate(list(self.nuc_table.keys())):
+                    particle_group = kappa_gmf_group.create_group(ptype)
+                    particle_group.create_dataset(
+                        'kappa_gmf', data=results[i][0])
+                    particle_group.create_dataset(
+                        'omega_gal', data=results[i][1])
+                    particle_group.create_dataset(
+                        'omega_rand', data=results[i][2])
+                    particle_group.create_dataset(
+                        'omega_true', data=omega_true)
+
+        else:
+            kappa_gmf, omega_rand, omega_gal = self.eval_kappa_gmf(
+                particle_type, Nrand, gmf, plot_true)
+
+            if uhecr_file:
+                with h5py.File(uhecr_file, 'r+') as f:
+                    uhecr_dataset_group = f[self.label]
+                    kappa_gmf_group = uhecr_dataset_group.create_group('kappa_gmf')
+                    particle_group = kappa_gmf_group.create_group(particle_type)
+                    particle_group.create_dataset('kappa_gmf', data=kappa_gmf)
+                    particle_group.create_dataset('omega_gal', data=omega_gal)
+                    particle_group.create_dataset(
+                        'omega_rand', data=omega_rand)
+                    particle_group.create_dataset(
+                        'omega_true', data=omega_true)
+
+    def build_kappa_gmf_ptype(self, kappa_gmf_args):
+        '''Simple wrapper around eval_kappa_gmf so that Pool works.'''
+        kappa_gmf_ptype, defl_arrdirs_ptype, rand_arrdirs_ptype = self.eval_kappa_gmf(*kappa_gmf_args)
+
+        return kappa_gmf_ptype, defl_arrdirs_ptype, rand_arrdirs_ptype
+
+    def eval_kappa_gmf(self, particle_type = 'p', Nrand = 100, gmf = 'JF12', plot=False):
+        '''
+        Evaluate spread parameter between arrival direction
+        and deflected direction at galactic magnetic field.
+        Returns kappa_gmf, deflected and undeflected arrival vectors
+        '''
+
+        # get angular reconstruction uncertainty
+        ang_err = self._get_angerr()
+        # evaluate vector3d object of arrival direction
+        uhecr_vector3d = self.coord_to_vector3d()
+        # prepare inputs / initializations for CRPropa simulation
+        sim, pid, R, pos = self._prepare_crpropasim(particle_type, gmf)
+
+        # arrival directions, mainly for plotting
+        rand_arrdirs = np.zeros((self.N, Nrand, 2))
+        defl_arrdirs = np.zeros((self.N, Nrand, 2))
+
+        # evaluated kappa_gmf
+        kappa_gmfs = np.zeros((self.N, Nrand))
+
+        for i, arr_dir in enumerate(uhecr_vector3d):
+            energy = self.energy[i] * crpropa.EeV
+            for j in range(Nrand):
+                rand_arrdir = R.randVectorAroundMean(arr_dir, ang_err)
+                c = crpropa.Candidate(crpropa.ParticleState(pid, energy, pos, rand_arrdir))
+                sim.run(c)
+
+                defl_dir = c.current.getDirection()
+
+                # append longitudes and latitudes
+                # need to append np.pi / 2 - theta for latitude
+                # also append the randomized arrival direction in lons and lats
+                rand_arrdirs[i, j, :] = rand_arrdir.getPhi(), np.pi / 2. - rand_arrdir.getTheta()
+                defl_arrdirs[i, j, :] = defl_dir.getPhi(), np.pi / 2. - defl_dir.getTheta()
+
+                # evaluate dot product between arrival direction (randomized) and deflected vector
+                # dot exists with Vector3d() objects
+                cos_theta = rand_arrdir.dot(defl_dir)
+
+                # use scipy.optimize.root to get kappa_gmf using dot product
+                # P = 0.683 as per Soiaporn paper
+                sol = root(fischer_int_eq_P, x0=1, args=(cos_theta, 0.683))
+                # print(sol)   # check solution
+
+                kappa_gmfs[i, j] = sol.x[0]
+
+        if plot:
+            self.plot_deflections(defl_arrdirs, rand_arrdirs)
+
+        # evaluate mean kappa_gmf for each uhecr
+        kappa_gmf_mean = np.mean(kappa_gmfs, axis=1)
+
+        return kappa_gmf_mean, defl_arrdirs, rand_arrdirs
+
     def coord_to_vector3d(self):
         '''Convert from SkyCoord array to Vector3d list'''
         uhecr_vector3d = []
-
         # due to how SkyCoord defines coordinates,
         # lon_vector3d = pi - lon_skycoord
         # lat_vector3d = pi/2 - lat_skycoord
@@ -389,9 +562,6 @@ class Uhecr():
             uhecr_vector3d.append(v)
         return uhecr_vector3d
 
-    # def get_AZ(self, nuc="p"):
-    #     '''Return (A, Z) of the given nuclear element. Note that 'p'=='H'.'''
-    #     return self.nuc_table[nuc]
 
     def _prepare_crpropasim(self, particle_type="p", model_name="JF12", seed=691342):
         '''Set up CRPropa simulation with some magnetic field model'''
@@ -452,71 +622,3 @@ class Uhecr():
 
         # TODO: add labels based on color 
         ax.grid()
-
-
-    def eval_kappad(self, kappad_args):
-        '''
-        Evaluate spread parameter between arrival direction
-        and deflected direction at galactic magnetic field.
-        Returns kappa_d, deflected and undeflected arrival vectors
-        '''
-
-        particle_type, Nrand, gmf, plot = kappad_args
-
-        # get angular reconstruction uncertainty
-        ang_err = self._get_angerr()
-        # evaluate vector3d object of arrival direction
-        uhecr_vector3d = self.coord_to_vector3d()
-        # prepare inputs / initializations for CRPropa simulation
-        sim, pid, R, pos = self._prepare_crpropasim(particle_type, gmf)
-
-        # arrival directions, mainly for plotting
-        rand_arrdirs = np.zeros((self.N, Nrand, 2))
-        defl_arrdirs = np.zeros((self.N, Nrand, 2))
-
-        # evaluated kappa_d
-        kappa_ds = np.zeros((self.N, Nrand))
-
-        for i, arr_dir in enumerate(uhecr_vector3d):
-            energy = self.energy[i] * crpropa.EeV
-            for j in range(Nrand):
-                rand_arrdir = R.randVectorAroundMean(arr_dir, ang_err)
-                c = crpropa.Candidate(crpropa.ParticleState(pid, energy, pos, rand_arrdir))
-                sim.run(c)
-
-                defl_dir = c.current.getDirection()
-
-                # append longitudes and latitudes
-                # need to append np.pi / 2 - theta for latitude
-                # also append the randomized arrival direction in lons and lats
-                rand_arrdirs[i, j, :] = rand_arrdir.getPhi(), np.pi / 2. - rand_arrdir.getTheta()
-                defl_arrdirs[i, j, :] = defl_dir.getPhi(), np.pi / 2. - defl_dir.getTheta()
-
-                # evaluate dot product between arrival direction (randomized) and deflected vector
-                # dot exists with Vector3d() objects
-                cos_theta = rand_arrdir.dot(defl_dir)
-
-                # use scipy.optimize.root to get kappa_d using dot product
-                # P = 0.683 as per Soiaporn paper
-                sol = root(fischer_int_eq_P, x0=100, args=(cos_theta, 0.683))
-                # print(sol)   # check solution
-
-                kappa_ds[i, j] = sol.x[0]
-
-        if plot:
-            self.plot_deflections(defl_arrdirs, rand_arrdirs)
-
-        # evaluate mean kappa_d for each uhecr
-        kappa_d_mean = np.mean(kappa_ds, axis=1)
-
-        return kappa_d_mean, defl_arrdirs, rand_arrdirs
-
-
-'''Integral of Fischer distribution used to evaluate kappa_d'''
-def fischer_int(kappa, cos_thetaP):
-    '''Integral of vMF function over all angles'''
-    return (1. - np.exp(-kappa * (1 - cos_thetaP))) / (1. - np.exp(-2.*kappa))
-
-def fischer_int_eq_P(kappa, cos_thetaP, P):
-    '''Equation to find roots for'''
-    return fischer_int(kappa, cos_thetaP) - P

@@ -93,7 +93,7 @@ Eth = 57
 
 # For convenience
 detector_properties = {}
-detector_properties['label'] = 'TA'
+detector_properties['label'] = 'TA2015'
 detector_properties['lat'] = lat
 detector_properties['lon'] = lon
 detector_properties['height'] = height

@@ -26,6 +26,10 @@ class Detector():
 
         self.label = detector_properties['label']
 
+        # if read from h5 file, convert bytestr to str
+        if isinstance(self.label, bytes):
+            self.label = self.label.decode("UTF-8")
+
         lat = detector_properties['lat']  # radians
         lon = detector_properties['lon']  # radians
         height = detector_properties['height']  # metres
@@ -78,15 +82,17 @@ class Detector():
 
         m = np.asarray([m_dec(d, self.params) for d in self.declination])
 
+        self.exposure_max = np.max(m)
+
         # normalise to a maximum at 1
         # max value of exposure factor is normalization constant
-        self.exposure_factor = (m / np.max(m))
+        self.exposure_factor = (m / self.exposure_max)
 
         # find the point at which the exposure factor is 0
         # indexing value depends on TA or PAO
         # since TA only sees from dec ~ -10deg, 
         # PAO only sees until dec ~ +45 deg
-        declim_index = -1 if self.label == "TA" else 0
+        declim_index = -1 if self.label.find("TA") != -1 else 0
         self.limiting_dec = Angle((self.declination[m == 0])[declim_index], 'rad')
 
     def show(self, view=None, coord="gal", save=False, savename=None, cmap=None):
@@ -247,7 +253,7 @@ class Detector():
                        s=8,
                        color='grey',
                        alpha=1,
-                       label='Limit of ' + self.label + '\'s exposure',
+                       label='Limit of ' + self.label[:-4] + '\'s exposure',
                        zorder=1)
 
 
