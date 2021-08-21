@@ -80,7 +80,7 @@ Eth = 52
 
 # For convenience
 detector_properties = {}
-detector_properties['label'] = 'PAO'
+detector_properties['label'] = 'auger2010'
 detector_properties['lat'] = lat
 detector_properties['lon'] = lon
 detector_properties['height'] = height
