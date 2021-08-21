@@ -429,11 +429,16 @@ class Analysis():
         uhecr_properties['A'] = np.tile(self.data.detector.area, self.N)
         uhecr_properties['source_labels'] = self.source_labels
 
-        if self.analysis_type == self.gmf_type:
-            uhecr_properties["ptype"] = self.model.ptype
+        uhecr_properties["ptype"] = self.model.ptype if self.analysis_type == self.gmf_type else 'p'
 
         new_uhecr = Uhecr()
         new_uhecr.from_simulation(uhecr_properties)
+
+        
+        # evaluate kappa_gmf manually here
+        if self.analysis_type == self.gmf_type:
+            print("Computing kappa_gmf...")
+            new_uhecr.kappa_gmf, _, _ = new_uhecr.eval_kappa_gmf(particle_type=new_uhecr.ptype, Nrand=100, gmf="JF12", plot=False)
 
         self.data.uhecr = new_uhecr
 

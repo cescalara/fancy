@@ -173,10 +173,9 @@ class Uhecr():
 
         # Get SkyCoord from unit_vector
         self.coord = uv_to_coord(self.unit_vector)
-
-        # evaluate kappa_gmf manually here
-        print("Computing kappa_gmf...")
-        self.kappa_gmf, _, _ = self.eval_kappa_gmf(particle_type=self.ptype, Nrand=100, gmf="JF12", plot=False)
+        # kappa_gmf set to zero array by default, if joint+gmf then
+        # evaluated in analysis.simulate
+        self.kappa_gmf = np.zeros(self.N)
 
     def plot(self, skymap, size=2):
         """
