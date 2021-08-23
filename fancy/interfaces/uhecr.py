@@ -12,7 +12,8 @@ from multiprocessing import Pool, cpu_count
 
 from .stan import coord_to_uv, uv_to_coord
 from ..detector.detector import Detector
-from ..plotting import AllSkyMap
+# from ..plotting import AllSkyMap
+from ..plotting import AllSkyMapCartopy as AllSkyMap
 from .utils import get_nucleartable, fischer_int_eq_P
 
 # importing crpropa, need to append system path

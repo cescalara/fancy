@@ -15,7 +15,8 @@ from ..interfaces.integration import ExposureIntegralTable
 from ..interfaces.stan import Direction, convert_scale, coord_to_uv, uv_to_coord
 from ..interfaces.data import Uhecr
 from ..interfaces.utils import get_nucleartable
-from ..plotting import AllSkyMap
+# from ..plotting import AllSkyMap
+from ..plotting import AllSkyMapCartopy as AllSkyMap
 from ..propagation.energy_loss import get_Eth_src, get_kappa_ex, get_Eex, get_Eth_sim, get_arrival_energy, get_arrival_energy_vec
 from ..detector.vMF.vmf import sample_vMF, sample_sphere
 from ..detector.exposure import m_dec
@@ -210,10 +211,9 @@ class Analysis():
             self.tables.table = input_table.table
             self.tables.kappa = input_table.kappa
 
-            if self.analysis_type.find("joint") != -1:
-                with h5py.File(input_filename, 'r') as f:
-                    self.E_grid = f['energy/E_grid'][()]
-                    self.Earr_grid = f['energy/Earr_grid'][()]
+            with h5py.File(input_filename, 'r') as f:
+                self.E_grid = f['energy/E_grid'][()]
+                self.Earr_grid = f['energy/Earr_grid'][()]
 
         else:
             self.tables = ExposureIntegralTable(input_filename=input_filename)
@@ -489,7 +489,8 @@ class Analysis():
         return omega_det_exp_limited, energies_det_exp_limited
 
     def _sample_at_gb(self, kappas, Nrand):
-        '''Sample from the vMF distribution at the galactic boundary. 
+        '''
+        Sample from the vMF distribution at the galactic boundary. 
 
         This is identical to what is done in the no_gmf simulation at Earth. 
         '''

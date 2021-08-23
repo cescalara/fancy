@@ -7,7 +7,8 @@ import h5py
 
 from .stan import coord_to_uv, uv_to_coord
 from ..detector.detector import Detector
-from ..plotting import AllSkyMap
+# from ..plotting import AllSkyMap
+from ..plotting import AllSkyMapCartopy as AllSkyMap
 
 __all__ = ['Source']
 

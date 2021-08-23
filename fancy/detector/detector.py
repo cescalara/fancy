@@ -6,7 +6,8 @@ from astropy.coordinates import SkyCoord, EarthLocation
 from scipy import integrate
 
 from .exposure import *
-from ..plotting import AllSkyMap
+# from ..plotting import AllSkyMap
+from ..plotting import AllSkyMapCartopy as AllSkyMap
 
 __all__ = ['Detector', 'Angle']
 
