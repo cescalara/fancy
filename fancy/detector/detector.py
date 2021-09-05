@@ -71,6 +71,8 @@ class Detector():
 
         self.start_year = detector_properties["start_year"]
 
+        self.Eth = detector_properties["Eth"]
+
     def exposure(self):
         """
         Calculate and plot the exposure for a given detector 

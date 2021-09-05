@@ -314,8 +314,8 @@ class PPC():
                         skymap.ax = ax
                         label = True
                         for lon, lat in np.nditer([
-                                self.arrival_direction.lons,
-                                self.arrival_direction.lats
+                                self.arrival_direction.glons,
+                                self.arrival_direction.glats
                         ]):
                             if label:
                                 skymap.tissot(lon,

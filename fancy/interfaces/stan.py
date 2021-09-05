@@ -151,8 +151,11 @@ class Direction():
                           representation_type='cartesian',
                           frame='icrs')
         self.d.representation_type = 'spherical'
-        self.lons = self.d.galactic.l.wrap_at(360 * u.deg).deg
-        self.lats = self.d.galactic.b.wrap_at(180 * u.deg).deg
+        self.glons = self.d.galactic.l.wrap_at(360 * u.deg).deg
+        self.glats = self.d.galactic.b.wrap_at(180 * u.deg).deg
+
+        self.ras = self.d.ra.deg
+        self.decs = self.d.dec.deg
 
 
 def uv_to_coord(uv):
