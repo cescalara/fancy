@@ -5,13 +5,13 @@
 lines.linewidth : 2
 
 # FONT
-font.family : STIXGeneral
+font.family : sans-serif
 #font.serif : Times
-font.size : 14
+font.size : 12
 
 # TEXT
 text.usetex : False
-mathtext.fontset : stix
+mathtext.fontset : stixsans
 
 # AXES
 axes.titlesize : x-large
