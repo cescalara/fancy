@@ -12,11 +12,13 @@ from multiprocessing import Pool, cpu_count
 
 from .stan import coord_to_uv, uv_to_coord
 from ..detector.detector import Detector
-from ..plotting import AllSkyMap
+# from ..plotting import AllSkyMap
+from ..plotting import AllSkyMapCartopy as AllSkyMap
 from .utils import get_nucleartable, fischer_int_eq_P
 
 # importing crpropa, need to append system path
 import sys
+
 sys.path.append("/opt/CRPropa3/lib/python3.8/site-packages")
 import crpropa
 
@@ -51,9 +53,13 @@ class Uhecr():
             raise Exception("Undefined detector type!")
 
         return np.deg2rad(sig_omega)
-        
 
-    def from_data_file(self, filename, label, ptype="p", exp_factor = 1.):
+    def from_data_file(self,
+                       filename,
+                       label,
+                       ptype="p",
+                       gmf_model="JF12",
+                       exp_factor=1.):
         """
         Define UHECR from data file of original information.
         
@@ -85,9 +91,8 @@ class Uhecr():
             self.A = self._find_area(exp_factor)
 
             self.ptype = ptype
-            self.kappa_gmf = data['kappa_gmf'][ptype]['kappa_gmf'][()]
-
-        
+            self.kappa_gmf = data['kappa_gmf'][gmf_model][ptype]['kappa_gmf'][(
+            )]
 
     def _get_properties(self):
         """
@@ -105,8 +110,8 @@ class Uhecr():
         self.properties["kappa_gmf"] = self.kappa_gmf
 
         # Only if simulated UHECRs
-        if isinstance(self.source_labels, (list, np.ndarray)):
-            self.properties['source_labels'] = self.source_labels
+        # if isinstance(self.source_labels, (list, np.ndarray)):
+        #     self.properties['source_labels'] = self.source_labels
 
     def from_properties(self, uhecr_properties):
         """
@@ -128,13 +133,14 @@ class Uhecr():
 
         # decode byte string if uhecr_properties is read from h5 file
         ptype_from_file = uhecr_properties["ptype"]
-        self.ptype = ptype_from_file.decode('UTF-8') if isinstance(ptype_from_file, bytes) else ptype_from_file
+        self.ptype = ptype_from_file.decode('UTF-8') if isinstance(
+            ptype_from_file, bytes) else ptype_from_file
 
         # Only if simulated UHECRs
-        try:
-            self.source_labels = uhecr_properties['source_labels']
-        except:
-            pass
+        # try:
+        #     self.source_labels = uhecr_properties['source_labels']
+        # except:
+        #     pass
 
         # Get SkyCoord from unit_vector
         self.coord = uv_to_coord(self.unit_vector)
@@ -163,96 +169,96 @@ class Uhecr():
 
         # decode byte string if uhecr_properties is read from h5 file
         ptype_from_file = uhecr_properties["ptype"]
-        self.ptype = ptype_from_file.decode('UTF-8') if isinstance(ptype_from_file, bytes) else ptype_from_file
+        self.ptype = ptype_from_file.decode('UTF-8') if isinstance(
+            ptype_from_file, bytes) else ptype_from_file
 
         # Only if simulated UHECRs
-        try:
-            self.source_labels = uhecr_properties['source_labels']
-        except:
-            pass
+        # try:
+        #     self.source_labels = uhecr_properties['source_labels']
+        # except:
+        #     pass
 
         # Get SkyCoord from unit_vector
         self.coord = uv_to_coord(self.unit_vector)
+        # kappa_gmf set to zero array by default, if joint+gmf then
+        # evaluated in analysis.simulate
+        self.kappa_gmf = np.zeros(self.N)
 
-        # evaluate kappa_gmf manually here
-        print("Computing kappa_gmf...")
-        self.kappa_gmf, _, _ = self.eval_kappa_gmf(particle_type=self.ptype, Nrand=100, gmf="JF12", plot=False)
+    # def plot(self, skymap, size=2):
+    #     """
+    #     Plot the Uhecr instance on a skymap.
 
-    def plot(self, skymap, size=2):
-        """
-        Plot the Uhecr instance on a skymap.
+    #     Called by Data.show()
 
-        Called by Data.show()
-      
-        :param skymap: the AllSkyMap
-        :param size: tissot radius
-        :param source_labels: source labels (int)
-        """
+    #     :param skymap: the AllSkyMap
+    #     :param size: tissot radius
+    #     :param source_labels: source labels (int)
+    #     """
 
-        lons = self.coord.galactic.l.deg
-        lats = self.coord.galactic.b.deg
+    #     lons = self.coord.galactic.l.deg
+    #     lats = self.coord.galactic.b.deg
 
-        alpha_level = 0.7
+    #     alpha_level = 0.7
 
-        # If source labels are provided, plot with colour
-        # indicating the source label.
-        if isinstance(self.source_labels, (list, np.ndarray)):
+    #     # If source labels are provided, plot with colour
+    #     # indicating the source label.
+    #     if isinstance(self.source_labels, (list, np.ndarray)):
 
-            Nc = max(self.source_labels)
+    #         Nc = max(self.source_labels)
 
-            # Use a continuous cmap
-            cmap = plt.cm.get_cmap('plasma', Nc)
+    #         # Use a continuous cmap
+    #         cmap = plt.cm.get_cmap('plasma', Nc)
 
-            write_label = True
+    #         write_label = True
 
-            for lon, lat, lab in np.nditer([lons, lats, self.source_labels]):
-                color = cmap(lab)
-                if write_label:
-                    skymap.tissot(lon,
-                                  lat,
-                                  size,
-                                  npts=30,
-                                  facecolor=color,
-                                  alpha=0.5,
-                                  label=self.label)
-                    write_label = False
-                else:
-                    skymap.tissot(lon,
-                                  lat,
-                                  size,
-                                  npts=30,
-                                  facecolor=color,
-                                  alpha=0.5)
+    #         for lon, lat, lab in np.nditer([lons, lats, self.source_labels]):
+    #             color = cmap(lab)
+    #             if write_label:
+    #                 skymap.tissot(lon,
+    #                               lat,
+    #                               size,
+    #                               npts=30,
+    #                               facecolor=color,
+    #                               alpha=0.5,
+    #                               label=self.label)
+    #                 write_label = False
+    #             else:
+    #                 skymap.tissot(lon,
+    #                               lat,
+    #                               size,
+    #                               npts=30,
+    #                               facecolor=color,
+    #                               alpha=0.5)
 
-        # Otherwise, use the cmap to show the UHECR energy.
-        else:
+    #     # Otherwise, use the cmap to show the UHECR energy.
+    #     else:
 
-            # use colormap for energy
-            norm_E = matplotlib.colors.Normalize(min(self.energy),
-                                                 max(self.energy))
-            cmap = plt.cm.get_cmap('viridis', len(self.energy))
+    #         # use colormap for energy
+    #         norm_E = matplotlib.colors.Normalize(min(self.energy),
+    #                                              max(self.energy))
+    #         cmap = plt.cm.get_cmap('viridis', len(self.energy))
 
-            write_label = True
-            for E, lon, lat in np.nditer([self.energy, lons, lats]):
+    #         write_label = True
+    #         for E, lon, lat in np.nditer([self.energy, lons, lats]):
 
-                color = cmap(norm_E(E))
+    #             color = cmap(norm_E(E))
 
-                if write_label:
-                    skymap.tissot(lon,
-                                  lat,
-                                  size,
-                                  30,
-                                  facecolor=color,
-                                  alpha=alpha_level,
-                                  label=self.label)
-                    write_label = False
-                else:
-                    skymap.tissot(lon,
-                                  lat,
-                                  size,
-                                  30,
-                                  facecolor=color,
-                                  alpha=alpha_level)
+    #             if write_label:
+    #                 skymap.tissot(lon,
+    #                               lat,
+    #                               size,
+    #                               30,
+    #                               facecolor=color,
+    #                               alpha=alpha_level,
+    #                               label=self.label)
+    #                 write_label = False
+    #             else:
+    #                 skymap.tissot(lon,
+    #                               lat,
+    #                               size,
+    #                               30,
+    #                               facecolor=color,
+    #                               alpha=alpha_level)
 
     def save(self, file_handle):
         """
@@ -280,7 +286,7 @@ class Uhecr():
         if self.label == 'auger2010':
             from ..detector.auger2010 import A1, A2, A3
             possible_areas = [A1, A2, A3]
-            area = [possible_areas[i - 1]* exp_factor  for i in self.period]
+            area = [possible_areas[i - 1] * exp_factor for i in self.period]
 
         elif self.label == 'auger2014':
             from ..detector.auger2014 import A1, A2, A3, A4, A1_incl, A2_incl, A3_incl, A4_incl
@@ -291,9 +297,9 @@ class Uhecr():
             area = []
             for i, p in enumerate(self.period):
                 if self.zenith_angle[i] <= 60:
-                    area.append(possible_areas_vert[p - 1]* exp_factor )
+                    area.append(possible_areas_vert[p - 1] * exp_factor)
                 if self.zenith_angle[i] > 60:
-                    area.append(possible_areas_incl[p - 1]* exp_factor )
+                    area.append(possible_areas_incl[p - 1] * exp_factor)
 
         elif self.label == 'TA2015':
             from ..detector.TA2015 import A1, A2
@@ -314,9 +320,9 @@ class Uhecr():
         period = []
         if self.label == "auger2014":
             from ..detector.auger2014 import (period_1_start, period_1_end,
-                                            period_2_start, period_2_end,
-                                            period_3_start, period_3_end,
-                                            period_4_start, period_4_end)
+                                              period_2_start, period_2_end,
+                                              period_3_start, period_3_end,
+                                              period_4_start, period_4_end)
 
             # check dates
             for y, d in np.nditer([self.year, self.day]):
@@ -332,12 +338,12 @@ class Uhecr():
                 elif test_date >= period_3_end:
                     period.append(4)
                 else:
-                    print('Error: cannot determine period for year', y, 'and day',
-                        d)
+                    print('Error: cannot determine period for year', y,
+                          'and day', d)
 
         elif self.label == "TA2015":
             from ..detector.TA2015 import (period_1_start, period_1_end,
-                                            period_2_start, period_2_end)
+                                           period_2_start, period_2_end)
             for y, d in np.nditer([self.year, self.day]):
                 d = int(d)
                 test_date = date(y, 1, 1) + timedelta(d)
@@ -349,8 +355,8 @@ class Uhecr():
                 elif test_date >= period_2_end:
                     period.append(2)
                 else:
-                    print('Error: cannot determine period for year', y, 'and day',
-                        d)    
+                    print('Error: cannot determine period for year', y,
+                          'and day', d)
 
         return period
 
@@ -408,7 +414,6 @@ class Uhecr():
 
         self.coord = self.coord[selection]
 
-
     def get_coordinates(self, glon, glat, D=None):
         """
         Convert glon and glat to astropy SkyCoord
@@ -423,7 +428,9 @@ class Uhecr():
                             frame='galactic',
                             distance=D * u.mpc)
         else:
-            return SkyCoord(l=glon * u.degree, b=glat * u.degree, frame='galactic')
+            return SkyCoord(l=glon * u.degree,
+                            b=glat * u.degree,
+                            frame='galactic')
 
     def build_kappa_gmf(self, uhecr_file=None, particle_type="all", args=None):
         '''
@@ -450,52 +457,76 @@ class Uhecr():
 
         if particle_type == "all":
             kappa_gmf_args_list = [(ptype, Nrand, gmf, plot_true)
-                                for ptype in list(self.nuc_table.keys())]
+                                   for ptype in list(self.nuc_table.keys())]
 
             with Pool(self.nthreads) as mpool:
-                results = list(progress_bar(
-                    mpool.imap(self.build_kappa_gmf_ptype, kappa_gmf_args_list), total=len(kappa_gmf_args_list),
-                    desc='Precomputing kappa_gmf for each composition'
-                ))
+                results = list(
+                    progress_bar(
+                        mpool.imap(self.build_kappa_gmf_ptype,
+                                   kappa_gmf_args_list),
+                        total=len(kappa_gmf_args_list),
+                        desc='Precomputing kappa_gmf for each composition'))
 
             with h5py.File(uhecr_file, 'r+') as f:
                 uhecr_dataset_group = f[self.label]
-                kappa_gmf_group = uhecr_dataset_group.create_group('kappa_gmf')
+
+                if "kappa_gmf" in list(uhecr_dataset_group.keys()):
+                    kappa_gmf_group = f[self.label + "/kappa_gmf"]
+                else:
+                    kappa_gmf_group = uhecr_dataset_group.create_group(
+                        'kappa_gmf')
+
+                gmf_field_group = kappa_gmf_group.create_group(gmf)
 
                 for i, ptype in enumerate(list(self.nuc_table.keys())):
-                    particle_group = kappa_gmf_group.create_group(ptype)
-                    particle_group.create_dataset(
-                        'kappa_gmf', data=results[i][0])
-                    particle_group.create_dataset(
-                        'omega_gal', data=results[i][1])
-                    particle_group.create_dataset(
-                        'omega_rand', data=results[i][2])
-                    particle_group.create_dataset(
-                        'omega_true', data=omega_true)
+                    particle_group = gmf_field_group.create_group(ptype)
+                    particle_group.create_dataset('kappa_gmf',
+                                                  data=results[i][0])
+                    particle_group.create_dataset('omega_gal',
+                                                  data=results[i][1])
+                    particle_group.create_dataset('omega_rand',
+                                                  data=results[i][2])
+                    particle_group.create_dataset('omega_true',
+                                                  data=omega_true)
+                    particle_group.create_dataset('kappa_gmf_rand',
+                                                  data=results[i][3])
 
         else:
-            kappa_gmf, omega_rand, omega_gal = self.eval_kappa_gmf(
+            kappa_gmf, omega_rand, omega_gal, kappa_gmf_rand = self.eval_kappa_gmf(
                 particle_type, Nrand, gmf, plot_true)
 
             if uhecr_file:
                 with h5py.File(uhecr_file, 'r+') as f:
                     uhecr_dataset_group = f[self.label]
-                    kappa_gmf_group = uhecr_dataset_group.create_group('kappa_gmf')
-                    particle_group = kappa_gmf_group.create_group(particle_type)
+                    if "kappa_gmf" in list(uhecr_dataset_group.keys()):
+                        kappa_gmf_group = f[self.label + "/kappa_gmf"]
+                    else:
+                        kappa_gmf_group = uhecr_dataset_group.create_group(
+                            'kappa_gmf')
+                    gmf_field_group = kappa_gmf_group.create_group(gmf)
+                    particle_group = gmf_field_group.create_group(
+                        particle_type)
                     particle_group.create_dataset('kappa_gmf', data=kappa_gmf)
                     particle_group.create_dataset('omega_gal', data=omega_gal)
-                    particle_group.create_dataset(
-                        'omega_rand', data=omega_rand)
-                    particle_group.create_dataset(
-                        'omega_true', data=omega_true)
+                    particle_group.create_dataset('omega_rand',
+                                                  data=omega_rand)
+                    particle_group.create_dataset('omega_true',
+                                                  data=omega_true)
+                    particle_group.create_dataset('kappa_gmf_rand',
+                                                  data=kappa_gmf_rand)
 
     def build_kappa_gmf_ptype(self, kappa_gmf_args):
         '''Simple wrapper around eval_kappa_gmf so that Pool works.'''
-        kappa_gmf_ptype, defl_arrdirs_ptype, rand_arrdirs_ptype = self.eval_kappa_gmf(*kappa_gmf_args)
+        kappa_gmf_ptype, defl_arrdirs_ptype, rand_arrdirs_ptype, kappa_gmf_rand_ptype = self.eval_kappa_gmf(
+            *kappa_gmf_args)
 
-        return kappa_gmf_ptype, defl_arrdirs_ptype, rand_arrdirs_ptype
+        return kappa_gmf_ptype, defl_arrdirs_ptype, rand_arrdirs_ptype, kappa_gmf_rand_ptype
 
-    def eval_kappa_gmf(self, particle_type = 'p', Nrand = 100, gmf = 'JF12', plot=False):
+    def eval_kappa_gmf(self,
+                       particle_type='p',
+                       Nrand=100,
+                       gmf='JF12',
+                       plot=False):
         '''
         Evaluate spread parameter between arrival direction
         and deflected direction at galactic magnetic field.
@@ -520,7 +551,8 @@ class Uhecr():
             energy = self.energy[i] * crpropa.EeV
             for j in range(Nrand):
                 rand_arrdir = R.randVectorAroundMean(arr_dir, ang_err)
-                c = crpropa.Candidate(crpropa.ParticleState(pid, energy, pos, rand_arrdir))
+                c = crpropa.Candidate(
+                    crpropa.ParticleState(pid, energy, pos, rand_arrdir))
                 sim.run(c)
 
                 defl_dir = c.current.getDirection()
@@ -528,8 +560,10 @@ class Uhecr():
                 # append longitudes and latitudes
                 # need to append np.pi / 2 - theta for latitude
                 # also append the randomized arrival direction in lons and lats
-                rand_arrdirs[i, j, :] = rand_arrdir.getPhi(), np.pi / 2. - rand_arrdir.getTheta()
-                defl_arrdirs[i, j, :] = defl_dir.getPhi(), np.pi / 2. - defl_dir.getTheta()
+                rand_arrdirs[i, j, :] = rand_arrdir.getPhi(
+                ), np.pi / 2. - rand_arrdir.getTheta()
+                defl_arrdirs[i, j, :] = defl_dir.getPhi(
+                ), np.pi / 2. - defl_dir.getTheta()
 
                 # evaluate dot product between arrival direction (randomized) and deflected vector
                 # dot exists with Vector3d() objects
@@ -539,16 +573,23 @@ class Uhecr():
                 # P = 0.683 as per Soiaporn paper
                 sol = root(fischer_int_eq_P, x0=1, args=(cos_theta, 0.683))
                 # print(sol)   # check solution
+                kappa_gmf = sol.x[0]
 
-                kappa_gmfs[i, j] = sol.x[0]
+                if kappa_gmf < 0:
+                    kappa_gmf = 1e-15  # set some lower limit
+
+                kappa_gmfs[i, j] = kappa_gmf
 
         if plot:
             self.plot_deflections(defl_arrdirs, rand_arrdirs)
 
         # evaluate mean kappa_gmf for each uhecr
         kappa_gmf_mean = np.mean(kappa_gmfs, axis=1)
+        # set lower limit to ~0 due to how vMF distribution is defined
+        kappa_gmf_mean[
+            kappa_gmf_mean < 0] = 1e-15  # ~0 due to log(kappa) evaluation
 
-        return kappa_gmf_mean, defl_arrdirs, rand_arrdirs
+        return kappa_gmf_mean, defl_arrdirs, rand_arrdirs, kappa_gmfs
 
     def coord_to_vector3d(self):
         '''Convert from SkyCoord array to Vector3d list'''
@@ -558,12 +599,15 @@ class Uhecr():
         # lat_vector3d = pi/2 - lat_skycoord
         for coord in self.coord:
             v = crpropa.Vector3d()
-            v.setRThetaPhi(1, np.pi / 2. - coord.galactic.b.rad, np.pi - coord.galactic.l.rad)
+            v.setRThetaPhi(1, np.pi / 2. - coord.galactic.b.rad,
+                           np.pi - coord.galactic.l.rad)
             uhecr_vector3d.append(v)
         return uhecr_vector3d
 
-
-    def _prepare_crpropasim(self, particle_type="p", model_name="JF12", seed=691342):
+    def _prepare_crpropasim(self,
+                            particle_type="p",
+                            model_name="JF12",
+                            seed=691342):
         '''Set up CRPropa simulation with some magnetic field model'''
         sim = crpropa.ModuleList()
 
@@ -573,9 +617,9 @@ class Uhecr():
             gmf.randomStriated(seed)
             gmf.randomTurbulent(seed)
 
-        elif model_name == "PT11":  # Pshirkov2011 
+        elif model_name == "PT11":  # Pshirkov2011
             gmf = crpropa.PT11Field()
-            gmf.setUseASS(True)  # Axisymmetric
+            # gmf.setUseASS(True)  # Axisymmetric
 
         else:  # default with JF12
             gmf = crpropa.JF12Field()
@@ -583,21 +627,25 @@ class Uhecr():
             gmf.randomTurbulent(seed)
 
         # Propagation model, parameters: (B-field model, target error, min step, max step)
-        sim.add(crpropa.PropagationCK(gmf, 1e-4, 0.1 * crpropa.parsec, 100 * crpropa.parsec))
+        sim.add(
+            crpropa.PropagationCK(gmf, 1e-4, 0.1 * crpropa.parsec,
+                                  100 * crpropa.parsec))
         obs = crpropa.Observer()
 
         # observer at galactic boundary (20 kpc)
-        obs.add(crpropa.ObserverSurface( crpropa.Sphere(crpropa.Vector3d(0), 20 * crpropa.kpc) ))
+        obs.add(
+            crpropa.ObserverSurface(
+                crpropa.Sphere(crpropa.Vector3d(0), 20 * crpropa.kpc)))
         sim.add(obs)
 
         # A, Z = self.get_AZ(nuc=particle_type)
         A, Z = self.nuc_table[particle_type]
 
         # composition
-        pid = - crpropa.nucleusId(A, Z)
+        pid = -crpropa.nucleusId(A, Z)
 
         # CRPropa random number generator
-        crpropa_randgen = crpropa.Random() 
+        crpropa_randgen = crpropa.Random()
 
         # position of earth in galactic coordinates
         pos_earth = crpropa.Vector3d(-8.5, 0, 0) * crpropa.kpc
@@ -607,18 +655,32 @@ class Uhecr():
     def plot_deflections(self, defl_arrdirs, rand_arrdirs):
         '''Plot deflections for particular UHECR dataset'''
         # check with basic mpl mollweide projection
-        plt.figure(figsize=(12,7))
-        ax = plt.subplot(111, projection = 'mollweide')
+        plt.figure(figsize=(12, 7))
+        ax = plt.subplot(111, projection='mollweide')
 
         # get lon and lat arrays for future reference
         # shift lons by 180. due to how its defined in mpl
         uhecr_lons = np.pi - self.coord.galactic.l.rad
         uhecr_lats = self.coord.galactic.b.rad
 
-        ax.scatter(uhecr_lons, uhecr_lats, color="k", marker="+", s=10.0, alpha=1., label="True")
+        ax.scatter(uhecr_lons,
+                   uhecr_lats,
+                   color="k",
+                   marker="+",
+                   s=10.0,
+                   alpha=1.,
+                   label="True")
         for i in range(self.N):
-            ax.scatter(defl_arrdirs[i, :, 0], defl_arrdirs[i, :, 1], color="b", alpha=0.05, s=4.0)
-            ax.scatter(rand_arrdirs[i, :, 0], rand_arrdirs[i, :, 1], color="r", alpha=0.05, s=4.0)
+            ax.scatter(defl_arrdirs[i, :, 0],
+                       defl_arrdirs[i, :, 1],
+                       color="b",
+                       alpha=0.05,
+                       s=4.0)
+            ax.scatter(rand_arrdirs[i, :, 0],
+                       rand_arrdirs[i, :, 1],
+                       color="r",
+                       alpha=0.05,
+                       s=4.0)
 
-        # TODO: add labels based on color 
+        # TODO: add labels based on color
         ax.grid()

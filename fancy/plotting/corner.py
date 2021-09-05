@@ -17,7 +17,8 @@ class Corner():
                  color=purple,
                  contour_color=purple,
                  levels=[0.97, 0.9, 0.6, 0.3, 0.],
-                 fontsize=22):
+                 fontsize=16,
+                 end_label=None):
         """
         Simple corner plotting.
         
@@ -38,6 +39,29 @@ class Corner():
                                 diag_sharey=False,
                                 despine=False,
                                 corner=True)
+
+        # find index to modify xlims etc for
+        if '$B$ / $\\mathrm{nG}$' in data_frame.columns:  # B-field
+            b_idx = np.argwhere(
+                data_frame.columns == '$B$ / $\\mathrm{nG}$')[0][0]
+        else:
+            b_idx = None
+
+        if r'$\kappa$' in data_frame.columns:  # kappa
+            kappa_idx = np.argwhere(data_frame.columns == r'$\kappa$')[0][0]
+        else:
+            kappa_idx = None
+
+        f_idx = np.argwhere(data_frame.columns == r'$f$')[0][0]  # f
+        L_idx = np.argwhere(data_frame.columns ==
+                            r'$L$ / $10^{38}$ $\mathrm{yr}^{-1}$')[0][0]  # L
+
+        if end_label == "tight_B" or end_label == "limitL":
+            B_lim = [0, 10]
+            B_ticks = [0, 5.0, 10.0]
+        else:
+            B_lim = [0, 50]
+            B_ticks = [0, 25, 50]
 
         # KDE plots
         # KW: - contour levels face the same probem as it passes through HPD_contours
@@ -80,12 +104,58 @@ class Corner():
                                         i, k].spines['top'].set_visible(True)
                                 else:
                                     sns.despine(ax=pairgrid.axes[i, k])
+                                    if b_idx is not None:
+                                        if i == b_idx:
+                                            pairgrid.axes[i, k].set_xlim(B_lim)
+                                            pairgrid.axes[i, k].set_xticks(
+                                                B_ticks)
+
+                                        if k == b_idx:
+                                            pairgrid.axes[i, k].set_ylim(B_lim)
+                                            pairgrid.axes[i, k].set_yticks(
+                                                B_ticks)
+
+                                    if kappa_idx is not None:
+                                        if i == kappa_idx:
+                                            # pairgrid.axes[i, k].set_xlim(0, 1000)
+                                            pairgrid.axes[i,
+                                                          k].set_xscale("log")
+                                            # pairgrid.axes[i, k].set_xticks([0, 10, 100, 1000])
+                                            # pairgrid.axes[i, k].get_xaxis().get_major_formatter().labelOnlyBase = False
+                                            # pairgrid.axes[i, k].get_xaxis().set_major_formatter(ticker.ScalarFormatter())
+                                            # pairgrid.axes[i, k].set_xticklabels([0, 10, 100, 1000])
+
+                                        if k == kappa_idx:
+                                            # pairgrid.axes[i, k].set_ylim(0, 1000)
+                                            pairgrid.axes[i,
+                                                          k].set_yscale("log")
+                                            # pairgrid.axes[i, k].set_yticks([0, 10, 100, 1000])
+
+                                    if i == f_idx:
+                                        pairgrid.axes[i, k].set_xlim(0, 1)
+                                        pairgrid.axes[i, k].set_xticks(
+                                            [0, 0.5, 1])
+
+                                    if k == f_idx:
+                                        pairgrid.axes[i, k].set_ylim(0, 1)
+                                        pairgrid.axes[i, k].set_yticks(
+                                            [0, 0.5, 1])
+
+                                    # if i == L_idx:
+                                    #     pairgrid.axes[i, k].set_xlim(0, 20)
+                                    #     pairgrid.axes[i, k].set_xticks(
+                                    #         [0, 10, 20])
+
+                                    # if k == L_idx:
+                                    #     pairgrid.axes[i, k].set_ylim(0, 20)
+                                    #     pairgrid.axes[i, k].set_yticks(
+                                    #         [0, 10, 20])
         else:
             N = np.shape(data_frame)[1]
             for i in range(N):
                 for j in range(N):
                     for k in range(N):
-                        # KW: if axes is NoneType, since corner=True makes unused axes
+                        # KW: checks if axes is NoneType, since corner=True makes unused axes
                         # into NoneTypes
                         if pairgrid.axes[i, k]:
                             if i != k:
@@ -95,6 +165,44 @@ class Corner():
                                     True)
                             else:
                                 sns.despine(ax=pairgrid.axes[i, k])
+                                if b_idx is not None:
+                                    if i == b_idx:
+                                        pairgrid.axes[i, k].set_xlim(B_lim)
+                                        pairgrid.axes[i, k].set_xticks(B_ticks)
+
+                                    if k == b_idx:
+                                        pairgrid.axes[i, k].set_ylim(B_lim)
+                                        pairgrid.axes[i, k].set_yticks(B_ticks)
+
+                                if kappa_idx is not None:
+                                    if i == kappa_idx:
+                                        # pairgrid.axes[i, k].set_xlim(0, 1000)
+                                        pairgrid.axes[i, k].set_xscale("log")
+                                        # pairgrid.axes[i, k].set_xticks([0, 10, 100, 1000])
+                                        # pairgrid.axes[i, k].get_xaxis().get_major_formatter().labelOnlyBase = False
+                                        # pairgrid.axes[i, k].get_xaxis().set_major_formatter(ticker.ScalarFormatter())
+                                        # pairgrid.axes[i, k].set_xticklabels([0, 10, 100, 1000])
+
+                                    if k == kappa_idx:
+                                        # pairgrid.axes[i, k].set_ylim(0, 1000)
+                                        pairgrid.axes[i, k].set_yscale("log")
+                                        # pairgrid.axes[i, k].set_yticks([0, 10, 100, 1000])
+
+                                if i == f_idx:
+                                    pairgrid.axes[i, k].set_xlim(0, 1)
+                                    pairgrid.axes[i, k].set_xticks([0, 0.5, 1])
+
+                                if k == f_idx:
+                                    pairgrid.axes[i, k].set_ylim(0, 1)
+                                    pairgrid.axes[i, k].set_yticks([0, 0.5, 1])
+
+                                # if i == L_idx:
+                                #     pairgrid.axes[i, k].set_xlim(0, 20)
+                                #     pairgrid.axes[i, k].set_xticks([0, 10, 20])
+
+                                # if k == L_idx:
+                                #     pairgrid.axes[i, k].set_ylim(0, 20)
+                                #     pairgrid.axes[i, k].set_yticks([0, 10, 20])
 
         # Tidy axes
         sns.despine(ax=pairgrid.axes[0, 0], left=True)

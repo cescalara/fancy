@@ -1,17 +1,16 @@
 # Clean and minimal matplotlib style
-# Disables text.usetex and sets STIX font to both math and normal font
 
 # LINES
 lines.linewidth : 2
 
 # FONT
-font.family : sans-serif
+font.family : serif
 #font.serif : Times
-font.size : 12
+font.size : 14
 
 # TEXT
-text.usetex : False
-mathtext.fontset : stixsans
+text.usetex : True
+#mathtext.fontset : dejavuserif
 
 # AXES
 axes.titlesize : x-large

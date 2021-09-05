@@ -6,7 +6,8 @@ from astropy.coordinates import SkyCoord, EarthLocation
 from scipy import integrate
 
 from .exposure import *
-from ..plotting import AllSkyMap
+# from ..plotting import AllSkyMap
+from ..plotting import AllSkyMapCartopy as AllSkyMap
 
 __all__ = ['Detector', 'Angle']
 
@@ -69,6 +70,8 @@ class Detector():
         self.params.append(self.M)
 
         self.start_year = detector_properties["start_year"]
+
+        self.Eth = detector_properties["Eth"]
 
     def exposure(self):
         """

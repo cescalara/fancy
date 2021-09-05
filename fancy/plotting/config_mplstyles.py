@@ -1,5 +1,4 @@
-''' Move the mplstyle files located in ./mplstyles to the appropriate mpl_configdir in the local file system so that the styles "minimalist" and "blues" can be used
-'''
+''' Move the mplstyle files located in ./mplstyles to the appropriate mpl_configdir in the local file system so that the styles "minimalist" and "blues" can be used.'''
 import os
 import shutil
 import os.path 
@@ -32,14 +31,6 @@ def config_mplstyle(clear=False):
     for fname in os.listdir(mplstyles_dir):
         shutil.copyfile(os.path.join(mplstyles_dir, fname),
                         os.path.join(stylelib_dir, fname))
-
-    # '''not really sure why the above doesnt want to work, temporary workaround by using the full path to the location where mplstyles is located below'''
-    # mplstyles_dir = osp.join(osp.dirname(__file__), "mplstyles")
-
-    # # a list of paths going to the mplstyles directory
-    # mplstyle_filelist = [osp.join(mplstyles_dir, fname) for fname in os.listdir(mplstyles_dir)]
-
-    # return mplstyle_filelist
 
 
 if __name__ == "__main__":

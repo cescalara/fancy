@@ -139,3 +139,7 @@ Temporary Items
 
 # vscode related files
 .vscode/**
+
+# files from CRPropa GMF lensing
+**.mldat
+lens.cfg
