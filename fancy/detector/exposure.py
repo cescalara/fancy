@@ -18,6 +18,15 @@ with _dec appended to the function name.
 @date June 2018
 """
 
+'''
+For reference:
+p[0] = np.cos(lat)
+p[1] = np.sin(lat)
+p[2] = np.cos(theta_m)
+p[3] = alpha_T
+p[4] = M
+'''
+
 def xi(theta, p):
     return (p[2] - (p[1] * np.cos(theta))) / (p[0] * np.sin(theta)) 
 
@@ -122,6 +131,14 @@ def constant_val(kappa):
     else:
         return kappa / (4 * np.pi * np.sinh(kappa))
 
+def kappa_dval(sig_omega):
+    '''
+    KW: Based on Eq. 9 in Capel and Mortlock (2019)
+
+    :param sig_omega: the angular reconstruction uncertainty in degrees
+    '''
+    return 7552. * sig_omega**-2.
+
     
 """
 Exposure as a function of declination. 
@@ -142,6 +159,8 @@ def alpha_m_dec(dec, p):
 def m_dec(dec, p):
     return (p[0] * np.cos(dec) * np.sin(alpha_m_dec(dec, p)) 
             + alpha_m_dec(dec, p) * p[1] * np.sin(dec))
+
+
 
 
     

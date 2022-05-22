@@ -1,0 +1,13 @@
+# A chill colour palette for use with other matplotlib styles
+
+# AXES
+axes.prop_cycle : cycler('color', ['114a56', '6da5af', '1a7282', '875f74', '592441', '464747', 'bec1c2', 'f9f9f9']) 
+# darkblue = 114A56	    
+# lightblue = 6DA5AF
+# midblue = 1A7282
+# lightpurple = 875F74
+# purple = 592441
+# darkgrey = 464747
+# grey = BEC1C2
+# lightgrey = F9F9F9
+		

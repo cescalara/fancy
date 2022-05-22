@@ -136,3 +136,10 @@ Temporary Items
 
 # cached stan models
 *.pkl
+
+# vscode related files
+.vscode/**
+
+# files from CRPropa GMF lensing
+**.mldat
+lens.cfg
