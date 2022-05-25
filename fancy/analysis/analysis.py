@@ -27,10 +27,6 @@ from ..propagation.energy_loss import (
 from ..detector.vMF.vmf import sample_vMF, sample_sphere
 from ..detector.exposure import m_dec
 
-# import crpropa
-import sys
-
-sys.path.append("/opt/CRPropa3/lib/python3.8/site-packages")
 import crpropa
 
 __all__ = ["Analysis"]
