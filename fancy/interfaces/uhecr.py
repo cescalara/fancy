@@ -17,10 +17,6 @@ from ..detector.detector import Detector
 from ..plotting import AllSkyMapCartopy as AllSkyMap
 from .utils import get_nucleartable, fischer_int_eq_P
 
-# importing crpropa, need to append system path
-import sys
-
-sys.path.append("/opt/CRPropa3/lib/python3.8/site-packages")
 import crpropa
 
 __all__ = ["Uhecr"]
