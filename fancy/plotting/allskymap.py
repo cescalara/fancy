@@ -73,8 +73,10 @@ class SphericalCircle(PathPatch):
                 codes.append(Path.MOVETO)
                 first = False
             elif (
-                (last <= 180 and v[0] > 180) or (last > 180 and v[0] <= 180)
-            ) and np.absolute(v[0] - last) < 300:
+                ((last <= 180 and v[0] > 180) or (last > 180 and v[0] <= 180))
+                and np.absolute(v[0] - last) < 300
+                and ((v[0] + radius < 90) or v[0] - (radius < -90))
+            ):
                 codes.append(Path.MOVETO)
 
             else:
@@ -110,10 +112,12 @@ class AllSkyMap(object):
         if not ax:
 
             fig, ax = plt.subplots(subplot_kw={"projection": self.projection})
+            self.fig = fig
             self.ax = ax
 
         else:
 
+            self.fig = ax.get_figure()
             self.ax = ax
 
     def _east_hem(self, lon):
