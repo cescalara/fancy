@@ -148,10 +148,10 @@ class AllSkyMap(object):
 
         return False
 
-    def geodesic(self, lon1, lat1, lon2, lat2, del_s=0.01, clip=True, **kwargs):
+    def geodesic(self, lon1, lat1, lon2, lat2, del_s=1000, clip=True, **kwargs):
         """
         Plot a geodesic curve from (lon1, lat1) to (lon2, lat2), with
-        points separated by arc length del_s.
+        points separated by arc length del_s (in m).
 
         If the geodesic does not cross the map limb, there will be only a single curve;
         if it crosses the limb, there will be two curves.
