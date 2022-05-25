@@ -76,8 +76,11 @@ class SphericalCircle(PathPatch):
                 ((last <= 180 and v[0] > 180) or (last > 180 and v[0] <= 180))
                 and np.absolute(v[0] - last) < 300
                 and (
-                    (v[0] + radius.to_value(vertex_unit) < 90)
-                    or (v[0] - radius.to_value(vertex_unit) < -90)
+                    (latitude.to_value(vertex_unit) + radius.to_value(vertex_unit) < 90)
+                    or (
+                        latitude.to_value(vertex_unit) - radius.to_value(vertex_unit)
+                        < -90
+                    )
                 )
             ):
                 codes.append(Path.MOVETO)
