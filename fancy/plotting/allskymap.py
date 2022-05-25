@@ -75,7 +75,10 @@ class SphericalCircle(PathPatch):
             elif (
                 ((last <= 180 and v[0] > 180) or (last > 180 and v[0] <= 180))
                 and np.absolute(v[0] - last) < 300
-                and ((v[0] + radius < 90) or v[0] - (radius < -90))
+                and (
+                    (v[0] + radius.to_value(vertex_unit) < 90)
+                    or (v[0] - radius.to_value(vertex_unit) < -90)
+                )
             ):
                 codes.append(Path.MOVETO)
 
@@ -125,7 +128,7 @@ class AllSkyMap(object):
         Return True if lon is in the eastern hemisphere of the map wrt lon_0.
         """
 
-        if (lon - self._lon_0) % 360.0 <= self.east_lon:
+        if (lon - 0.0) % 360.0 <= 180.0:
 
             return True
 
@@ -186,13 +189,13 @@ class AllSkyMap(object):
         # hemisphere crossing.
         segs = []
         seg_lons, seg_lats = [lon1], [lat1]
-        cur_hem = self.east_hem(lon1)
+        cur_hem = self._east_hem(lon1)
 
         crossed_zero = False
 
         for i in range(len(lons))[1:]:
 
-            if self.east_hem(lons[i]) == cur_hem:
+            if self._east_hem(lons[i]) == cur_hem:
 
                 seg_lons.append(lons[i])
                 seg_lats.append(lats[i])
@@ -203,7 +206,7 @@ class AllSkyMap(object):
                 # the meantime just rely on the step size being small.
 
                 # if crossing zero, don't need new seg
-                if self.cross_zero(lons[i - 1], lons[i]) or crossed_zero:
+                if self._cross_zero(lons[i - 1], lons[i]) or crossed_zero:
 
                     crossed_zero = True
                     seg_lons.append(lons[i])
@@ -221,9 +224,9 @@ class AllSkyMap(object):
         lines = []
         for lons, lats in segs:
 
-            x, y = self(lons, lats)
-
-            line = self.ax.plot(x, y, **kwargs)[0]
+            line = self.ax.plot(
+                lons, lats, transform=self.ax.get_transform(self.transform), **kwargs
+            )[0]
 
             lines.append(line)
 
