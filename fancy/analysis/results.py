@@ -12,7 +12,7 @@ from ..interfaces.integration import ExposureIntegralTable
 from ..propagation.energy_loss import get_Eth_src, get_Eex, get_kappa_ex
 
 # from ..plotting import AllSkyMap
-from ..plotting import AllSkyMapCartgopy as AllSkyMap
+from ..plotting import AllSkyMapCartopy as AllSkyMap
 
 __all__ = ["Results", "PPC"]
 
