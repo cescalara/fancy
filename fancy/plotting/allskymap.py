@@ -260,7 +260,7 @@ class AllSkyMap(object):
             "draw_standard_labels() not implemented yet - does nothing for now!"
         )
 
-    def tissot(self, lon_0, lat_0, radius_deg, npts, ax=None, **kwargs):
+    def tissot(self, lon_0, lat_0, radius_deg, npts=30, ax=None, **kwargs):
         """
         Draw a polygon centered at ``lon_0, lat_0``.  The polygon
         approximates a circle on the surface of the map with radius
