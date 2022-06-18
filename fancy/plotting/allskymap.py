@@ -254,7 +254,11 @@ class AllSkyMap(object):
         :param minimal: If True, draw less dense label grid.
         """
 
-        raise NotImplementedError("draw_standard_labels() coming soon")
+        import warnings
+
+        warnings.warn(
+            "draw_standard_labels() not implement yet - does nothing for now!"
+        )
 
     def tissot(self, lon_0, lat_0, radius_deg, npts, ax=None, **kwargs):
         """
@@ -282,3 +286,19 @@ class AllSkyMap(object):
         ax.add_patch(circle)
 
         return circle
+
+    def scatter(self, x, y, ax=None, **kwargs):
+        """
+        Pass to matplotlib scatter.
+        """
+
+        if not ax:
+
+            ax = self.ax
+
+        ax.scatter(
+            x,
+            y,
+            transform=ax.get_transform(self.transform),
+            **kwargs,
+        )

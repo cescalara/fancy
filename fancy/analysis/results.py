@@ -11,8 +11,7 @@ from ..detector.exposure import m_integrand
 from ..interfaces.integration import ExposureIntegralTable
 from ..propagation.energy_loss import get_Eth_src, get_Eex, get_kappa_ex
 
-# from ..plotting import AllSkyMap
-from ..plotting import AllSkyMapCartopy as AllSkyMap
+from fancy.plotting import AllSkyMap
 
 __all__ = ["Results", "PPC"]
 
@@ -290,30 +289,33 @@ class PPC:
             fig, ax = plt.subplots(N_rows, N_cols, figsize=(5 * N_rows, 4 * N_cols))
             flat_ax = ax.reshape(-1)
 
-            # skymap
-            skymap = AllSkyMap(projection="hammer", lon_0=0, lat_0=0)
-
             for i, ax in enumerate(flat_ax):
 
                 if i < N_grid:
                     # data
                     if i == 0:
-                        skymap.ax = ax
+                        skymap = AllSkyMap(ax=ax)
                         label = True
                         for lon, lat in np.nditer(
                             [self.arrival_direction.glons, self.arrival_direction.glats]
                         ):
                             if label:
                                 skymap.tissot(
-                                    lon, lat, 4.0, npts=30, alpha=0.5, label="data"
+                                    lon,
+                                    lat,
+                                    4.0,
+                                    npts=30,
+                                    alpha=0.5,
+                                    lw=0,
+                                    label="data",
                                 )
                                 label = False
                             else:
-                                skymap.tissot(lon, lat, 4.0, npts=30, alpha=0.5)
+                                skymap.tissot(lon, lat, 4.0, npts=30, alpha=0.5, lw=0)
 
                     # predicted
                     else:
-                        skymap.ax = ax
+                        skymap = AllSkyMap(ax=ax)
                         label = True
                         for lon, lat in np.nditer(
                             [
@@ -328,13 +330,20 @@ class PPC:
                                     4.0,
                                     npts=30,
                                     alpha=0.5,
+                                    lw=0,
                                     color="g",
                                     label="predicted",
                                 )
                                 label = False
                             else:
                                 skymap.tissot(
-                                    lon, lat, 4.0, npts=30, alpha=0.5, color="g"
+                                    lon,
+                                    lat,
+                                    4.0,
+                                    npts=30,
+                                    alpha=0.5,
+                                    lw=0,
+                                    color="g",
                                 )
                 else:
                     ax.axis("off")

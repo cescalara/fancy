@@ -10,11 +10,8 @@ import h5py
 from .uhecr import Uhecr
 from .source import Source
 from .stan import coord_to_uv, uv_to_coord
-from ..detector.detector import Detector
-# from ..plotting import AllSkyMap
-from ..plotting import AllSkyMapCartopy as AllSkyMap
-
-__all__ = ['Data', 'Source', 'Uhecr']
+from ..detector.detector import
+from fancy.plotting import AllSkyMap
 
 
 class Data():
@@ -122,12 +119,9 @@ class Data():
         if cmap == None:
             cmap = plt.cm.get_cmap('viridis')
 
-        # figure
-        fig, ax = plt.subplots()
-        fig.set_size_inches((12, 6))
-
         # skymap
-        skymap = AllSkyMap(projection='hammer', lon_0=0, lat_0=0)
+        skymap = AllSkyMap()
+        skymap.fig.set_size_inches(12, 6)
 
         # uhecr object
         if self.uhecr:
@@ -145,20 +139,20 @@ class Data():
         skymap.draw_standard_labels()
 
         # legend
-        ax.legend(frameon=False, bbox_to_anchor=(0.85, 0.85))
+        skymap.ax.legend(frameon=False, bbox_to_anchor=(0.85, 0.85))
 
         # add a colorbar if uhecr objects plotted
         if self.uhecr and self.uhecr.N != 1:
             self._uhecr_colorbar(cmap)
 
         if save:
-            plt.savefig(savename,
-                        dpi=1000,
-                        bbox_extra_artists=[leg],
-                        bbox_inches='tight',
-                        pad_inches=0.5)
+            skymap.fig.savefig(savename,
+                               dpi=500,
+                               bbox_extra_artists=[leg],
+                               bbox_inches='tight',
+                               pad_inches=0.5)
 
-        return fig, skymap
+        return skymap
 
     def from_file(self, filename):
         """
@@ -205,6 +199,7 @@ class RawData():
     """
     Parses information for known data files in txt format. 
     """
+    
     def __init__(self, filename, filelayout):
         """
         Parses information for known data files in txt format. 

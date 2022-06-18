@@ -14,8 +14,7 @@ from ..interfaces.stan import Direction, convert_scale, coord_to_uv, uv_to_coord
 from ..interfaces.data import Uhecr
 from ..interfaces.utils import get_nucleartable
 
-# from ..plotting import AllSkyMap
-from ..plotting import AllSkyMapCartopy as AllSkyMap
+from ..plotting import AllSkyMap
 from ..propagation.energy_loss import (
     get_Eth_src,
     get_kappa_ex,
@@ -26,6 +25,9 @@ from ..propagation.energy_loss import (
 )
 from ..detector.vMF.vmf import sample_vMF, sample_sphere
 from ..detector.exposure import m_dec
+
+from fancy.interfaces.data import Data
+from fancy.interfaces.stan import Model
 
 import crpropa
 
@@ -39,7 +41,14 @@ class Analysis:
 
     nthreads = int(cpu_count() * 0.75)
 
-    def __init__(self, data, model, analysis_type=None, filename=None, summary=b""):
+    def __init__(
+        self,
+        data: Data,
+        model: Model,
+        analysis_type=None,
+        filename=None,
+        summary=b"",
+    ):
         """
         To manage the running of simulations and fits based on Data and Model objects.
 
@@ -891,7 +900,7 @@ class Analysis:
             fig.set_size_inches((12, 6))
 
             # skymap
-            skymap = AllSkyMap(projection="hammer", lon_0=0, lat_0=0)
+            skymap = AllSkyMap()
 
             self.data.source.plot(skymap)
             self.data.detector.draw_exposure_lim(skymap)

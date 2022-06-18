@@ -1,21 +1,18 @@
-import pandas as pd
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 from astropy import units as u
-from astropy.coordinates import SkyCoord, EarthLocation
+from astropy.coordinates import SkyCoord
 from datetime import date, timedelta
 import h5py
-from scipy.optimize import root
-from tqdm import tqdm as progress_bar
+
+# from tqdm import tqdm as progress_bar
 from multiprocessing import Pool, cpu_count
 
-from .stan import coord_to_uv, uv_to_coord
-from ..detector.detector import Detector
+from fancy.interfaces.stan import coord_to_uv, uv_to_coord
 
-# from ..plotting import AllSkyMap
-from ..plotting import AllSkyMapCartopy as AllSkyMap
-from .utils import get_nucleartable, fischer_int_eq_P
+from fancy.plotting import AllSkyMap
+from fancy.utils import get_nucleartable, fischer_int_eq_P
 
 import crpropa
 
@@ -184,81 +181,86 @@ class Uhecr:
         # evaluated in analysis.simulate
         self.kappa_gmf = np.zeros(self.N)
 
-    # def plot(self, skymap, size=2):
-    #     """
-    #     Plot the Uhecr instance on a skymap.
+    def plot(self, skymap: AllSkyMap, size=2):
+        """
+        Plot the Uhecr instance on a skymap.
 
-    #     Called by Data.show()
+        Called by Data.show()
 
-    #     :param skymap: the AllSkyMap
-    #     :param size: tissot radius
-    #     :param source_labels: source labels (int)
-    #     """
+        :param skymap: the AllSkyMap
+        :param size: tissot radius
+        :param source_labels: source labels (int)
+        """
 
-    #     lons = self.coord.galactic.l.deg
-    #     lats = self.coord.galactic.b.deg
+        lons = self.coord.galactic.l.deg
+        lats = self.coord.galactic.b.deg
 
-    #     alpha_level = 0.7
+        alpha_level = 0.7
 
-    #     # If source labels are provided, plot with colour
-    #     # indicating the source label.
-    #     if isinstance(self.source_labels, (list, np.ndarray)):
+        # If source labels are provided, plot with colour
+        # indicating the source label.
+        if isinstance(self.source_labels, (list, np.ndarray)):
 
-    #         Nc = max(self.source_labels)
+            Nc = max(self.source_labels)
 
-    #         # Use a continuous cmap
-    #         cmap = plt.cm.get_cmap('plasma', Nc)
+            # Use a continuous cmap
+            cmap = plt.cm.get_cmap("plasma", Nc)
 
-    #         write_label = True
+            write_label = True
 
-    #         for lon, lat, lab in np.nditer([lons, lats, self.source_labels]):
-    #             color = cmap(lab)
-    #             if write_label:
-    #                 skymap.tissot(lon,
-    #                               lat,
-    #                               size,
-    #                               npts=30,
-    #                               facecolor=color,
-    #                               alpha=0.5,
-    #                               label=self.label)
-    #                 write_label = False
-    #             else:
-    #                 skymap.tissot(lon,
-    #                               lat,
-    #                               size,
-    #                               npts=30,
-    #                               facecolor=color,
-    #                               alpha=0.5)
+            for lon, lat, lab in np.nditer([lons, lats, self.source_labels]):
+                color = cmap(lab)
+                if write_label:
+                    skymap.tissot(
+                        lon,
+                        lat,
+                        size,
+                        npts=30,
+                        color=color,
+                        lw=0,
+                        alpha=0.5,
+                        label=self.label,
+                    )
+                    write_label = False
+                else:
+                    skymap.tissot(
+                        lon, lat, size, npts=30, color=color, lw=0, alpha=0.5
+                    ),
 
-    #     # Otherwise, use the cmap to show the UHECR energy.
-    #     else:
+        # Otherwise, use the cmap to show the UHECR energy.
+        else:
 
-    #         # use colormap for energy
-    #         norm_E = matplotlib.colors.Normalize(min(self.energy),
-    #                                              max(self.energy))
-    #         cmap = plt.cm.get_cmap('viridis', len(self.energy))
+            # use colormap for energy
+            norm_E = matplotlib.colors.Normalize(min(self.energy), max(self.energy))
+            cmap = plt.cm.get_cmap("viridis", len(self.energy))
 
-    #         write_label = True
-    #         for E, lon, lat in np.nditer([self.energy, lons, lats]):
+            write_label = True
+            for E, lon, lat in np.nditer([self.energy, lons, lats]):
 
-    #             color = cmap(norm_E(E))
+                color = cmap(norm_E(E))
 
-    #             if write_label:
-    #                 skymap.tissot(lon,
-    #                               lat,
-    #                               size,
-    #                               30,
-    #                               facecolor=color,
-    #                               alpha=alpha_level,
-    #                               label=self.label)
-    #                 write_label = False
-    #             else:
-    #                 skymap.tissot(lon,
-    #                               lat,
-    #                               size,
-    #                               30,
-    #                               facecolor=color,
-    #                               alpha=alpha_level)
+                if write_label:
+                    skymap.tissot(
+                        lon,
+                        lat,
+                        size,
+                        npts=30,
+                        color=color,
+                        lw=0,
+                        alpha=alpha_level,
+                        label=self.label,
+                    )
+                    write_label = False
+                else:
+                    skymap.tissot(
+                        lon,
+                        lat,
+                        size,
+                        npts=30,
+                        color=color,
+                        lw=0,
+                        alpha=alpha_level,
+                    )
 
     def save(self, file_handle):
         """
