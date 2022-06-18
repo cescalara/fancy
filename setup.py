@@ -1,7 +1,9 @@
 import setuptools
+import versioneer
 
 setuptools.setup(
     name="fancy",
     packages=setuptools.find_packages(),
-    version="v3.0.0",
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
 )
