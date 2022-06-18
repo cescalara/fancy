@@ -29,7 +29,13 @@ from ..detector.exposure import m_dec
 from fancy.interfaces.data import Data
 from fancy.interfaces.stan import Model
 
-import crpropa
+try:
+
+    import crpropa
+
+except ImportError:
+
+    crpropa = None
 
 
 class Analysis:
@@ -489,6 +495,11 @@ class Analysis:
         :param Nrand: number of samples performed per true UHECR for vMF, higher means more precise lensing
         :param path_to_lens: path to the GMF lensing directory
         """
+
+        if not crpropa:
+
+            raise ImportError("CRPropa3 must be installed to use this functionality")
+
         N_uhecr = len(kappas)  # number of UHECRS at gal. boundary
         self.defl_plotvars = (
             {}
@@ -600,6 +611,10 @@ class Analysis:
 
         :param coords_gb: list of SkyCoord arrival directions at galactic boundary
         """
+
+        if not crpropa:
+
+            raise ImportError("CRPropa3 must be installed to use this functionality")
 
         energies_gb = self.Earr * crpropa.EeV  # UHECR energy at gal. boundary
         A, Z = self.nuc_table[self.ptype]

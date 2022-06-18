@@ -14,7 +14,13 @@ from fancy.interfaces.stan import coord_to_uv, uv_to_coord
 from fancy.plotting import AllSkyMap
 from fancy.interfaces.utils import get_nucleartable, fischer_int_eq_P
 
-# import crpropa
+try:
+
+    import crpropa
+
+except ImportError:
+
+    crpropa = None
 
 __all__ = ["Uhecr"]
 
@@ -621,19 +627,24 @@ class Uhecr:
 
     #     return kappa_gmf_mean, defl_arrdirs, rand_arrdirs, kappa_gmfs
 
-    # def coord_to_vector3d(self):
-    #     """Convert from SkyCoord array to Vector3d list"""
-    #     uhecr_vector3d = []
-    #     # due to how SkyCoord defines coordinates,
-    #     # lon_vector3d = pi - lon_skycoord
-    #     # lat_vector3d = pi/2 - lat_skycoord
-    #     for coord in self.coord:
-    #         v = crpropa.Vector3d()
-    #         v.setRThetaPhi(
-    #             1, np.pi / 2.0 - coord.galactic.b.rad, np.pi - coord.galactic.l.rad
-    #         )
-    #         uhecr_vector3d.append(v)
-    #     return uhecr_vector3d
+    def coord_to_vector3d(self):
+        """Convert from SkyCoord array to Vector3d list"""
+
+        if not crpropa:
+
+            raise ImportError("CRPropa3 must be installed to use this functionality")
+
+        uhecr_vector3d = []
+        # due to how SkyCoord defines coordinates,
+        # lon_vector3d = pi - lon_skycoord
+        # lat_vector3d = pi/2 - lat_skycoord
+        for coord in self.coord:
+            v = crpropa.Vector3d()
+            v.setRThetaPhi(
+                1, np.pi / 2.0 - coord.galactic.b.rad, np.pi - coord.galactic.l.rad
+            )
+            uhecr_vector3d.append(v)
+        return uhecr_vector3d
 
     # def _prepare_crpropasim(self, particle_type="p", model_name="JF12", seed=691342):
     #     """Set up CRPropa simulation with some magnetic field model"""
