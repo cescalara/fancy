@@ -257,7 +257,7 @@ class AllSkyMap(object):
         import warnings
 
         warnings.warn(
-            "draw_standard_labels() not implement yet - does nothing for now!"
+            "draw_standard_labels() not implemented yet - does nothing for now!"
         )
 
     def tissot(self, lon_0, lat_0, radius_deg, npts, ax=None, **kwargs):
