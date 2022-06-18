@@ -31,8 +31,6 @@ from fancy.interfaces.stan import Model
 
 import crpropa
 
-__all__ = ["Analysis"]
-
 
 class Analysis:
     """
