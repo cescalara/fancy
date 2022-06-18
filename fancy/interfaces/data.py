@@ -138,7 +138,7 @@ class Data:
         skymap.draw_standard_labels()
 
         # legend
-        skymap.ax.legend(frameon=False, bbox_to_anchor=(0.85, 0.85))
+        leg = skymap.ax.legend(frameon=False, bbox_to_anchor=(0.85, 0.85))
 
         # add a colorbar if uhecr objects plotted
         if self.uhecr and self.uhecr.N != 1:
