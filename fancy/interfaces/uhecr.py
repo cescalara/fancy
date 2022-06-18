@@ -12,7 +12,7 @@ from multiprocessing import Pool, cpu_count
 from fancy.interfaces.stan import coord_to_uv, uv_to_coord
 
 from fancy.plotting import AllSkyMap
-from fancy.utils import get_nucleartable, fischer_int_eq_P
+from fancy.interfaces.utils import get_nucleartable, fischer_int_eq_P
 
 import crpropa
 
