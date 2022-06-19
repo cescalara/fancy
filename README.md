@@ -4,7 +4,7 @@
 
 `fancy` is a toolbox used for UHECR modelling, fitting, and plotting. The majority of the tools used in [uhecr-project/uhecr_model](https://github.com/uhecr-project/uhecr_model) 
 
-The package is tested with Python 3.9 and installation via pip should take care of the dependencies (see below for more info). [`CRPropa3`](https://github.com/CRPropa/CRPropa3) is treated as an optional dependency.  
+The package is tested with Python 3.8/3.9 on the latest MacOS and Ubuntu linux. Installation via pip should take care of the dependencies (see below for more info). [`CRPropa3`](https://github.com/CRPropa/CRPropa3) is treated as an optional dependency.  
 
 ## Installation
 Installation is done via `pip`:
