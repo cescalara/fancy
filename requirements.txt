@@ -9,5 +9,5 @@ pystan==2.18.0.0
 setuptools==39.2.0
 astropy==3.0.1
 h5py==2.7.1
-numpy==1.14.2
+numpy==1.22.0
 tqdm==4.30.0
