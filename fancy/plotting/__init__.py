@@ -1,3 +1,2 @@
-# from .allskymap import *
-from .allskymap_cartopy import AllSkyMapCartopy
+from .allskymap import AllSkyMap
 from .corner import *

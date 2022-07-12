@@ -1,15 +1,10 @@
 import setuptools
+import versioneer
 
 setuptools.setup(
-
-    name = 'fancy',
-    packages = setuptools.find_packages(), 
-    version = 'v3.0.0',
-    description = 'Framework for the Analysis of Cosmic raYs',
-    author = 'Francesca Capel',
-    author_email = 'capel.francesca@gmail.com',
-    url = 'https://github.com/cescalara/fancy',
-    keywords = ['UHECR', 'analysis'], 
-    classifiers = [],
-
+    name="fancy",
+    packages=setuptools.find_packages(),
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
+    include_package_data=True,
 )

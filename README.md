@@ -1,30 +1,21 @@
 # fancy
 
-**Forked over from [cescalara/fancy](https://github.com/cescalara/fancy)**
+[![CI](https://github.com/cescalara/fancy/actions/workflows/tests.yml/badge.svg?branch=ta_updates)](https://github.com/cescalara/fancy/actions/workflows/tests.yml)
 
-`fancy` is a toolbox used for UHECR modelling, fitting, and plotting. The majority of the tools used in [uhecr-project/uhecr_model](https://github.com/uhecr-project/uhecr_model) (forked over from [cescalara/uhecr_model](https://github.com/cescalara/uhecr_model)) are contained in this package. 
+`fancy` is a toolbox used for UHECR modelling, fitting, and plotting. The majority of the tools used in [uhecr-project/uhecr_model](https://github.com/uhecr-project/uhecr_model) 
 
-## Dependencies
-
-With this updated version, this code uses the following (main) dependencies:
-- Python <=3.8
-- NumPy <=1.19  (to allow calculations with MKL)
-- seaborn >=0.11  (for plots; due to overhauls with kdeplot)
-- h5py >=3.0  (for I/O, due to deprecations with <v3.0)
-- Basemap   (for skymaps)
-- astropy  (for celestial parameters)
-- mpi4py  (for energy / propagation calculations)
-- matplotlib  (for plots)
-
-Additionally, this code depends on [uhecr-project/stan_utility](https://github.com/uhecr-project/stan_utility) (forked from [cescalara/stan_utility](https://github.com/cescalara/stan_utility)) for core pystan calculations. This package depends on `pystan<=2.19`. 
+The package is tested with Python 3.8/3.9 on the latest MacOS and Ubuntu linux. Installation via pip should take care of the dependencies (see below for more info). [`CRPropa3`](https://github.com/CRPropa/CRPropa3) is treated as an optional dependency.  
 
 ## Installation
 Installation is done via `pip`:
+
 ```
-pip install fancy
+pip install git+https://github.com/cescalara/fancy.git@ta_updates
 ```
-Additionally, in order to utilize the plotting styles in `uhecr-project/uhecr_model`, run `init_config.sh`. This also
-allows one to download the galactic field model utilized with the GMF model implemented.
+
+There are two further steps one must take to get set up:
+* Run `install_cmdstan` to set up cmdstanpy (see [these instructions](https://cmdstanpy.readthedocs.io/en/v1.0.1/installation.html#function-install-cmdstan) for more information)
+* Run `init_config.sh` to set up plotting styles, nuclear tables and GMF model
 
 ## License
 

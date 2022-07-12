@@ -2,28 +2,22 @@ import pandas as pd
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-from astropy import units as u
-from astropy.coordinates import SkyCoord, EarthLocation
-from datetime import date, timedelta
 import h5py
 
 from .uhecr import Uhecr
 from .source import Source
-from .stan import coord_to_uv, uv_to_coord
 from ..detector.detector import Detector
-# from ..plotting import AllSkyMap
-from ..plotting import AllSkyMapCartopy as AllSkyMap
-
-__all__ = ['Data', 'Source', 'Uhecr']
+from fancy.plotting import AllSkyMap
 
 
-class Data():
+class Data:
     """
     A container for high level storage of data.
     """
+
     def __init__(self):
         """
-        A container for high level storage of data.      
+        A container for high level storage of data.
         """
 
         self._filename = None
@@ -43,7 +37,7 @@ class Data():
         """
 
         if label == None:
-            label = 'VCV_AGN'
+            label = "VCV_AGN"
 
         new_source = Source()
         new_source.from_data_file(filename, label)
@@ -97,37 +91,36 @@ class Data():
         norm_E = matplotlib.colors.Normalize(min_energy, max_energy)
 
         # colorbar
-        cb_ax = plt.axes([0.25, 0, .5, .03], frameon=False)
+        cb_ax = plt.axes([0.25, 0, 0.5, 0.03], frameon=False)
         vals = np.linspace(min_energy, max_energy, 100)
-        bar = matplotlib.colorbar.ColorbarBase(cb_ax,
-                                               values=vals,
-                                               norm=norm_E,
-                                               cmap=cmap,
-                                               orientation='horizontal',
-                                               drawedges=False,
-                                               alpha=1)
-        #bar.ax.get_children()[1].set_linewidth(0)
-        bar.set_label('UHECR Energy [EeV]')
+        bar = matplotlib.colorbar.ColorbarBase(
+            cb_ax,
+            values=vals,
+            norm=norm_E,
+            cmap=cmap,
+            orientation="horizontal",
+            drawedges=False,
+            alpha=1,
+        )
+        # bar.ax.get_children()[1].set_linewidth(0)
+        bar.set_label("UHECR Energy [EeV]")
 
     def show(self, save=False, savename=None, cmap=None):
         """
-        Plot the data on a map of the sky. 
-        
+        Plot the data on a map of the sky.
+
         :param save: boolean input, saves figure if True
-        :param savename: location to save to, required if 
+        :param savename: location to save to, required if
                          save == True
         """
 
         # plot style
         if cmap == None:
-            cmap = plt.cm.get_cmap('viridis')
-
-        # figure
-        fig, ax = plt.subplots()
-        fig.set_size_inches((12, 6))
+            cmap = plt.cm.get_cmap("viridis")
 
         # skymap
-        skymap = AllSkyMap(projection='hammer', lon_0=0, lat_0=0)
+        skymap = AllSkyMap()
+        skymap.fig.set_size_inches(12, 6)
 
         # uhecr object
         if self.uhecr:
@@ -138,27 +131,29 @@ class Data():
             self.source.plot(skymap)
 
         # detector object
-        #if self.detector:
+        # if self.detector:
         #    self.detector.draw_exposure_lim(skymap)
 
         # standard labels and background
         skymap.draw_standard_labels()
 
         # legend
-        ax.legend(frameon=False, bbox_to_anchor=(0.85, 0.85))
+        leg = skymap.ax.legend(frameon=False, bbox_to_anchor=(0.85, 0.85))
 
         # add a colorbar if uhecr objects plotted
         if self.uhecr and self.uhecr.N != 1:
             self._uhecr_colorbar(cmap)
 
         if save:
-            plt.savefig(savename,
-                        dpi=1000,
-                        bbox_extra_artists=[leg],
-                        bbox_inches='tight',
-                        pad_inches=0.5)
+            skymap.fig.savefig(
+                savename,
+                dpi=500,
+                bbox_extra_artists=[leg],
+                bbox_inches="tight",
+                pad_inches=0.5,
+            )
 
-        return fig, skymap
+        return skymap
 
     def from_file(self, filename):
         """
@@ -170,19 +165,19 @@ class Data():
         uhecr_properties = {}
         source_properties = {}
         detector_properties = {}
-        with h5py.File(filename, 'r') as f:
+        with h5py.File(filename, "r") as f:
 
-            uhecr = f['uhecr']
+            uhecr = f["uhecr"]
 
             for key in uhecr:
                 uhecr_properties[key] = uhecr[key][()]
 
-            source = f['source']
+            source = f["source"]
 
             for key in source:
                 source_properties[key] = source[key][()]
 
-            detector = f['detector']
+            detector = f["detector"]
 
             for key in detector:
                 detector_properties[key] = detector[key][()]
@@ -201,13 +196,14 @@ class Data():
         self.detector = detector
 
 
-class RawData():
+class RawData:
     """
-    Parses information for known data files in txt format. 
+    Parses information for known data files in txt format.
     """
+
     def __init__(self, filename, filelayout):
         """
-        Parses information for known data files in txt format. 
+        Parses information for known data files in txt format.
         :filename: name of the file to parse
         :filelayout: list of column names in file
         """
@@ -219,14 +215,13 @@ class RawData():
     def _parse(self):
         """
         Parse the data form the object's file.
-        
+
         :return: arrays for each column in the data file
         """
 
-        output = pd.read_csv(self._filename,
-                             comment='#',
-                             delim_whitespace=True,
-                             names=self._filelayout)
+        output = pd.read_csv(
+            self._filename, comment="#", delim_whitespace=True, names=self._filelayout
+        )
 
         output_dict = output.to_dict()
 
@@ -244,9 +239,7 @@ class RawData():
             selected_data = np.array(list(self._data[name].values()))
 
         except ValueError:
-            print('No data of type', name)
+            print("No data of type", name)
             selected_data = []
 
         return selected_data
-
-
