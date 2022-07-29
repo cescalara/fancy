@@ -71,13 +71,15 @@ class SphericalCircle(PathPatch):
         lat = lat.to_value(vertex_unit)
 
         # Create polygon vertices
-        vertices = np.array([lon, lat]).transpose()
+        vertices_in = np.array([lon, lat]).transpose()
+        vertices_out = vertices_in[:]
 
-        # split path into two sections if circle crosses  bounds
+        # split path into two sections if circle crosses boundary
         codes = []
         last = 0
         first = True
-        for v in vertices:
+        n_insert = 1
+        for i, v in enumerate(vertices_in):
 
             if first:
 
@@ -98,7 +100,7 @@ class SphericalCircle(PathPatch):
 
             last = v[0]
 
-        circle_path = Path(vertices, codes)
+        circle_path = Path(vertices_in, codes)
 
         super().__init__(circle_path, **kwargs)
 
@@ -158,13 +160,13 @@ class AllSkyMap(object):
 
             fig, ax = plt.subplots(subplot_kw={"projection": self.projection})
 
-            # Change set centre of horizontal axis
+            # Change centre of horizontal axis
             h = Header(ax.header, copy=True)
             h["CRVAL1"] = self.lon_0
             ax.reset_wcs(WCS(h))
 
             # Put zero to the left
-            if self.lon_0 <= 180:
+            if self.lon_0 % 360 <= 180:
                 ax.invert_xaxis()
 
             self.fig = fig
@@ -303,13 +305,11 @@ class AllSkyMap(object):
         :param minimal: If True, draw less dense label grid.
         """
 
-        import warnings
+        self._ax.grid()
+        self._ax.coords["glon"].set_ticks([0, 60, 120, 180, 240, 300] * u.deg)
+        self._ax.coords["glon"].set_major_formatter("dd")
 
-        warnings.warn(
-            "draw_standard_labels() not implemented yet - does nothing for now!"
-        )
-
-    def tissot(self, lon_0, lat_0, radius_deg, npts=30, ax=None, **kwargs):
+    def tissot(self, lon_0, lat_0, radius_deg, npts=100, ax=None, **kwargs):
         """
         Draw a polygon centered at ``lon_0, lat_0``.  The polygon
         approximates a circle on the surface of the map with radius
@@ -329,6 +329,7 @@ class AllSkyMap(object):
             (lon_0 * u.deg, lat_0 * u.deg),
             radius_deg * u.deg,
             lon_0=self.lon_0,
+            resolution=npts,
             transform=ax.get_transform(self.transform),
             **kwargs,
         )
