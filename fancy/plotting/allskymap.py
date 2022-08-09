@@ -342,9 +342,9 @@ class AllSkyMap(object):
 
         return circle
 
-    def alt_tissot(self, lon, lat, radius, npts=100, ax=None, **kwargs):
+    def _alt_tissot(self, lon, lat, radius, npts=100, ax=None, **kwargs):
         """
-        Alternative tissot style.
+        Alternative tissot style [WIP].
         """
 
         if not ax:
