@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import ligo.skymap.plot
-from matplotlib.patches import PathPatch
+from matplotlib.patches import PathPatch, Polygon
 from matplotlib.path import Path
 
 from astropy.visualization.wcsaxes.patches import _rotate_polygon
@@ -155,6 +155,9 @@ class AllSkyMap(object):
         self.projection = projection
         self.transform = transform
         self.lon_0 = lon_0
+        self.boundary = (lon_0 + 180) % 360
+        self._east_lon = (self.boundary + 1e-20) % 360
+        self._west_lon = (self.boundary - 1e-20) % 360
 
         if not ax:
 
@@ -296,6 +299,7 @@ class AllSkyMap(object):
                 for line in lines[1:]:
 
                     line.set_color(c1)
+
         return lines
 
     def draw_standard_labels(self, minimal=False, fontsize=14):
@@ -305,15 +309,15 @@ class AllSkyMap(object):
         :param minimal: If True, draw less dense label grid.
         """
 
-        self._ax.grid()
-        self._ax.coords["glon"].set_ticks([0, 60, 120, 180, 240, 300] * u.deg)
-        self._ax.coords["glon"].set_major_formatter("dd")
+        self.ax.grid()
+        self.ax.coords["glon"].set_ticks([0, 60, 120, 180, 240, 300] * u.deg)
+        self.ax.coords["glon"].set_major_formatter("dd")
 
-    def tissot(self, lon_0, lat_0, radius_deg, npts=100, ax=None, **kwargs):
+    def tissot(self, lon, lat, radius, npts=100, ax=None, **kwargs):
         """
-        Draw a polygon centered at ``lon_0, lat_0``.  The polygon
+        Draw a polygon centered at ``lon, lat``.  The polygon
         approximates a circle on the surface of the map with radius
-        ``radius_deg`` degrees latitude along longitude ``lon_0``,
+        ``radius`` degrees latitude along longitude ``lon``,
         made up of ``npts`` vertices.
 
         Uses the SphericalCircle class
@@ -326,8 +330,8 @@ class AllSkyMap(object):
             ax = self.ax
 
         circle = SphericalCircle(
-            (lon_0 * u.deg, lat_0 * u.deg),
-            radius_deg * u.deg,
+            (lon * u.deg, lat * u.deg),
+            radius * u.deg,
             lon_0=self.lon_0,
             resolution=npts,
             transform=ax.get_transform(self.transform),
@@ -337,6 +341,126 @@ class AllSkyMap(object):
         ax.add_patch(circle)
 
         return circle
+
+    def alt_tissot(self, lon, lat, radius, npts=100, ax=None, **kwargs):
+        """
+        Alternative tissot style.
+        """
+
+        if not ax:
+
+            ax = self.ax
+
+        g = Geod(ellps="WGS84")
+
+        az12, az21, dist = g.inv(lon, lat, lon, lat + radius)
+
+        start_hem = self._east_hem(lon)
+
+        segs1 = [lon, lat + radius]
+        over, segs2 = [], []
+        delaz = 36 / npts
+        az = az12
+        last_lon = lon
+
+        # handling of the poles
+        if np.absolute(lat) + radius >= 90:
+
+            # use half of the pts for the shape
+            # and other half on the border
+            N1 = int(npts / 2)
+            lats = np.zeros(N1)
+            lons = np.zeros(N1)
+
+            for i in range(N1):
+
+                az += delaz * 2
+                lon_i, lat_i, az21 = g.fwd(lon, lat, az, dist)
+                lons[i] = lon_i
+                lats[i] = lat_i
+
+            a = list(np.argsort(lons))
+            lons = lons[a]
+            lats = lats[a]
+
+            N2 = int(npts / 4)
+            segs = []
+            dL = (90 - np.absolute(lats[0])) / (N2 - 1)
+            r = range(N2)
+
+            # for the south pole, reverse the ordering
+            # in order to plot correct polygon
+            if lat < 0:
+
+                r = list(reversed(r))
+                segs.extend(zip(lons, lats))
+
+            # first half of map border
+            lon_1 = (self.boundary + 1e-20) * np.sign(lat) * np.ones(N2)
+            lat_1 = np.sign(lat) * (90 - np.array(r) * dL)
+            segs.extend(zip(lon_1, lat_1))
+
+            if lat > 0:
+                segs.extend(zip(lons, lats))
+
+            # second half of the map border
+            r = list(reversed(r))
+            lon_1 = (self.boundary - 1e-20) * np.sign(lat) * np.ones(N2)
+            lat_1 = np.sign(lat) * (90 - np.array(r) * dL)
+            segs.extend(zip(lon_1, lat_1))
+
+            poly = Polygon(
+                segs,
+                transform=ax.get_transform(self.transform),
+                **kwargs,
+            )
+            ax.add_patch(poly)
+            return [poly]
+
+        # handle boundary cross away from pole
+        if start_hem:
+            adj_lon = self._east_lon
+            opp_lon = self._west_lon
+        else:
+            adj_lon = self._west_lon
+            opp_lon = self._east_lon
+
+        for i in range(npts):
+
+            az = az + delaz
+            lon_i, lat_i, az21 = g.fwd(lon, lat, az, dist)
+
+            if self._east_hem(lon_i) == start_hem:
+
+                segs1.append((lon_i, lat_i))
+                last_lon = lon
+
+            else:
+
+                segs1.append((adj_lon, lat_i))
+                segs2.append((opp_lon, lat_i))
+                over.append((lon_i, lat_i))
+                last_lon = lon
+
+        poly1 = Polygon(
+            segs1,
+            transform=ax.get_transform(self.transform),
+            **kwargs,
+        )
+        ax.add_patch(poly1)
+
+        if segs2:
+            over.reverse()
+            segs2.extend(over)
+            poly2 = Polygon(
+                segs2,
+                transform=ax.get_transform(self.transform),
+                **kwargs,
+            )
+            ax.add_patch(poly2)
+            return [poly1, poly2]
+        else:
+            return [poly]
 
     def scatter(self, x, y, ax=None, **kwargs):
         """
