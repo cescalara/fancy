@@ -17,23 +17,6 @@ except ImportError:
     ccrs = None
 
 
-# To allow the geodesics to be smoother, the threshold must be more lower.
-# So we construct a simple class and change the internal property of ccrs.Mollweide
-# workaround from https://stackoverflow.com/questions/40270990/cartopy-higher-resolution-for-great-circle-distance-line
-try:
-
-    class LowerThresholdMollweide(ccrs.Mollweide):
-        @property
-        def threshold(self):
-            return 1e4
-
-
-except AttributeError:
-
-    class LowerThresholdMollweide:
-        pass
-
-
 __all__ = ["AllSkyMapCartopy"]
 
 
@@ -78,7 +61,8 @@ class AllSkyMapCartopy:
             raise ImportError("Cartopy must be installed to use this functionality")
 
         if projection == "moll":
-            proj = LowerThresholdMollweide(central_longitude=lon_0)
+            proj = ccrs.Mollweide()
+            proj._threshold = proj._threshold / 10.0
         else:
             raise ValueError("Only moll projections are allowed.")
 
