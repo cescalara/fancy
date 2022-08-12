@@ -149,7 +149,9 @@ class AllSkyMap(object):
         projection: str = "galactic degrees mollweide",
         transform: str = "galactic",
         lon_0: float = 0.0,
+        figsize=(12, 7),
         ax=None,
+        **kwargs,
     ):
 
         self.projection = projection
@@ -161,13 +163,18 @@ class AllSkyMap(object):
 
         if not ax:
 
-            fig, ax = plt.subplots(subplot_kw={"projection": self.projection})
+            fig, ax = plt.subplots(
+                subplot_kw={"projection": self.projection},
+                **kwargs,
+            )
 
             # Change centre of horizontal axis
             h = Header(ax.header, copy=True)
             h["CRVAL1"] = self.lon_0
             ax.reset_wcs(WCS(h))
-            
+
+            fig.set_size_inches(figsize)
+
             self.fig = fig
             self.ax = ax
 
