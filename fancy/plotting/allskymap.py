@@ -167,11 +167,7 @@ class AllSkyMap(object):
             h = Header(ax.header, copy=True)
             h["CRVAL1"] = self.lon_0
             ax.reset_wcs(WCS(h))
-
-            # Put zero to the left
-            if self.lon_0 % 360 <= 180:
-                ax.invert_xaxis()
-
+            
             self.fig = fig
             self.ax = ax
 
