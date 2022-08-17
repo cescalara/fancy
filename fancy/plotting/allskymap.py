@@ -316,6 +316,36 @@ class AllSkyMap(object):
         self.ax.coords["glon"].set_ticks([0, 60, 120, 180, 240, 300] * u.deg)
         self.ax.coords["glon"].set_major_formatter("dd")
 
+    def set_gridlines(
+        self,
+        dx=60,
+        dy=30,
+        xlims=[0, 360],
+        ylims=[-90, 90],
+        xtick_pos="h",
+        ytick_pos="c",
+    ):
+        """
+        Add gridlines and labels.
+
+        xtick_pos, ytick_pos can be "c" (outside of ellipse),
+        "h" (horizontal axis) or "v" (vertical axis).
+        """
+
+        self.ax.grid()
+        xlocs = np.arange(xlims[0] + dx, xlims[1], dx)
+        ylocs = np.arange(ylims[0] + dy, ylims[1], dy)
+
+        self.ax.coords["glon"].set_ticks(xlocs * u.deg)
+        self.ax.coords["glon"].set_major_formatter("dd")
+        self.ax.coords["glon"].set_ticks_position(xtick_pos)
+        self.ax.coords["glon"].set_ticklabel_position(xtick_pos)
+
+        self.ax.coords["glat"].set_ticks(ylocs * u.deg)
+        self.ax.coords["glat"].set_major_formatter("dd")
+        self.ax.coords["glat"].set_ticks_position(ytick_pos)
+        self.ax.coords["glat"].set_ticklabel_position(ytick_pos)
+
     def tissot(self, lon, lat, radius, npts=100, ax=None, **kwargs):
         """
         Draw a polygon centered at ``lon, lat``.  The polygon

@@ -252,7 +252,7 @@ class AllSkyMapCartopy:
         ytick_fmt = ticker.StrMethodFormatter(r"${x}^\circ$")
         self.ax.gridlines(
             draw_labels=False,
-            crs=ccrs.PlateCarree(),
+            crs=self.transform,
             xlocs=xlocs,
             ylocs=ylocs,
             yformatter=ytick_fmt,
