@@ -16,7 +16,6 @@ except ImportError:
 
     ccrs = None
 
-
 __all__ = ["AllSkyMapCartopy"]
 
 
@@ -35,14 +34,13 @@ class AllSkyMapCartopy:
     - Since cartopy only supports Mollweide projections, this is used instead.
     - Since we work with lon / lat coordinates, ccrs.PlateCarree coordinates will be used for transformations
     """
-
     def __init__(
-        self,
-        projection="moll",
-        lon_0=0.0,
-        figsize=(12, 7),
-        ax=None,
-        **kwargs,
+            self,
+            projection="moll",
+            lon_0=0.0,
+            figsize=(12, 7),
+            ax=None,
+            **kwargs,
     ):
         """
         Initializes using plt.axes. Returns matplotlib.axes.Axes object.
@@ -56,7 +54,8 @@ class AllSkyMapCartopy:
 
         if not ccrs:
 
-            raise ImportError("Cartopy must be installed to use this functionality")
+            raise ImportError(
+                "Cartopy must be installed to use this functionality")
 
         if projection == "moll":
 
@@ -91,186 +90,68 @@ class AllSkyMapCartopy:
             # West<-360, 0->East
             self.ax.invert_xaxis()
 
-    def add_grid_labels(
-        self,
-        dx,
-        dy,
-        xlims,
-        ylims,
-        lft=False,
-        rgt=False,
-        top=False,
-        bot=False,
-        mid=False,
-        ynudge=5,
-        spherical=False,
-        reverse=False,
-    ):
-        """
-        Add grid line labels manually for projections that aren't supported.
-        Obtained from https://github.com/SciTools/cartopy/issues/881
-
-        Args:
-            xlocs (np.array): array of labels for longitude
-            ylocs (np.array): array of labels for latitude
-            lft (bool): whether to label the left side
-            rgt (bool): whether to label the right side
-            top (bool): whether to label the top side
-            bot (bool): whether to label the bottom side
-            spherical (bool): pad the labels better if a side of ax is spherical
-            reverse (bool) : run the longitudes in reverse
-        """
-
-        x0, x1, dx = xlims[0], xlims[1], dx
-        y0, y1, dy = ylims[0], ylims[1], dy
-
-        if dx <= 10:
-            dtype = float
-        else:
-            dtype = int
-
-        if dy <= 10:
-            dtype = float
-        else:
-            dtype = int
-
-        for lon in np.arange(x0 + dx, x1, dx, dtype=dtype):
-            if reverse:
-                if lon <= 0:
-                    label = r"{0}$^\circ$".format(np.abs(lon))
-                if lon > 0:
-                    label = r"-{0}$^\circ$".format(np.abs(lon))
-            else:
-                label = "{0}$^\circ$".format(lon)
-
-            if top:
-                self.ax.text(
-                    lon,
-                    y1,
-                    r"{0}$^\circ$\n\n".format(lon),
-                    va="center",
-                    ha="center",
-                    transform=self.transform,
-                )
-            if bot:
-                self.ax.text(
-                    lon,
-                    y0,
-                    r"\n\n{0}$^\circ$".format(lon),
-                    va="center",
-                    ha="center",
-                    transform=self.transform,
-                )
-
-            if mid:
-                ymid = (y0 + y1) / 2.0 - ynudge
-                self.ax.text(
-                    lon,
-                    ymid,
-                    label,
-                    va="center",
-                    ha="center",
-                    transform=self.transform,
-                    fontsize=10,
-                )
-
-        for lat in np.arange(y0 + dy, y1, dy, dtype=dtype):
-            if spherical:
-                if lat == 0:
-                    va = "center"
-                elif lat > 0:
-                    va = "bottom"
-                elif lat < 0:
-                    va = "top"
-            else:
-                va = "center"
-            if lft:
-                self.ax.text(
-                    x0,
-                    lat,
-                    "${0}^\circ$     ".format(lat),
-                    va=va,
-                    ha="right",
-                    transform=self.transform,
-                    fontsize=12,
-                )
-            if rgt:
-                self.ax.text(
-                    x1,
-                    lat,
-                    r"       {0}$^\circ$".format(lat),
-                    va=va,
-                    ha="left",
-                    transform=self.transform,
-                )
-
     def set_gridlines(
         self,
-        label_fmt="default",
         dx=60,
         dy=30,
-        xlims=[-180, 180],
+        xlims=[0, 360],
         ylims=[-90, 90],
-        ynudge=5,
-        reverse=False,
+        fontsize=12,
+        draw_ylabels=True,
         **kwargs,
     ):
         """
-        Sets the gridlines going through the skymap and draw the labels.
+        Sets the gridlines going through the skymap and draw the labels from cartopy.mpl.geoaxes.gridlines().
 
-        :param label_fmt: the format type to draw labels with. "mpl" is the default option,
-                    along with 'TA', which defines lon in [360, 0].
-        :param: dx, dy : spacing between points (default 60, 30)
-        :param xlims, ylims: tuple of limits of longitude and latitude (default +-180, +-90)
-
-        Note: if lon_0 < 0, ylocs shift to the right instead (bug that needs to be fixed).
+        draw_ylabels sets whether to draw the ylabels or not.
+        Currently there is an issue with duplicate ylabels when lon_0 = 0. Set draw_ylabels = False for lon_0 = 0. 
         """
 
-        # needs to be fixed for gridlines reasons
+        # xlocs needs to be fixed for gridlines reasons
         xlocs = np.arange(-180, 180, dx)
-
-        # use preset xlims / ylims
-        if label_fmt == "default":
-            xlims = np.array([0, 360])
-            ylims = np.array([-90, 90])
-            reverse = False
-        if label_fmt == "mpl":
-            xlims = np.array([-180, 180])
-            ylims = np.array([-90, 90])
-            reverse = False
-        elif label_fmt == "TA":
-            xlims = np.array([-180, 180])
-            ylims = np.array([-90, 90])
-            reverse = True
-        elif label_fmt == "custom":
-            xlims = np.array(xlims)
-            ylims = np.array(ylims)
-            reverse = reverse
-
         ylocs = np.arange(ylims[0], ylims[1], dy)
 
-        ytick_fmt = ticker.StrMethodFormatter(r"${x}^\circ$")
-        self.ax.gridlines(
-            draw_labels=False,
-            crs=self.transform,
-            xlocs=xlocs,
-            ylocs=ylocs,
-            yformatter=ytick_fmt,
-            xformatter=ytick_fmt,
+        # labels from gridlines only constructs ylabels
+        gl = self.ax.gridlines(
+            draw_labels=draw_ylabels,
+            crs=ccrs.PlateCarree(),
+            xlocs=ticker.FixedLocator(xlocs),
+            ylocs=ticker.FixedLocator(ylocs),
+            x_inline=False,
             y_inline=False,
+            formatter_kwargs={"direction_label": False},
             **kwargs,
         )
-        self.add_grid_labels(
-            dx,
-            dy,
-            xlims,
-            ylims,
-            lft=True,
-            rgt=False,
-            mid=True,
-            ynudge=ynudge,
-            reverse=reverse,
-        )
+        # need this to remove xlabels and left ylabels
+        gl.top_labels = gl.bottom_labels = gl.left_labels = False
+        gl.right_labels = draw_ylabels  # otherwise will draw ylabels even when draw_labels = False
+        gl.ylabel_style = {"fontsize": fontsize}
+
+        # manually construct xgrid labels
+        xtick_labels_dtype = float if dx <= 10 else int
+        xtick_labels_init = np.arange(xlims[0],
+                                      xlims[1],
+                                      dx,
+                                      dtype=xtick_labels_dtype)
+
+        # ignore labels at boundary
+        # subtract 180 since boundary at 180 when xtick = 0
+        xtick_labels_nonzero_idx = np.nonzero(
+            np.abs(xtick_labels_init - self.lon_0 - 180) % 360)
+        xtick_labels = xtick_labels_init[xtick_labels_nonzero_idx]
+
+        xpadding = -5.0  # padding from central latitude
+
+        for xtick_label in xtick_labels:
+            self.ax.text(
+                xtick_label,
+                xpadding,
+                f"{xtick_label}\u00B0",
+                va="center",
+                ha="center",
+                transform=self.transform,
+                fontsize=fontsize,
+            )
 
     def set_extent(self, glob=True, extents=None):
         """
@@ -305,7 +186,9 @@ class AllSkyMapCartopy:
         lons \in [0, 360], lats \in [-90, 90]
         """
 
-        self.ax.plot([lon1, lon2], [lat1, lat2], transform=ccrs.Geodetic(), **kwargs)
+        self.ax.plot([lon1, lon2], [lat1, lat2],
+                     transform=ccrs.Geodetic(),
+                     **kwargs)
 
     def tissot(self, lon, lat, rad, npts=100, **kwargs):
         """
@@ -335,9 +218,17 @@ class AllSkyMapCartopy:
 
     def contourf(self, lons, lats, vals, **kwargs):
         """Plot filled contour in skymap"""
-        return self.ax.contourf(lons, lats, vals, transform=self.transform, **kwargs)
+        return self.ax.contourf(lons,
+                                lats,
+                                vals,
+                                transform=self.transform,
+                                **kwargs)
 
-    def exposure_limit(self, limiting_dec, coord="G", num_points=10000, **kwargs):
+    def exposure_limit(self,
+                       limiting_dec,
+                       coord="G",
+                       num_points=10000,
+                       **kwargs):
         """
         Plot limit of exposure of given observatory.
 
@@ -349,9 +240,9 @@ class AllSkyMapCartopy:
         """
         rightascensions = np.linspace(-180, 180, num_points)
         boundary_decs = np.tile(limiting_dec, num_points)
-        c = SkyCoord(
-            ra=rightascensions * u.degree, dec=boundary_decs * u.degree, frame="icrs"
-        )
+        c = SkyCoord(ra=rightascensions * u.degree,
+                     dec=boundary_decs * u.degree,
+                     frame="icrs")
 
         if coord == "G":
             x = c.galactic.l.deg
@@ -362,7 +253,11 @@ class AllSkyMapCartopy:
 
         return self.ax.scatter(x, y, transform=self.transform, **kwargs)
 
-    def exposure_map(self, detector_params, coord="G", num_points=220, **kwargs):
+    def exposure_map(self,
+                     detector_params,
+                     coord="G",
+                     num_points=220,
+                     **kwargs):
         """
         Plot exposure of given observatory as contour map
 
@@ -379,14 +274,17 @@ class AllSkyMapCartopy:
         m_full = np.asarray([m_dec(d, detector_params) for d in declinations])
         exposure_factor = m_full / np.max(m_full)
 
-        exp_cmap = colors.LinearSegmentedColormap.from_list(
-            "custom", [lightgrey, grey], N=6
-        )
-        norm_proj = colors.Normalize(exposure_factor.min(), exposure_factor.max())
+        exp_cmap = colors.LinearSegmentedColormap.from_list("custom",
+                                                            [lightgrey, grey],
+                                                            N=6)
+        norm_proj = colors.Normalize(exposure_factor.min(),
+                                     exposure_factor.max())
 
         for dec, proj in np.nditer([declinations, exposure_factor]):
             decs = np.tile(dec, num_points)
-            c = SkyCoord(ra=rightascensions * u.rad, dec=decs * u.rad, frame="icrs")
+            c = SkyCoord(ra=rightascensions * u.rad,
+                         dec=decs * u.rad,
+                         frame="icrs")
 
             if coord == "G":
                 x = c.galactic.l.deg
