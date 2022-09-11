@@ -198,14 +198,20 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         Solves the ODE dE/dr = E / Lloss.
         NB: input Eth and output E in EeV!
         """
-        Eth = Eth * 1.0e18
-        integrator = integrate.ode(self._dEdr_rev).set_integrator("lsoda", method="bdf")
-        integrator.set_initial_value(Eth, 0).set_f_params(D)
-        r1 = D
-        dr = 1
 
-        while integrator.successful() and integrator.t < r1:
-            integrator.integrate(integrator.t + dr)
+        if self._method == "loss_length":
 
-        Eth_src = integrator.y / 1.0e18
+            Eth = Eth * 1.0e18
+            integrator = integrate.ode(self._dEdr_rev).set_integrator(
+                "lsoda", method="bdf"
+            )
+            integrator.set_initial_value(Eth, 0).set_f_params(D)
+            r1 = D
+            dr = 1
+
+            while integrator.successful() and integrator.t < r1:
+                integrator.integrate(integrator.t + dr)
+
+            Eth_src = integrator.y / 1.0e18
+
         return Eth_src
