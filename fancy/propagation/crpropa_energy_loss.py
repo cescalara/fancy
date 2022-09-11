@@ -136,7 +136,7 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         A = self._ptype_dict[self._ptype][0]
         self._mass = A * m_p
 
-        self._nucleus_id = cr.nucleus_id(*self._ptype_dict(self._ptype))
+        self._nucleus_id = cr.nucleusId(*self._ptype_dict[self._ptype])
 
     def _total_loss_length(self, z: float, E: float):
         """
@@ -146,14 +146,16 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         :param z: Redshift
         """
 
-        gamma = E * u.eV / (self.mass * c**2)
-        gamma.to_value(u.dimensionless_unscaled)
+        gamma = E * u.eV / (self._mass * c**2)
+        gamma = gamma.to_value(u.dimensionless_unscaled)[0]
 
         inv_total_loss_length = 0.0
 
         for _, value in self._interaction_dict.items():
 
-            inv_total_loss_length += 1.0 / value.lossLength(self._nucleus_id, gamma, z)
+            inv_total_loss_length += 1.0 / value.lossLength(
+                int(self._nucleus_id), gamma, z
+            )
 
         # Also adiabatic
         inv_total_loss_length += 1.0 / DH.to_value(u.m)

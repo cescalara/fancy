@@ -53,15 +53,15 @@ class Model:
 
     def input(
         self,
-        B=None,
-        kappa=None,
-        F_T=None,
-        f=None,
-        L=None,
-        F0=None,
-        alpha=None,
-        Eth=None,
-        ptype=None,
+        B: float = None,
+        kappa: float = None,
+        F_T: float = None,
+        f: float = None,
+        L: float = None,
+        F0: float = None,
+        alpha: float = None,
+        Eth: float = 50,
+        ptype: str = "p",
     ):
         """
         Get simulation inputs.

@@ -16,6 +16,7 @@ from ..interfaces.utils import get_nucleartable
 
 from ..plotting import AllSkyMap
 from ..propagation.proton_energy_loss import ProtonApproxEnergyLoss
+from ..propagation.crpropa_energy_loss import CRPropaApproxEnergyLoss
 from ..detector.vMF.vmf import sample_vMF, sample_sphere
 from ..detector.exposure import m_dec
 
@@ -71,8 +72,18 @@ class Analysis:
         self.simulation = None
         self.fit = None
 
+        if not model.ptype:
+
+            raise ValueError("No particle type is defined!")
+
         # Energy loss calculations
-        self.energy_loss = ProtonApproxEnergyLoss()
+        if model.ptype == "p":
+
+            self.energy_loss = ProtonApproxEnergyLoss()
+
+        else:
+
+            self.energy_loss = CRPropaApproxEnergyLoss(ptype=model.ptype)
 
         # Simulation outputs
         self.source_labels = None
@@ -184,8 +195,6 @@ class Analysis:
         num_points=50,
         table_file=None,
         parallel=True,
-        ptype="p",
-        approx="loss_length",
     ):
         """
         Build the energy interpolation tables.
@@ -196,7 +205,7 @@ class Analysis:
         )
         self.Earr_grid = []
 
-        if parallel:
+        if parallel and not isinstance(self.energy_loss, CRPropaApproxEnergyLoss):
 
             args_list = [(self.E_grid, d) for d in self.data.source.distance]
             # parallelize for each source distance
@@ -373,8 +382,7 @@ class Analysis:
             self.simulation_input["Eerr"] = self.data.detector.energy_uncertainty
 
             # get particle type we intialize simulation with
-            self.ptype = self.model.ptype
-            _, Z = self.nuc_table[self.ptype]
+            _, Z = self.nuc_table[self.model.ptype]
             self.simulation_input["Z"] = Z
 
         try:
