@@ -1,9 +1,12 @@
 import numpy as np
 from scipy import integrate
 from matplotlib import pyplot as plt
+from astropy.constants import c
+from astropy import units as u
 from typing import List, Tuple
 
 from fancy.propagation.energy_loss import EnergyLoss
+from fancy.propagation.cosmology import H0, Om, Ol, DH
 
 
 class ProtonApproxEnergyLoss(EnergyLoss):
@@ -88,15 +91,6 @@ NB: the forumla for beta_pi in de Domenico and Insolia (2013) is missing a minus
 # ignore warnings
 np.warnings.filterwarnings("ignore")
 
-# Globals
-Mpc_in_m = 3.084e22  # [m]
-H0 = 70  # [km s^-1 Mpc^-1]
-H0 = H0 * (1e3 / Mpc_in_m)  # [s^-1]
-c = 3.0e8  # [m s^-1]
-DH = (c / H0) / Mpc_in_m  # [Mpc]
-Om = 0.272
-Ol = 0.728
-
 
 def beta_pi(z, E):
     """
@@ -120,14 +114,10 @@ def beta_adi(z):
     Makes use of the hubble constant converted into units of [yr^-1].
     """
 
-    H0 = 70.4  # s^-1 km/Mpc
-    H0 = ((H0 / 3.086e22) * 1e3) * 3.154e7  # yr^-1
-    lCDM = [0.272, 0.728]
-
-    a = lCDM[0] * (1 + z) ** 3
+    a = Om * (1 + z) ** 3
     # b = 1 - sum(lCDM) * (1 + z)**2
     b = 0
-    return H0 * (a + lCDM[1] + b) ** (0.5)
+    return H0.to_value(1 / u.yr) * (a + Ol + b) ** (0.5)
 
 
 def phi_inf(xi):
@@ -225,11 +215,9 @@ def dzdt(z):
     De Domenico & Insolia 2012 Equation 5.
     """
 
-    H0 = 70.4  # s^-1 km/Mpc
-    H0 = ((H0 / 3.086e22) * 1e3) * 3.154e7  # yr^-1
     numerator = ((Om * (1 + z) ** 3) + Ol) ** (-0.5)
-    denominator = H0 * (1 + z)
-    return (1 / (numerator / denominator)) * DH  # Mpc yr^-1
+    denominator = H0.to_value(1 / u.yr) * (1 + z)
+    return (1 / (numerator / denominator)) * DH.to_value(u.Mpc)  # Mpc yr^-1
 
 
 def make_energy_loss_plot(z, E):
@@ -278,7 +266,7 @@ def _dEdr(r, E):
     """
     The ODE to solve for propagation energy losses.
     """
-    z = r / DH
+    z = r / DH.to_value(u.Mpc)
     return -E / Ltot(z, E)
 
 
@@ -287,7 +275,7 @@ def _dEdr_rev(r, E, D):
     The ODE to solve for propagation energy losses.
     """
     r_rev = D - r
-    z = r_rev / DH
+    z = r_rev / DH.to_value(u.Mpc)
     return E / Ltot(z, E)
 
 
