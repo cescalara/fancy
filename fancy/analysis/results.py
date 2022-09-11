@@ -9,7 +9,7 @@ from cmdstanpy import CmdStanModel
 from ..interfaces.stan import Direction, Mpc_to_km, convert_scale
 from ..detector.exposure import m_integrand
 from ..interfaces.integration import ExposureIntegralTable
-from ..propagation.energy_loss import get_Eth_src, get_Eex, get_kappa_ex
+from fancy.propagation.proton_energy_loss import ProtonApproxEnergyLoss
 
 from fancy.plotting import AllSkyMap
 
@@ -65,7 +65,7 @@ class Results:
                         D = f["source/distance"][()]
                         D = [d * Mpc_to_km for d in D]
 
-                        Fs = sum([(l / (4 * np.pi * d ** 2)) for l, d in zip(L, D)])
+                        Fs = sum([(l / (4 * np.pi * d**2)) for l, d in zip(L, D)])
                         f = Fs / (Fs + F0)
                         truths["f"] = f
 
@@ -159,6 +159,8 @@ class PPC:
         self.Nex_preds = []
         self.labels_preds = []
 
+        self.energy_loss = ProtonApproxEnergyLoss()
+
     def simulate(self, fit_chain, input_data, detector, source, seed=None, N=3):
         """
         Simulate from the posterior predictive distribution.
@@ -172,7 +174,7 @@ class PPC:
         self.arrival_direction = Direction(input_data["arrival_direction"])
         self.Edet = input_data["Edet"]
         self.Eth = input_data["Eth"]
-        self.Eth_src = get_Eth_src(self.Eth, source["distance"])
+        self.Eth_src = self.energy_loss.get_Eth_src(self.Eth, source["distance"])
         self.varpi = input_data["varpi"]
 
         # Get params from detector for exposure integral calculation
@@ -193,8 +195,10 @@ class PPC:
             L = np.random.choice(self.L)
 
             # calculate eps integral
-            Eex = get_Eex(self.Eth_src, alpha)
-            kappa_ex = get_kappa_ex(Eex, np.mean(self.B), source["distance"])
+            Eex = self.energy_loss.get_Eex(self.Eth_src, alpha)
+            kappa_ex = self.energy_loss.get_kappa_ex(
+                Eex, np.mean(self.B), source["distance"]
+            )
             self.ppc_table = ExposureIntegralTable(varpi=self.varpi, params=self.params)
             self.ppc_table.build_for_sim(kappa_ex, alpha, B, source["distance"])
 

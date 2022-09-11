@@ -1,5 +1,5 @@
 import numpy as np
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+from astropy.coordinates import SkyCoord, AltAz
 from astropy.time import Time
 from astropy import units as u
 from matplotlib import pyplot as plt
@@ -15,14 +15,7 @@ from ..interfaces.data import Uhecr
 from ..interfaces.utils import get_nucleartable
 
 from ..plotting import AllSkyMap
-from ..propagation.energy_loss import (
-    get_Eth_src,
-    get_kappa_ex,
-    get_Eex,
-    get_Eth_sim,
-    get_arrival_energy,
-    get_arrival_energy_vec,
-)
+from ..propagation.proton_energy_loss import ProtonApproxEnergyLoss
 from ..detector.vMF.vmf import sample_vMF, sample_sphere
 from ..detector.exposure import m_dec
 
@@ -78,6 +71,9 @@ class Analysis:
         self.simulation = None
         self.fit = None
 
+        # Energy loss calculations
+        self.energy_loss = ProtonApproxEnergyLoss()
+
         # Simulation outputs
         self.source_labels = None
         self.E = None
@@ -98,12 +94,14 @@ class Analysis:
         if self.analysis_type.find("joint") != -1:
 
             # find lower energy threshold for the simulation, given Eth and Eerr
-            self.model.Eth_sim = get_Eth_sim(
+            self.model.Eth_sim = self.energy_loss.get_Eth_sim(
                 self.data.detector.energy_uncertainty, self.model.Eth
             )
 
             # find correspsonding Eth_src
-            self.Eth_src = get_Eth_src(self.model.Eth_sim, self.data.source.distance)
+            self.Eth_src = self.energy_loss.get_Eth_src(
+                self.model.Eth_sim, self.data.source.distance
+            )
 
         # Set up integral tables
         params = self.data.detector.params
@@ -132,16 +130,20 @@ class Analysis:
 
             if self.analysis_type == self.joint_type:
                 D_src = self.data.source.distance
-                self.Eex = get_Eex(self.Eth_src, self.model.alpha)
-                self.kappa_ex = get_kappa_ex(self.Eex, self.model.B, D_src)
+                self.Eex = self.energy_loss.get_Eex(self.Eth_src, self.model.alpha)
+                self.kappa_ex = self.energy_loss.get_kappa_ex(
+                    self.Eex, self.model.B, D_src
+                )
                 kappa_true = self.kappa_ex
 
             if self.analysis_type == self.gmf_type:
                 # shift by 0.02 to get kappa_ex at g.b.
                 D_src = self.data.source.distance - 0.02
-                self.Eex = get_Eex(self.Eth_src, self.model.alpha)
+                self.Eex = self.energy_loss.get_Eex(self.Eth_src, self.model.alpha)
 
-                self.kappa_ex = get_kappa_ex(self.Eex, self.model.B, D_src)
+                self.kappa_ex = self.energy_loss.get_kappa_ex(
+                    self.Eex, self.model.B, D_src
+                )
                 kappa_true = self.kappa_ex
 
                 # evaluate for kappa_d
@@ -177,7 +179,14 @@ class Analysis:
             else:
                 self.tables.build_for_fit(kappa)
 
-    def build_energy_table(self, num_points=50, table_file=None, parallel=True):
+    def build_energy_table(
+        self,
+        num_points=50,
+        table_file=None,
+        parallel=True,
+        ptype="p",
+        approx="loss_length",
+    ):
         """
         Build the energy interpolation tables.
         """
@@ -194,7 +203,7 @@ class Analysis:
             with Pool(self.nthreads) as mpool:
                 results = list(
                     progress_bar(
-                        mpool.imap(get_arrival_energy_vec, args_list),
+                        mpool.imap(self.energy_loss.get_arrival_energy_vec, args_list),
                         total=len(args_list),
                         desc="Precomputing energy grids",
                     )
@@ -208,7 +217,7 @@ class Analysis:
             ):
                 d = self.data.source.distance[i]
                 self.Earr_grid.append(
-                    [get_arrival_energy(e, d)[0] for e in self.E_grid]
+                    [self.energy_loss.get_arrival_energy(e, d)[0] for e in self.E_grid]
                 )
 
         if table_file:
