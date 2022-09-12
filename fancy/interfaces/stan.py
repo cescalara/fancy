@@ -194,7 +194,7 @@ def coord_to_uv(coord):
     return uv
 
 
-def convert_scale(D, alpha_T, eps, F0=None, L=None, to_stan=True):
+def convert_scale(D, alpha_T, eps, F0=None, Q=None, to_stan=True):
     """
     Convenience function to convert parameters
     to O(1) scale for sampling in Stan.
@@ -217,7 +217,7 @@ def convert_scale(D, alpha_T, eps, F0=None, L=None, to_stan=True):
         if F0:
             F0 = F0 * 1000.0
 
-        if isinstance(L, (list, np.ndarray)):
+        if isinstance(Q, (list, np.ndarray)):
             Q = Q / 1.0e39
 
     # Convert from Stan units to physical units
@@ -230,12 +230,12 @@ def convert_scale(D, alpha_T, eps, F0=None, L=None, to_stan=True):
         if F0:
             F0 = F0 / 1000.0
 
-        if isinstance(L, (list, np.ndarray)):
+        if isinstance(Q, (list, np.ndarray)):
             Q = Q * 1.0e39
 
-    if F0 and isinstance(L, (list, np.ndarray)):
+    if F0 and isinstance(Q, (list, np.ndarray)):
 
-        return D, alpha_T, eps, F0, L
+        return D, alpha_T, eps, F0, Q
 
     else:
 
