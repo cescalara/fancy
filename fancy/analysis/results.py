@@ -61,7 +61,7 @@ class Results:
 
                         # reconstruct from other info
                         F0 = model["F0"][()]
-                        L = model["L"][()]
+                        Q = model["Q"][()]
                         D = f["source/distance"][()]
                         D = [d * Mpc_to_km for d in D]
 
@@ -82,14 +82,14 @@ class Results:
         Return mean values of all main fit parameters.
         """
 
-        list_of_keys = ["B", "alpha", "L", "F0", "lambda"]
+        list_of_keys = ["B", "alpha", "Q", "F0", "lambda"]
         chain = self.get_chain(list_of_keys)
 
         fit_parameters = {}
         fit_parameters["B"] = np.mean(chain["B"])
         fit_parameters["alpha"] = np.mean(chain["alpha"])
         fit_parameters["F0"] = np.mean(chain["F0"])
-        fit_parameters["L"] = np.mean(chain["L"])
+        fit_parameters["Q"] = np.mean(chain["Q"])
         try:
             fit_parameters["lambda"] = np.mean(np.transpose(chain["lambda"]), axis=1)
         except:
@@ -125,7 +125,7 @@ class Results:
         Run N posterior predictive simulations.
         """
 
-        keys = ["L", "F0", "alpha", "B"]
+        keys = ["Q", "F0", "alpha", "B"]
         fit_chain = self.get_chain(keys)
         input_data, detector, source = self.get_input_data()
 
@@ -169,7 +169,7 @@ class PPC:
         self.alpha = fit_chain["alpha"]
         self.B = fit_chain["B"]
         self.F0 = fit_chain["F0"]
-        self.L = fit_chain["L"]
+        self.Q = fit_chain["Q"]
 
         self.arrival_direction = Direction(input_data["arrival_direction"])
         self.Edet = input_data["Edet"]
@@ -192,7 +192,7 @@ class PPC:
             alpha = np.random.choice(self.alpha)
             B = np.random.choice(self.B)
             F0 = np.random.choice(self.F0)
-            L = np.random.choice(self.L)
+            Q = np.random.choice(self.Q)
 
             # calculate eps integral
             Eex = self.energy_loss.get_Eex(self.Eth_src, alpha)
@@ -222,7 +222,7 @@ class PPC:
                 "eps": eps,
             }
             self.ppc_input["B"] = B
-            self.ppc_input["L"] = np.tile(L, input_data["Ns"])
+            self.ppc_input["Q"] = np.tile(Q, input_data["Ns"])
             self.ppc_input["F0"] = F0
             self.ppc_input["alpha"] = alpha
             self.ppc_input["Eerr"] = input_data["Eerr"]

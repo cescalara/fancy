@@ -57,7 +57,7 @@ class Model:
         kappa: float = None,
         F_T: float = None,
         f: float = None,
-        L: float = None,
+        Q: float = None,
         F0: float = None,
         alpha: float = None,
         Eth: float = 50,
@@ -70,6 +70,7 @@ class Model:
         :param f: associated fraction
         :param kappa: deflection parameter
         :param B: rms B field strength [nG]
+        :param Q: Total Luminosity [yr^-1]
         :param alpha: source spectral index
         :param Eth: threshold energy of study [EeV]
         :param ptype: element of composition
@@ -78,7 +79,7 @@ class Model:
         self.f = f
         self.kappa = kappa
         self.B = B
-        self.L = L
+        self.Q = Q
         self.F0 = F0
         self.alpha = alpha
         self.Eth = Eth
@@ -95,7 +96,7 @@ class Model:
         self.properties["f"] = self.f
         self.properties["kappa"] = self.kappa
         self.properties["B"] = self.B
-        self.properties["L"] = self.L
+        self.properties["Q"] = self.Q
         self.properties["F0"] = self.F0
         self.properties["F0"] = self.F0
         self.properties["alpha"] = self.alpha
@@ -201,7 +202,7 @@ def convert_scale(D, alpha_T, eps, F0=None, L=None, to_stan=True):
     alpha_T [km^2 yr] -> alpha_T / 1000
     eps [km^2 yr] -> eps / 1000
     F [# km^-2 yr^-1] -> F * 1000
-    L [# yr^-1] -> L / 1e39
+    Q [# yr^-1] -> Q / 1e39
 
     Can also convert back by setting to_stan = False
     """
@@ -217,7 +218,7 @@ def convert_scale(D, alpha_T, eps, F0=None, L=None, to_stan=True):
             F0 = F0 * 1000.0
 
         if isinstance(L, (list, np.ndarray)):
-            L = L / 1.0e39
+            Q = Q / 1.0e39
 
     # Convert from Stan units to physical units
     else:
@@ -230,7 +231,7 @@ def convert_scale(D, alpha_T, eps, F0=None, L=None, to_stan=True):
             F0 = F0 / 1000.0
 
         if isinstance(L, (list, np.ndarray)):
-            L = L * 1.0e39
+            Q = Q * 1.0e39
 
     if F0 and isinstance(L, (list, np.ndarray)):
 
@@ -259,7 +260,7 @@ def get_simulation_input(Nsim, f, D, M, alpha_T):
     F0 = (1 - f) * FT
 
     # Assume equal luminosities
-    L = Fs / (sum([1 / (4 * np.pi * (d * Mpc_to_km) ** 2) for d in D]))
-    L = np.tile(L, len(D))  # yr^-1
+    Q = Fs / (sum([1 / (4 * np.pi * (d * Mpc_to_km) ** 2) for d in D]))
+    Q = np.tile(Q, len(D))  # yr^-1
 
-    return L, F0
+    return Q, F0
