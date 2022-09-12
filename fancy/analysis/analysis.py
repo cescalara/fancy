@@ -330,9 +330,9 @@ class Analysis:
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
-        L = self.model.L
+        Q = self.model.Q
         F0 = self.model.F0
-        D, alpha_T, eps, F0, L = convert_scale(D, alpha_T, eps, F0, L)
+        D, alpha_T, eps, F0, Q = convert_scale(D, alpha_T, eps, F0, Q)
 
         if (
             self.analysis_type == self.joint_type
@@ -357,7 +357,7 @@ class Analysis:
             "eps": eps,
         }
 
-        self.simulation_input["L"] = L
+        self.simulation_input["Q"] = Q
         self.simulation_input["F0"] = F0
         self.simulation_input["distance"] = self.data.source.distance
 
