@@ -215,7 +215,7 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         )
 
     @classmethod
-    def run_crpropa_sim(Esrc: float, D: float, nucleus_id: cr.nucleusId, N_sim=1_000):
+    def run_crpropa_sim(Esrc: float, D: float, nucleus_id, N_sim=1_000):
         """
         Run a CRPRopa sim of a monoenergetic source at
         distance D and store useful outputs.
