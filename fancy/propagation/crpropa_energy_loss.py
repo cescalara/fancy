@@ -28,7 +28,7 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         """
         Energy loss calculation using CRPropa3
 
-        :param ptype: Particle type ["p", "N", "Fe"]
+        :param ptype: Particle type ["p", "N", "Si", "Fe"]
         :param method: Approximation method used
         """
 
@@ -44,6 +44,7 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         self._ptype_dict = {}
         self._ptype_dict["p"] = [1, 1]
         self._ptype_dict["N"] = [14, 7]
+        self._ptype_dict["Si"] = [28, 14]
         self._ptype_dict["Fe"] = [56, 26]
 
         # Available methods
@@ -193,6 +194,12 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
 
             self._table_file = get_path_to_energy_approx_tables(
                 "crpropa_mean_energy_N.h5"
+            )
+
+        elif self._ptype == "Si":
+
+            self._table_file = get_path_to_energy_approx_tables(
+                "crpropa_mean_energy_Si.h5"
             )
 
         else:
