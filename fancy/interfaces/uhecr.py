@@ -89,7 +89,8 @@ class Uhecr:
             self.A = self._find_area(exp_factor)
 
             self.ptype = ptype
-            self.kappa_gmf = data["kappa_gmf"][gmf_model][ptype]["kappa_gmf"][()]
+            if "kappa_gmf" in data and gmf_model != "None":
+                self.kappa_gmf = data["kappa_gmf"][gmf_model][ptype]["kappa_gmf"][()]
 
     def _get_properties(self):
         """

@@ -45,7 +45,7 @@ class Data:
         # define source object
         self.source = new_source
 
-    def add_uhecr(self, filename, label=None, ptype="p"):
+    def add_uhecr(self, filename, label=None, ptype="p", gmf_model="JF12"):
         """
         Add a uhecr object to the data container from file.
 
@@ -55,7 +55,7 @@ class Data:
         """
 
         new_uhecr = Uhecr()
-        new_uhecr.from_data_file(filename, label, ptype)
+        new_uhecr.from_data_file(filename, label, ptype, gmf_model=gmf_model)
 
         # define uhecr object
         self.uhecr = new_uhecr
