@@ -93,9 +93,7 @@ class Uhecr:
             self.A = self._find_area(exp_factor)
 
             self.ptype = ptype
-
-            # only obtain when we already performed the deflection computation
-            if "kappa_gmf" in data:
+            if "kappa_gmf" in data and gmf_model != "None":
                 self.kappa_gmf = data["kappa_gmf"][gmf_model][ptype]["kappa_gmf"][()]
 
     def _get_properties(self):

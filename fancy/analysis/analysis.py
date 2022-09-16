@@ -46,6 +46,7 @@ class Analysis:
         analysis_type=None,
         filename=None,
         summary=b"",
+        energy_loss_approx: str = "loss_length",
     ):
         """
         To manage the running of simulations and fits based on Data and Model objects.
@@ -53,6 +54,9 @@ class Analysis:
         :param data: a Data object
         :param model: a Model object
         :param analysis_type: type of analysis
+        :param energy_loss_approx: Method used for energy loss approx, 
+            only relevant for ptype!="p". Can be "loss_length" or 
+            "mean_sim_energy"
         """
 
         self.data = data
@@ -83,7 +87,10 @@ class Analysis:
 
         else:
 
-            self.energy_loss = CRPropaApproxEnergyLoss(ptype=model.ptype)
+            self.energy_loss = CRPropaApproxEnergyLoss(
+                ptype=model.ptype,
+                method=energy_loss_approx,
+            )
 
         # Simulation outputs
         self.source_labels = None
@@ -226,7 +233,7 @@ class Analysis:
             ):
                 d = self.data.source.distance[i]
                 self.Earr_grid.append(
-                    [self.energy_loss.get_arrival_energy(e, d)[0] for e in self.E_grid]
+                    [self.energy_loss.get_arrival_energy(e, d) for e in self.E_grid]
                 )
 
         if table_file:

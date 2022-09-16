@@ -27,13 +27,13 @@ class EnergyLoss(ABC):
         pass
 
     @abstractmethod
-    def get_arrival_energy(self, Esrc: float, D: List[float]):
+    def get_arrival_energy(self, Esrc: float, D: float):
         """
         Get the arrival energy for a given initial energy.
         Takes into account all propagation affects.
 
         :param Esrc: Source energy in EeV
-        :param D: Source distances in Mpc
+        :param D: Source distance in Mpc
         """
 
         pass
@@ -45,7 +45,7 @@ class EnergyLoss(ABC):
         Takes into account all propagation affects.
         Version for parallelisation.
 
-        :param args: Tuple containign source energies in EeV
+        :param args: Tuple containing source energies in EeV
             and source distances in Mpc
         """
 

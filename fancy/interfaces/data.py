@@ -55,7 +55,7 @@ class Data:
         """
 
         new_uhecr = Uhecr()
-        new_uhecr.from_data_file(filename, label, ptype, gmf_model)
+        new_uhecr.from_data_file(filename, label, ptype, gmf_model=gmf_model)
 
         # define uhecr object
         self.uhecr = new_uhecr
