@@ -1,10 +1,14 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import ligo.skymap.plot
-from astropy.visualization.wcsaxes.patches import _rotate_polygon
-from matplotlib.patches import PathPatch
+from matplotlib.patches import PathPatch, Polygon
 from matplotlib.path import Path
+
+from astropy.visualization.wcsaxes.patches import _rotate_polygon
 import astropy.units as u
+from astropy.wcs import WCS
+from astropy.io.fits import Header
+
 from pyproj import Geod
 
 
@@ -24,7 +28,7 @@ class SphericalCircle(PathPatch):
     a fixed interval in longitude corresponds to a different angle on the sky
     depending on the latitude.
 
-    Edited to suit Galactic coords [0, 360] deg with boundary at 180 deg.
+    Edited to suit Galactic coords [0, 360] deg with boundary at lon_0+180 deg.
 
     Parameters
     ----------
@@ -46,7 +50,11 @@ class SphericalCircle(PathPatch):
     Additional keyword arguments are passed to `~matplotlib.patches.Polygon`
     """
 
-    def __init__(self, center, radius, resolution=100, vertex_unit=u.degree, **kwargs):
+    def __init__(
+        self, center, radius, resolution=100, lon_0=0.0, vertex_unit=u.degree, **kwargs
+    ):
+
+        boundary = (lon_0 + 180) % 360
 
         # Extract longitude/latitude, either from a tuple of two quantities, or
         # a single 2-element Quantity.
@@ -61,37 +69,68 @@ class SphericalCircle(PathPatch):
         # Extract new longitude/latitude in the requested units
         lon = lon.to_value(vertex_unit)
         lat = lat.to_value(vertex_unit)
-        # Create polygon vertices
-        vertices = np.array([lon, lat]).transpose()
 
-        # split path into two sections if circle crosses -180, 180 bounds
+        # Create polygon vertices
+        vertices_in = np.array([lon, lat]).transpose()
+        vertices_out = vertices_in[:]
+
+        # split path into two sections if circle crosses boundary
         codes = []
         last = 0
         first = True
-        for v in vertices:
+        n_insert = 1
+        for i, v in enumerate(vertices_in):
+
             if first:
+
                 codes.append(Path.MOVETO)
                 first = False
-            elif (
-                ((last <= 180 and v[0] > 180) or (last > 180 and v[0] <= 180))
-                and np.absolute(v[0] - last) < 300
-                and (
-                    (latitude.to_value(vertex_unit) + radius.to_value(vertex_unit) < 90)
-                    or (
-                        latitude.to_value(vertex_unit) - radius.to_value(vertex_unit)
-                        < -90
-                    )
-                )
+
+            elif self._cross_boundary(last, v[0], boundary) and (
+                np.absolute(latitude.to_value(vertex_unit))
+                + radius.to_value(vertex_unit)
+                < 90
             ):
+
                 codes.append(Path.MOVETO)
 
             else:
+
                 codes.append(Path.LINETO)
+
             last = v[0]
 
-        circle_path = Path(vertices, codes)
+        circle_path = Path(vertices_in, codes)
 
         super().__init__(circle_path, **kwargs)
+
+    def _cross_boundary(self, point_one: float, point_two: float, boundary: float):
+        """
+        Check if points cross a boundary in the range [0, 360].
+        """
+
+        # scale to boundary at zero
+        p1 = (point_one - boundary) % 360
+        p2 = (point_two - boundary) % 360
+
+        return self._cross_zero(p1, p2)
+
+    def _cross_zero(self, point_one: float, point_two: float):
+        """
+        Check if points cross the 0/360 boundary.
+        """
+
+        if (point_one >= 0 and point_one < 90) and (
+            point_two < 360 and point_two > 270
+        ):
+            return True
+
+        if (point_one < 360 and point_one > 270) and (
+            point_two >= 0 and point_two < 90
+        ):
+            return True
+
+        return False
 
 
 class AllSkyMap(object):
@@ -107,17 +146,35 @@ class AllSkyMap(object):
 
     def __init__(
         self,
-        projection="galactic degrees mollweide",
-        transform="galactic",
+        projection: str = "galactic degrees mollweide",
+        transform: str = "galactic",
+        lon_0: float = 0.0,
+        figsize=(12, 7),
         ax=None,
+        **kwargs,
     ):
 
         self.projection = projection
         self.transform = transform
+        self.lon_0 = lon_0
+        self.boundary = (lon_0 + 180) % 360
+        self._east_lon = (self.boundary + 1e-20) % 360
+        self._west_lon = (self.boundary - 1e-20) % 360
 
         if not ax:
 
-            fig, ax = plt.subplots(subplot_kw={"projection": self.projection})
+            fig, ax = plt.subplots(
+                subplot_kw={"projection": self.projection},
+                **kwargs,
+            )
+
+            # Change centre of horizontal axis
+            h = Header(ax.header, copy=True)
+            h["CRVAL1"] = self.lon_0
+            ax.reset_wcs(WCS(h))
+
+            fig.set_size_inches(figsize)
+
             self.fig = fig
             self.ax = ax
 
@@ -245,6 +302,7 @@ class AllSkyMap(object):
                 for line in lines[1:]:
 
                     line.set_color(c1)
+
         return lines
 
     def draw_standard_labels(self, minimal=False, fontsize=14):
@@ -254,17 +312,45 @@ class AllSkyMap(object):
         :param minimal: If True, draw less dense label grid.
         """
 
-        import warnings
+        self.ax.grid()
+        self.ax.coords["glon"].set_ticks([0, 60, 120, 180, 240, 300] * u.deg)
+        self.ax.coords["glon"].set_major_formatter("dd")
 
-        warnings.warn(
-            "draw_standard_labels() not implemented yet - does nothing for now!"
-        )
-
-    def tissot(self, lon_0, lat_0, radius_deg, npts=30, ax=None, **kwargs):
+    def set_gridlines(
+        self,
+        dx=60,
+        dy=30,
+        xlims=[0, 360],
+        ylims=[-90, 90],
+        xtick_pos="h",
+        ytick_pos="c",
+    ):
         """
-        Draw a polygon centered at ``lon_0, lat_0``.  The polygon
+        Add gridlines and labels.
+
+        xtick_pos, ytick_pos can be "c" (outside of ellipse),
+        "h" (horizontal axis) or "v" (vertical axis).
+        """
+
+        self.ax.grid()
+        xlocs = np.arange(xlims[0] + dx, xlims[1], dx)
+        ylocs = np.arange(ylims[0] + dy, ylims[1], dy)
+
+        self.ax.coords["glon"].set_ticks(xlocs * u.deg)
+        self.ax.coords["glon"].set_major_formatter("dd")
+        self.ax.coords["glon"].set_ticks_position(xtick_pos)
+        self.ax.coords["glon"].set_ticklabel_position(xtick_pos)
+
+        self.ax.coords["glat"].set_ticks(ylocs * u.deg)
+        self.ax.coords["glat"].set_major_formatter("dd")
+        self.ax.coords["glat"].set_ticks_position(ytick_pos)
+        self.ax.coords["glat"].set_ticklabel_position(ytick_pos)
+
+    def tissot(self, lon, lat, radius, npts=100, ax=None, **kwargs):
+        """
+        Draw a polygon centered at ``lon, lat``.  The polygon
         approximates a circle on the surface of the map with radius
-        ``radius_deg`` degrees latitude along longitude ``lon_0``,
+        ``radius`` degrees latitude along longitude ``lon``,
         made up of ``npts`` vertices.
 
         Uses the SphericalCircle class
@@ -277,8 +363,10 @@ class AllSkyMap(object):
             ax = self.ax
 
         circle = SphericalCircle(
-            (lon_0 * u.deg, lat_0 * u.deg),
-            radius_deg * u.deg,
+            (lon * u.deg, lat * u.deg),
+            radius * u.deg,
+            lon_0=self.lon_0,
+            resolution=npts,
             transform=ax.get_transform(self.transform),
             **kwargs,
         )
@@ -286,6 +374,126 @@ class AllSkyMap(object):
         ax.add_patch(circle)
 
         return circle
+
+    def _alt_tissot(self, lon, lat, radius, npts=100, ax=None, **kwargs):
+        """
+        Alternative tissot style [WIP].
+        """
+
+        if not ax:
+
+            ax = self.ax
+
+        g = Geod(ellps="WGS84")
+
+        az12, az21, dist = g.inv(lon, lat, lon, lat + radius)
+
+        start_hem = self._east_hem(lon)
+
+        segs1 = [lon, lat + radius]
+        over, segs2 = [], []
+        delaz = 36 / npts
+        az = az12
+        last_lon = lon
+
+        # handling of the poles
+        if np.absolute(lat) + radius >= 90:
+
+            # use half of the pts for the shape
+            # and other half on the border
+            N1 = int(npts / 2)
+            lats = np.zeros(N1)
+            lons = np.zeros(N1)
+
+            for i in range(N1):
+
+                az += delaz * 2
+                lon_i, lat_i, az21 = g.fwd(lon, lat, az, dist)
+                lons[i] = lon_i
+                lats[i] = lat_i
+
+            a = list(np.argsort(lons))
+            lons = lons[a]
+            lats = lats[a]
+
+            N2 = int(npts / 4)
+            segs = []
+            dL = (90 - np.absolute(lats[0])) / (N2 - 1)
+            r = range(N2)
+
+            # for the south pole, reverse the ordering
+            # in order to plot correct polygon
+            if lat < 0:
+
+                r = list(reversed(r))
+                segs.extend(zip(lons, lats))
+
+            # first half of map border
+            lon_1 = (self.boundary + 1e-20) * np.sign(lat) * np.ones(N2)
+            lat_1 = np.sign(lat) * (90 - np.array(r) * dL)
+            segs.extend(zip(lon_1, lat_1))
+
+            if lat > 0:
+                segs.extend(zip(lons, lats))
+
+            # second half of the map border
+            r = list(reversed(r))
+            lon_1 = (self.boundary - 1e-20) * np.sign(lat) * np.ones(N2)
+            lat_1 = np.sign(lat) * (90 - np.array(r) * dL)
+            segs.extend(zip(lon_1, lat_1))
+
+            poly = Polygon(
+                segs,
+                transform=ax.get_transform(self.transform),
+                **kwargs,
+            )
+            ax.add_patch(poly)
+            return [poly]
+
+        # handle boundary cross away from pole
+        if start_hem:
+            adj_lon = self._east_lon
+            opp_lon = self._west_lon
+        else:
+            adj_lon = self._west_lon
+            opp_lon = self._east_lon
+
+        for i in range(npts):
+
+            az = az + delaz
+            lon_i, lat_i, az21 = g.fwd(lon, lat, az, dist)
+
+            if self._east_hem(lon_i) == start_hem:
+
+                segs1.append((lon_i, lat_i))
+                last_lon = lon
+
+            else:
+
+                segs1.append((adj_lon, lat_i))
+                segs2.append((opp_lon, lat_i))
+                over.append((lon_i, lat_i))
+                last_lon = lon
+
+        poly1 = Polygon(
+            segs1,
+            transform=ax.get_transform(self.transform),
+            **kwargs,
+        )
+        ax.add_patch(poly1)
+
+        if segs2:
+            over.reverse()
+            segs2.extend(over)
+            poly2 = Polygon(
+                segs2,
+                transform=ax.get_transform(self.transform),
+                **kwargs,
+            )
+            ax.add_patch(poly2)
+            return [poly1, poly2]
+        else:
+            return [poly]
 
     def scatter(self, x, y, ax=None, **kwargs):
         """
