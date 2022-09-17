@@ -10,7 +10,7 @@ The package is tested with Python 3.8/3.9 on the latest MacOS and Ubuntu linux. 
 Installation is done via `pip`:
 
 ```
-pip install git+https://github.com/cescalara/fancy.git@ta_updates
+pip install git+https://github.com/cescalara/fancy.git
 ```
 
 There are two further steps one must take to get set up:
