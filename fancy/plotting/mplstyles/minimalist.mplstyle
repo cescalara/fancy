@@ -1,0 +1,46 @@
+# Clean and minimal matplotlib style
+# Disables text.usetex and sets STIX font to both math and normal font
+
+# LINES
+lines.linewidth : 2
+
+# FONT
+font.family : sans-serif
+#font.serif : Times
+font.size : 12
+
+# TEXT
+text.usetex : False
+mathtext.fontset : stixsans
+
+# AXES
+axes.titlesize : x-large
+axes.labelsize : large
+axes.linewidth : 2
+axes.formatter.use_mathtext : True
+axes.spines.bottom  : True
+axes.spines.left    : True
+axes.spines.right   : False
+axes.spines.top     : False
+axes.prop_cycle: cycler('color', ['0.00', '0.40', '0.60', '0.70']) # simple grays
+axes.xmargin        : 0.00  
+axes.ymargin        : 0.05  
+
+# TICKS
+xtick.labelsize : large
+xtick.major.size : 7
+#xtick.minor.size : 1  
+xtick.major.width : 2 
+
+ytick.labelsize : large
+ytick.major.size : 7 
+#ytick.minor.size : 1 
+ytick.major.width : 2 
+
+# LEGEND
+legend.fontsize : large
+legend.frameon : False
+
+# FIGURE
+figure.figsize : 7, 5 # inches
+

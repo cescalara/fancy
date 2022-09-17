@@ -4,7 +4,7 @@ from scipy import integrate
 from astropy import units as u
 from astropy.coordinates import EarthLocation
 
-from .exposure import m_integrand
+from .exposure import m_integrand, kappa_dval
 
 """
 Constants from information provided in Auger Collabration publications on the 2014 dataset.
@@ -40,6 +40,9 @@ period_3_end = date(2009, 12, 31)
 period_4_start = date(2010, 1, 1)
 period_4_end = date(2014, 3, 31)
 
+# start year of observation
+start_year = 2004
+
 # find length of each period in units of years
 deltat1 = (period_1_end - period_1_start).days / 365.25
 deltat2 = (period_2_end - period_2_start).days / 365.25
@@ -64,13 +67,13 @@ alpha_T_4 = (alpha_T_vert - (alpha_T_1 + alpha_T_2 + alpha_T_3))
 alpha_T_4_incl = alpha_T_4 * ratio_iv
 
 # calculate M (integral over exposure factor) [sr]
-auger_params = []
-auger_params.append(np.cos(lat))
-auger_params.append(np.sin(lat))
-auger_params.append(np.cos(theta_m))
-auger_params.append(alpha_T)
-M, Merr = integrate.quad(m_integrand, 0, np.pi, args = auger_params)
-auger_params.append(M)
+detector_params = []
+detector_params.append(np.cos(lat))
+detector_params.append(np.sin(lat))
+detector_params.append(np.cos(theta_m))
+detector_params.append(alpha_T)
+M, Merr = integrate.quad(m_integrand, 0, np.pi, args = detector_params)
+detector_params.append(M)
 
 # calculate areas for each period [km^2]
 A1 = alpha_T_1 / (M * deltat1)
@@ -84,14 +87,18 @@ A4_incl = alpha_T_4_incl / (M * deltat4)
 A = alpha_T / (M * deltat)
 
 # reconstruction uncertainty for arrival direction
-kappa_d = 9323
+sig_omega = 0.9
+kappa_d = kappa_dval(sig_omega)
 
 # reconstruction uncertainty for energy
 f_E = 0.12
 
+# threshold energy [EeV]
+Eth = 52
+
 # For convenience
 detector_properties = {}
-detector_properties['label'] = 'PAO'
+detector_properties['label'] = 'auger2014'
 detector_properties['lat'] = lat
 detector_properties['lon'] = lon
 detector_properties['height'] = height
@@ -100,6 +107,8 @@ detector_properties['kappa_d'] = kappa_d
 detector_properties['f_E'] = f_E
 detector_properties['A'] = A
 detector_properties['alpha_T'] = alpha_T
+detector_properties['Eth'] = Eth
+detector_properties["start_year"] = start_year
 
 
 
