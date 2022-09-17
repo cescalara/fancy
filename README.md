@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/cescalara/fancy/actions/workflows/tests.yml/badge.svg?branch=ta_updates)](https://github.com/cescalara/fancy/actions/workflows/tests.yml)
 
-`fancy` is a toolbox used for UHECR modelling, fitting, and plotting. The majority of the tools used in [uhecr-project/uhecr_model](https://github.com/uhecr-project/uhecr_model) 
+`fancy` is a toolbox used for source-UHECR association analyses. 
 
 The package is tested with Python 3.8/3.9 on the latest MacOS and Ubuntu linux. Installation via pip should take care of the dependencies (see below for more info). [`CRPropa3`](https://github.com/CRPropa/CRPropa3) is treated as an optional dependency.  
 
