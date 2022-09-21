@@ -72,8 +72,10 @@ class Uhecr:
         self.label = label
 
         with h5py.File(filename, "r") as f:
-
-            data = f[self.label]
+            
+            # gmf_model = "JF12" if gmf_model == "None" else gmf_model
+            # data = f[self.label][gmf_model][ptype]
+            data = f[self.label] if filename.find("GMF") < 0 else f[self.label][gmf_model][ptype]
 
             self.year = data["year"][()]
             self.day = data["day"][()]
@@ -89,8 +91,13 @@ class Uhecr:
             self.A = self._find_area(exp_factor)
 
             self.ptype = ptype
-            if "kappa_gmf" in data and gmf_model != "None":
-                self.kappa_gmf = data["kappa_gmf"][gmf_model][ptype]["kappa_gmf"][()]
+            # self.kappa_gmf = data["kappa_gmf"][()]
+            if filename.find("GMF") != -1:
+                self.kappa_gmf = data["kappa_gmf"][()]
+            else:
+                if "kappa_gmf" in data and gmf_model != "None":
+                    self.kappa_gmf = data["kappa_gmf"][gmf_model][ptype]["kappa_gmf"][()]
+                
 
     def _get_properties(self):
         """
