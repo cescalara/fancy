@@ -7,7 +7,8 @@ from astropy.coordinates import EarthLocation
 from .exposure import m_integrand, kappa_dval
 
 """
-Constants from information provided in Auger Collabration publications on the 2014 dataset.
+Constants from information provided in Auger Collabration publications on the 2014 dataset
+(A. Aab et al 2015 ApJ 804 15).
 
 * latitude and longitude taken from Auger Collaboration 2008.
 * Information on periods and exposures from Auger Collaboration et al. 2014.
