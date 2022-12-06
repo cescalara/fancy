@@ -78,7 +78,10 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
 
         Eth_src = []
         for d in D:
-            Eth_src.append(self._get_source_threshold_energy(Eth, d))
+            Eth_src_tmp = self._get_source_threshold_energy(Eth, d)
+            if Eth_src_tmp > 1e4:
+                Eth_src_tmp = 1e4
+            Eth_src.append(Eth_src_tmp)
 
         return Eth_src
 
@@ -164,7 +167,7 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
 
         elif self._method == "mean_sim_energy":
 
-            Esrc_range = 10 ** np.linspace(np.log10(Eth), np.log10(Eth * 1e3), 20)
+            Esrc_range = 10 ** np.linspace(np.log10(Eth), np.log10(Eth * 1e4), 20)
 
             Earr_range = []
             for Esrc in Esrc_range:
@@ -193,7 +196,7 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         if self._ptype == "N":
 
             self._table_file = get_path_to_energy_approx_tables(
-                "crpropa_mean_energy_N.h5"
+                "crpropa_mean_energy_N_maxEsrc_1e6.h5"
             )
 
         elif self._ptype == "Si":

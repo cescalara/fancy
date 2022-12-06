@@ -54,8 +54,8 @@ class Analysis:
         :param data: a Data object
         :param model: a Model object
         :param analysis_type: type of analysis
-        :param energy_loss_approx: Method used for energy loss approx, 
-            only relevant for ptype!="p". Can be "loss_length" or 
+        :param energy_loss_approx: Method used for energy loss approx,
+            only relevant for ptype!="p". Can be "loss_length" or
             "mean_sim_energy"
         """
 
@@ -117,7 +117,7 @@ class Analysis:
             )
 
             # find correspsonding Eth_src
-            self.Eth_src = self.energy_loss.get_Eth_src(
+            self.Eth_src_sim = self.energy_loss.get_Eth_src(
                 self.model.Eth_sim, self.data.source.distance
             )
 
@@ -148,7 +148,7 @@ class Analysis:
 
             if self.analysis_type == self.joint_type:
                 D_src = self.data.source.distance
-                self.Eex = self.energy_loss.get_Eex(self.Eth_src, self.model.alpha)
+                self.Eex = self.energy_loss.get_Eex(self.Eth_src_sim, self.model.alpha)
                 self.kappa_ex = self.energy_loss.get_kappa_ex(
                     self.Eex, self.model.B, D_src
                 )
@@ -157,7 +157,7 @@ class Analysis:
             if self.analysis_type == self.gmf_type:
                 # shift by 0.02 to get kappa_ex at g.b.
                 D_src = self.data.source.distance - 0.02
-                self.Eex = self.energy_loss.get_Eex(self.Eth_src, self.model.alpha)
+                self.Eex = self.energy_loss.get_Eex(self.Eth_src_sim, self.model.alpha)
 
                 self.kappa_ex = self.energy_loss.get_kappa_ex(
                     self.Eex, self.model.B, D_src
@@ -236,11 +236,16 @@ class Analysis:
                     [self.energy_loss.get_arrival_energy(e, d) for e in self.E_grid]
                 )
 
+        self.Eth_src = self.energy_loss.get_Eth_src(
+            self.model.Eth, self.data.source.distance
+        )
+
         if table_file:
             with h5py.File(table_file, "r+") as f:
                 E_group = f.create_group("energy")
                 E_group.create_dataset("E_grid", data=self.E_grid)
                 E_group.create_dataset("Earr_grid", data=self.Earr_grid)
+                E_group.create_dataset("Eth_src", data=self.Eth_src)
 
     def use_tables(self, input_filename, main_only=True):
         """
@@ -258,6 +263,7 @@ class Analysis:
             with h5py.File(input_filename, "r") as f:
                 self.E_grid = f["energy/E_grid"][()]
                 self.Earr_grid = f["energy/Earr_grid"][()]
+                self.Eth_src = f["energy/Eth_src"][()]
 
         else:
             self.tables = ExposureIntegralTable(input_filename=input_filename)
@@ -850,6 +856,7 @@ class Analysis:
 
             self.fit_input["Edet"] = self.data.uhecr.energy
             self.fit_input["Eth"] = self.model.Eth
+            self.fit_input["Eth_src"] = self.Eth_src
             self.fit_input["Eerr"] = self.data.detector.energy_uncertainty
             self.fit_input["E_grid"] = E_grid
             self.fit_input["Earr_grid"] = Earr_grid
