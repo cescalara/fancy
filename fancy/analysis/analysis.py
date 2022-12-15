@@ -23,6 +23,8 @@ from ..detector.exposure import m_dec
 from fancy.interfaces.data import Data
 from fancy.interfaces.stan import Model
 
+from fancy.propagation.gmf import GMFDeflections
+
 try:
 
     import crpropa
@@ -54,8 +56,8 @@ class Analysis:
         :param data: a Data object
         :param model: a Model object
         :param analysis_type: type of analysis
-        :param energy_loss_approx: Method used for energy loss approx, 
-            only relevant for ptype!="p". Can be "loss_length" or 
+        :param energy_loss_approx: Method used for energy loss approx,
+            only relevant for ptype!="p". Can be "loss_length" or
             "mean_sim_energy"
         """
 
@@ -121,6 +123,11 @@ class Analysis:
                 self.model.Eth_sim, self.data.source.distance
             )
 
+        if self.analysis_type == self.gmf_type:
+
+            # Set up gmf deflections
+            self.gmf_deflections = GMFDeflections()
+
         # Set up integral tables
         params = self.data.detector.params
         varpi = self.data.source.unit_vector
@@ -155,6 +162,9 @@ class Analysis:
                 kappa_true = self.kappa_ex
 
             if self.analysis_type == self.gmf_type:
+
+                A, Z = self.nuc_table[self.model.ptype]
+
                 # shift by 0.02 to get kappa_ex at g.b.
                 D_src = self.data.source.distance - 0.02
                 self.Eex = self.energy_loss.get_Eex(self.Eth_src, self.model.alpha)
@@ -162,9 +172,15 @@ class Analysis:
                 self.kappa_ex = self.energy_loss.get_kappa_ex(
                     self.Eex, self.model.B, D_src
                 )
-                kappa_true = self.kappa_ex
 
-                # evaluate for kappa_d
+                # Find kappa_gmf for each source via lensing
+                varpi = self.data.source.unit_vector
+                kappa_gmf = []
+                for v, k, e in zip(varpi, self.kappa_ex, self.Eex):
+                    k_gmf = self.gmf_deflections.get_kappa_gmf_per_source(v, k, e, A, Z)
+                    kappa_gmf.append(k_gmf)
+
+                kappa_true = np.array(kappa_gmf)
 
             if parallel:
                 self.tables.build_for_sim_parallel(
@@ -192,10 +208,28 @@ class Analysis:
             )
 
             # full table for fit
-            if parallel:
-                self.tables.build_for_fit_parallel(kappa)
+            if self.analysis_type == self.gmf_type:
+
+                kappa_gmf = []
+                alpha_approx = 4.0
+                Eex = 2 ** (1 / (alpha_approx - 1)) * self.model.Eth
+
+                A, Z = self.nuc_table[self.model.ptype]
+
+                if parallel:
+                    self.tables.build_for_fit_parallel_gmf(
+                        kappa, Eex, A, Z, self.gmf_deflections
+                    )
+                else:
+                    self.tables.build_for_fit_gmf(
+                        kappa, Eex, A, Z, self.gmf_deflections
+                    )
+
             else:
-                self.tables.build_for_fit(kappa)
+                if parallel:
+                    self.tables.build_for_fit_parallel(kappa)
+                else:
+                    self.tables.build_for_fit(kappa)
 
     def build_energy_table(
         self,
@@ -499,6 +533,7 @@ class Analysis:
 
     def _simulate_deflections(self, kappas, Nrand=100, path_to_lens=None):
         """
+        TODO: move to separate class in propagation/gmf.py
         Simulate the forward propagation of UHECR in the galactic magnetic field using
         CRPropa healpix maps and galactic lensing. The simulation performs (in essence)
         the following:
@@ -641,7 +676,7 @@ class Analysis:
             raise ImportError("CRPropa3 must be installed to use this functionality")
 
         energies_gb = self.Earr * crpropa.EeV  # UHECR energy at gal. boundary
-        A, Z = self.nuc_table[self.ptype]
+        A, Z = self.nuc_table[self.model.ptype]
         pid = crpropa.nucleusId(A, Z)
 
         map_container = crpropa.ParticleMapsContainer()
