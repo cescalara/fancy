@@ -11,11 +11,9 @@ from fancy.propagation.cosmology import H0, Om, DH
 from fancy.utils.package_data import get_path_to_energy_approx_tables
 
 try:
-
     import crpropa as cr
 
 except ImportError:
-
     cr = None
 
 
@@ -33,7 +31,6 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         """
 
         if not cr:
-
             raise ImportError("CRPropa3 must be installed to use this functionality")
 
         # Cosmology
@@ -43,39 +40,53 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         # Available ptypes
         self._ptype_dict = {}
         self._ptype_dict["p"] = [1, 1]
+        self._ptype_dict["He"] = [4, 2]
+        self._ptype_dict["Li"] = [6, 3]
+        self._ptype_dict["Be"] = [8, 4]
+        self._ptype_dict["B"] = [10, 5]
+        self._ptype_dict["C"] = [12, 6]
         self._ptype_dict["N"] = [14, 7]
+        self._ptype_dict["O"] = [16, 8]
+        self._ptype_dict["Ne"] = [20, 10]
+        self._ptype_dict["Na"] = [22, 11]
+        self._ptype_dict["Mg"] = [24, 12]
+        self._ptype_dict["Al"] = [27, 13]
         self._ptype_dict["Si"] = [28, 14]
+        self._ptype_dict["P"] = [31, 15]
+        self._ptype_dict["S"] = [32, 16]
+        self._ptype_dict["Cl"] = [35, 17]
+        self._ptype_dict["Ar"] = [40, 18]
+        self._ptype_dict["K"] = [40, 19]
+        self._ptype_dict["Ca"] = [40, 20]
+        self._ptype_dict["Sc"] = [45, 21]
+        self._ptype_dict["Ti"] = [48, 22]
+        self._ptype_dict["V"] = [51, 23]
+        self._ptype_dict["Cr"] = [52, 24]
+        self._ptype_dict["Mn"] = [55, 25]
         self._ptype_dict["Fe"] = [56, 26]
 
         # Available methods
         self._methods = ["loss_length", "mean_sim_energy"]
 
         if ptype in self._ptype_dict:
-
             self._ptype = ptype
 
         else:
-
             raise ValueError(f"Particle type {ptype} is not recognised")
 
         if method in self._methods:
-
             self._method = method
 
         else:
-
             raise ValueError(f"Method {method} is not recognised")
 
         if self._method == "loss_length":
-
             self._loss_length_init()
 
         elif self._method == "mean_sim_energy":
-
             self._mean_sim_energy_init()
 
     def get_Eth_src(self, Eth: float, D: List[float]):
-
         Eth_src = []
         for d in D:
             Eth_src.append(self._get_source_threshold_energy(Eth, d))
@@ -83,9 +94,7 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         return Eth_src
 
     def get_arrival_energy(self, Esrc: float, D: float):
-
         if self._method == "loss_length":
-
             Esrc = Esrc * 1.0e18
             integrator = integrate.ode(self._dEdr).set_integrator("lsoda", method="bdf")
             integrator.set_initial_value(Esrc, 0)
@@ -98,7 +107,6 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
             Earr = integrator.y[0] / 1.0e18
 
         elif self._method == "mean_sim_energy":
-
             Earr = (
                 10 ** self._interp_log10_arrival_energy(np.log10(Esrc), np.log10(D))[0]
             )
@@ -106,11 +114,9 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         return Earr
 
     def get_arrival_energy_vec(self, args: Tuple):
-
         Evec, D = args
 
         if self._method == "loss_length":
-
             Earr_vec = []
             for E in Evec:
                 E = E * 1.0e18
@@ -129,10 +135,8 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
                 Earr_vec.append(Earr[0])
 
         elif self._method == "mean_sim_energy":
-
             Earr_vec = []
             for E in Evec:
-
                 Earr = 10 ** self._interp_log10_arrival_energy(np.log10(E), np.log10(D))
 
                 Earr_vec.append(Earr)
@@ -148,7 +152,6 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         """
 
         if self._method == "loss_length":
-
             Eth = Eth * 1.0e18
             integrator = integrate.ode(self._dEdr_rev).set_integrator(
                 "lsoda", method="bdf"
@@ -163,12 +166,10 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
             Eth_src = integrator.y[0] / 1.0e18
 
         elif self._method == "mean_sim_energy":
-
             Esrc_range = 10 ** np.linspace(np.log10(Eth), np.log10(Eth * 1e3), 20)
 
             Earr_range = []
             for Esrc in Esrc_range:
-
                 Earr = (
                     10
                     ** self._interp_log10_arrival_energy(np.log10(Esrc), np.log10(D))[0]
@@ -191,23 +192,19 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         self._nucleus_id = cr.nucleusId(*self._ptype_dict[self._ptype])
 
         if self._ptype == "N":
-
             self._table_file = get_path_to_energy_approx_tables(
                 "crpropa_mean_energy_N.h5"
             )
 
         elif self._ptype == "Si":
-
             self._table_file = get_path_to_energy_approx_tables(
                 "crpropa_mean_energy_Si.h5"
             )
 
         else:
-
             raise NotImplementedError()
 
         with h5py.File(self._table_file, "r") as f:
-
             self._Esrc_grid = f["Esrc_grid"][()]  # EeV
             self._D_grid = f["D_grid"][()]  # Mpc
             mean_mass_number = f["mean_mass_number"][()]
@@ -295,9 +292,7 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
 
         self._interaction_dict = {}
         for interaction, mlabel in zip(modules, module_labels):
-
             for field, flabel in zip(fields, field_labels):
-
                 key = mlabel + "_" + flabel
                 self._interaction_dict[key] = interaction(field())
 
@@ -321,7 +316,6 @@ class CRPropaApproxEnergyLoss(EnergyLoss):
         inv_total_loss_length = 0.0
 
         for _, value in self._interaction_dict.items():
-
             inv_total_loss_length += 1.0 / value.lossLength(
                 int(self._nucleus_id), gamma, z
             )
