@@ -16,9 +16,6 @@ class ExposureIntegralTable:
     that are passed to Stan to be interpolated over.
     """
 
-    # number of threads, take 3/4 so that CPU doesnt overload
-    nthreads = int(cpu_count() * 0.75)
-
     def __init__(self, varpi=None, params=None, input_filename=None):
         """
         Handles the building and storage of integral tables
@@ -97,7 +94,7 @@ class ExposureIntegralTable:
             self.sim_table = results
             print()
 
-    def build_for_sim_parallel(self, kappa, alpha, B, D):
+    def build_for_sim_parallel(self, kappa, alpha, B, D, nthreads):
         """
         Build the tabulated integrals to be used for simulations and posterior predictive checks.
         Save with the filename given.
@@ -119,7 +116,7 @@ class ExposureIntegralTable:
 
             args = [(v, k, self.params) for v in self.varpi]
 
-            with Pool(self.nthreads) as mpool:
+            with Pool(nthreads) as mpool:
                 results = list(
                     progress_bar(
                         mpool.imap(self.eps_per_source_sim, args),
@@ -135,7 +132,7 @@ class ExposureIntegralTable:
         else:
             args = [(v, k, self.params) for v, k in zip(self.varpi, self.sim_kappa)]
 
-            with Pool(self.nthreads) as mpool:
+            with Pool(nthreads) as mpool:
                 results = list(
                     progress_bar(
                         mpool.imap(self.eps_per_source_sim, args),
@@ -214,7 +211,7 @@ class ExposureIntegralTable:
 
         return results
 
-    def build_for_fit_parallel(self, kappa):
+    def build_for_fit_parallel(self, kappa, nthreads):
         """
         Build the tabulated integrals to be interpolated over in the fit.
         Save with filename given.
@@ -230,7 +227,7 @@ class ExposureIntegralTable:
 
         self.kappa = kappa
 
-        with Pool(self.nthreads) as mpool:
+        with Pool(nthreads) as mpool:
             results = list(
                 progress_bar(
                     mpool.imap(self.eps_per_source, self.varpi),
@@ -299,7 +296,7 @@ class ExposureIntegralTable:
 
         return results
 
-    def build_for_fit_parallel_gmf(self, kappa, Eex, A, Z, deflections):
+    def build_for_fit_parallel_gmf(self, kappa, Eex, A, Z, deflections, nthreads):
         """
         Build the tabulated integrals to be interpolated over in the fit.
         Save with filename given.
@@ -319,7 +316,7 @@ class ExposureIntegralTable:
 
         # Cannot parallelise w/ imap due to magnetic lens pickling...
         args = []
-        for v in self.varpi:
+        for i, v in progress_bar(enumerate(self.varpi), total=len(self.varpi), desc="Precomputing kappa_gmf for each source"):
 
             kappa_gmf = []
             for k in self.kappa:
@@ -329,7 +326,7 @@ class ExposureIntegralTable:
 
             args.append((v, kappa_gmf))
 
-        with Pool(self.nthreads) as mpool:
+        with Pool(nthreads) as mpool:
             results = list(
                 progress_bar(
                     mpool.imap(self.eps_per_source_gmf, args),

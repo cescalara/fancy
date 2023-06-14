@@ -39,8 +39,6 @@ class Analysis:
     To manage the running of simulations and fits based on Data and Model objects.
     """
 
-    nthreads = int(cpu_count() * 0.75)
-
     def __init__(
         self,
         data: Data,
@@ -137,7 +135,7 @@ class Analysis:
         self.nuc_table = get_nucleartable()
 
     def build_tables(
-        self, num_points=50, sim_only=False, fit_only=False, parallel=True
+        self, num_points=100, sim_only=False, fit_only=False, parallel=True, nthreads=int(cpu_count() * 0.75)
     ):
         """
         Build the necessary integral tables.
@@ -184,7 +182,7 @@ class Analysis:
 
             if parallel:
                 self.tables.build_for_sim_parallel(
-                    kappa_true, self.model.alpha, self.model.B, D_src
+                    kappa_true, self.model.alpha, self.model.B, D_src, nthreads
                 )
             else:
                 self.tables.build_for_sim(
@@ -194,31 +192,34 @@ class Analysis:
         if fit_only:
 
             # logarithmically spcaed array with 60% of points between KAPPA_MIN and 100
-            kappa_first = np.logspace(
-                np.log(1), np.log(10), int(num_points * 0.7), base=np.e
-            )
-            kappa_second = np.logspace(
-                np.log(10), np.log(100), int(num_points * 0.2) + 1, base=np.e
-            )
-            kappa_third = np.logspace(
-                np.log(100), np.log(1000), int(num_points * 0.1) + 1, base=np.e
-            )
-            kappa = np.concatenate(
-                (kappa_first, kappa_second[1:], kappa_third[1:]), axis=0
-            )
+            # kappa_first = np.logspace(
+            #     np.log(1), np.log(10), int(num_points * 0.7), base=np.e
+            # )
+            # kappa_second = np.logspace(
+            #     np.log(10), np.log(100), int(num_points * 0.2) + 1, base=np.e
+            # )
+            # kappa_third = np.logspace(
+            #     np.log(100), np.log(1000), int(num_points * 0.1) + 1, base=np.e
+            # )
+            # kappa = np.concatenate(
+            #     (kappa_first, kappa_second[1:], kappa_third[1:]), axis=0
+            # )
+            kappa = np.logspace(0, 5, num_points)
 
             # full table for fit
             if self.analysis_type == self.gmf_type:
 
                 kappa_gmf = []
-                alpha_approx = 4.0
+                alpha_approx = 2.5
+
+                # in the future, read Rex from the files
                 Eex = 2 ** (1 / (alpha_approx - 1)) * self.model.Eth
 
                 A, Z = self.nuc_table[self.model.ptype]
 
                 if parallel:
                     self.tables.build_for_fit_parallel_gmf(
-                        kappa, Eex, A, Z, self.gmf_deflections
+                        kappa, Eex, A, Z, self.gmf_deflections, nthreads
                     )
                 else:
                     self.tables.build_for_fit_gmf(
@@ -227,7 +228,7 @@ class Analysis:
 
             else:
                 if parallel:
-                    self.tables.build_for_fit_parallel(kappa)
+                    self.tables.build_for_fit_parallel(kappa, nthreads)
                 else:
                     self.tables.build_for_fit(kappa)
 
