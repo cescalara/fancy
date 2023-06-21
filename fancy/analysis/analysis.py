@@ -103,13 +103,14 @@ class Analysis:
         self.E_loss_type = "energy_loss"
         self.joint_type = "joint"
         self.gmf_type = "joint_gmf"
+        self.composition_type = "joint_composition"
 
         if analysis_type == None:
             analysis_type = self.arr_dir_type
 
         self.analysis_type = analysis_type
 
-        if self.analysis_type.find("joint") != -1:
+        if self.analysis_type == self.joint_type or self.analysis_type == self.gmf_type:
 
             # find lower energy threshold for the simulation, given Eth and Eerr
             self.model.Eth_sim = self.energy_loss.get_Eth_sim(
@@ -121,7 +122,7 @@ class Analysis:
                 self.model.Eth_sim, self.data.source.distance
             )
 
-        if self.analysis_type == self.gmf_type:
+        if self.analysis_type == self.gmf_type or self.analysis_type == self.composition_type:
 
             # Set up gmf deflections
             self.gmf_deflections = GMFDeflections()
@@ -135,7 +136,7 @@ class Analysis:
         self.nuc_table = get_nucleartable()
 
     def build_tables(
-        self, num_points=100, sim_only=False, fit_only=False, parallel=True, nthreads=int(cpu_count() * 0.75)
+        self, num_points=100, sim_only=False, fit_only=False, parallel=True, nthreads=int(cpu_count() * 0.75), composition_file=None,
     ):
         """
         Build the necessary integral tables.
@@ -224,6 +225,28 @@ class Analysis:
                 else:
                     self.tables.build_for_fit_gmf(
                         kappa, Eex, A, Z, self.gmf_deflections
+                    )
+
+            elif self.analysis_type == self.composition_type:
+                kappa_gmf = []
+
+                if not os.path.exists(composition_file):
+                    return OSError(f"File {composition_file} does not exist.")
+
+                with h5py.File(composition_file, "r") as f:
+                    alphas = f["alphas"][()]
+                    # Dsrcs = f["Dsrcs"][()]
+                    Rearths = f["Rearths"][()]
+                    arr_spectrums = f["arr_spectrums"][()]
+                    # Rexs = f["Rexs"][()]
+
+                if parallel:
+                    self.tables.build_for_fit_parallel_composition(
+                        kappa, alphas, Rearths, arr_spectrums, self.gmf_deflections, nthreads
+                    )
+                else:
+                    self.tables.build_for_fit_composition(
+                        kappa, alphas, Rearths, arr_spectrums, self.gmf_deflections
                     )
 
             else:

@@ -296,6 +296,35 @@ class ExposureIntegralTable:
 
         return results
 
+    def eps_per_source_composition(self, args):
+        """
+        Evaluate exposure integral per source. This corresponds to the inner for loop
+        that contains the double integral evaluation for each kappa.
+
+        :param: v : source unit vector
+        """
+
+        indices, v, kappa, REs, J_REs, deflections = args
+        results = []
+
+        for k in kappa:
+
+            # compute kappa_gmf
+            kappa_gmf = deflections.get_kappa_gmf_per_source_composition(v, k, REs, J_REs)
+
+            result, err = integrate.dblquad(
+                integrand,
+                0,
+                np.pi,
+                lambda phi: 0,
+                lambda phi: 2 * np.pi,
+                args=(v, kappa_gmf, self.params),
+            )
+
+            results.append(result)
+
+        return indices, results
+
     def build_for_fit_parallel_gmf(self, kappa, Eex, A, Z, deflections, nthreads):
         """
         Build the tabulated integrals to be interpolated over in the fit.
@@ -337,6 +366,86 @@ class ExposureIntegralTable:
             self.table.append(np.asarray(results))
             print()
         self.table = np.asarray(self.table)
+
+    def build_for_fit_parallel_composition(self, kappa, alphas, Rearths, arr_spectrums, deflections, nthreads):
+        """
+        Build the tabulated integrals to be interpolated over in the fit.
+        Save with filename given.
+
+        Update calculation to handle GMF deflections.
+
+        This is the parallelized version, using multiprocessing over each source
+        in the provided source catalogue.
+
+        For SBG, runtime decreases from 30 min -> 1.5 min with ~28 cores
+
+        Expects self.kappa to be a list of kappa values to evaluate the integral for,
+        for each source individually.
+        """
+
+        self.kappa = kappa
+        self.table = np.zeros((len(alphas), len(self.varpi), len(kappa)))
+
+        args = []
+        # create argument list for 2d parallelization based on sources & alphas
+        for indices in np.ndindex(len(alphas), len(self.varpi)):
+            # unpack
+            a, i = indices
+
+            # get values
+            v = self.varpi[i]
+            REs = Rearths[a,i,:]
+            J_REs = arr_spectrums[a,i,:]
+
+            args.append(((a, i), v, self.kappa, REs, J_REs, deflections))
+
+        # perform 2d paralleilization
+        with Pool(nthreads) as mpool:
+            # returns indices & effective exposure for each kappa
+            results = tuple(
+                progress_bar(
+                    mpool.imap(self.eps_per_source_composition, args),
+                    desc="Precomputing Exposure Integral & kappa_GMF",
+                    total=int(len(alphas) * len(self.varpi))
+                )
+            )
+
+            # get indices & values within results
+            for indices, vals in results:
+                a, i = indices
+                self.table[a,i,:] = vals
+
+
+        # print(self.table)
+        # # Cannot parallelise w/ imap due to magnetic lens pickling...
+        # for a, _ in enumerate(alphas):
+        #     args = []
+        #     for i, v in progress_bar(enumerate(self.varpi), total=len(self.varpi), desc="Precomputing kappa_gmf for each source"):
+
+        #         kappa_gmf = np.zeros((len(alphas), len(self.kappa)))
+                
+        #         REs = Rearths[a,i,:]
+        #         J_REs = arr_spectrums[a,i,:]
+        #         for j, k in enumerate(self.kappa):
+
+        #             k_gmf = deflections.get_kappa_gmf_per_source_composition(v, k, REs, J_REs)
+        #             kappa_gmf[a,j] = k_gmf
+
+        #         args.append((v, kappa_gmf))
+
+        #     print(v, self.varpi, kappa_gmf)
+
+        #     with Pool(nthreads) as mpool:
+        #         results = list(
+        #             progress_bar(
+        #                 mpool.imap(self.eps_per_source_gmf, args),
+        #                 total=len(self.varpi),
+        #                 desc="Precomputing exposure integral",
+        #             )
+        #         )
+        #         self.table[a,:,:] = np.asarray(results)
+        #         print()
+        # self.table = np.asarray(self.table)
 
     def init_from_file(self, input_filename):
         """

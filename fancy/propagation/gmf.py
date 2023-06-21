@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -45,7 +46,7 @@ class GMFDeflections:
 
             if model == "JF12":
 
-                lens_name = "JF12full_Gamale"
+                self.lens_name = "JF12full_Gamale"
 
             else:
 
@@ -62,11 +63,6 @@ class GMFDeflections:
         else:
 
             raise ValueError("Deflection type not recognised")
-
-        # Initialise lens
-        path_to_lens = str(get_path_to_lens(lens_name))
-        self.lens = crpropa.MagneticLens(path_to_lens)
-        self.lens.normalizeLens()
 
         if self.deflection_type == "simple":
 
@@ -105,6 +101,48 @@ class GMFDeflections:
         rigidities_gb = np.array(
             [np.float64(energy_gb) / Z for energy_gb in energies_gb]
         )
+
+        # Apply lens
+        coords, _, _ = self._apply_lens(coords_gb, rigidities_gb, pid)
+
+        # Calculate kappa_gmf
+        kappa_gmf = self._get_kappa_gmf(coords, varpi)
+
+        return kappa_gmf
+
+    def get_kappa_gmf_per_source_composition(self, varpi, kappa_ex, REs, J_REs, crp_threads=1):
+        """
+        Find effective kappa for GMF deflections. Used in
+        calculations for simple deflections.
+
+        NB: Approximate version.
+
+        :param varpi: source direction as a unit vector
+        :param kappa_ex: Expected kappa from extragalactic deflections
+        """
+
+        # Simulate events from a single source
+        N = 1000
+        # set number of threads for CRPropa, should be == 1 and parallize this whole function
+        os.environ["OMP_NUM_THREADS"] = str(crp_threads) 
+
+        # Initialise lens (cannot initialize globally since CRPropa instance 
+        # needs to be launched per thread)
+        path_to_lens = str(get_path_to_lens(self.lens_name))
+        self.lens = crpropa.MagneticLens(path_to_lens)
+        self.lens.normalizeLens()
+
+        omega_gb = sample_vMF(varpi, kappa_ex, N)
+        coords_gb = uv_to_coord(omega_gb)
+        
+        # fine to set as EeV, input anyways needs to be energy
+        # rigidities_gb = np.tile(Rex, N) * crpropa.EeV  # UHECR energy at gal. boundary
+
+        # sample from arrival rigidity distribution
+        dR = np.abs(np.max(REs) - np.min(REs)) / len(REs)
+        rng = np.random.default_rng()
+        rigidities_gb = rng.choice(REs, size=N, p=J_REs * dR) * crpropa.EeV
+        pid = crpropa.nucleusId(1, 1)  # take protons, since no nuclear effects
 
         # Apply lens
         coords, _, _ = self._apply_lens(coords_gb, rigidities_gb, pid)
