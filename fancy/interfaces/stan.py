@@ -188,8 +188,8 @@ def coord_to_uv(coord):
     :return: an array of 3D unit vectors
     """
     c = coord.icrs
-    ds = [c.cartesian.x, c.cartesian.y, c.cartesian.z]
-    uv = [d / np.linalg.norm(d) for d in np.transpose(ds)]
+    ds = np.array([c.cartesian.x, c.cartesian.y, c.cartesian.z]).T
+    uv = ds / np.linalg.norm(ds, axis=0)
 
     return uv
 

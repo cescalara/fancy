@@ -34,18 +34,23 @@ class Source:
         with h5py.File(filename, "r") as f:
             data = f[self.label]
             self.distance = data["D"][()]
-            self.N = len(self.distance)
+            self.N = 1 if np.isscalar(self.distance) else len(self.distance)
             glon = data["glon"][()]
             glat = data["glat"][()]
             self.coord = self.get_coordinates(glon, glat)
 
             if self.label != "cosmo_150" and self.label != "VCV_AGN":
                 # Get names
-                self.name = []
-                for i in range(self.N):
-                    self.name.append(data["name"][i])
+                if self.N == 1:
+                    self.name = [data["name"][()]]
+                else:
+                    self.name = []
+                    for i in range(self.N):
+                        self.name.append(data["name"][i])
 
         self.unit_vector = coord_to_uv(self.coord)
+        if self.N == 1:
+            self.unit_vector = np.asarray([self.unit_vector])
 
     def _get_properties(self):
         """
