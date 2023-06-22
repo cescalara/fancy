@@ -305,25 +305,29 @@ class ExposureIntegralTable:
         """
 
         indices, v, kappa, REs, J_REs, deflections = args
-        results = []
+        results = np.zeros(len(kappa))
+        # if no rigidities exist at this source distance, simply set the exposure to zero
+        if np.all(np.isnan(J_REs)):
+            return indices, results
 
-        for k in kappa:
+        else:
+            for k, kap in enumerate(kappa):
 
-            # compute kappa_gmf
-            kappa_gmf = deflections.get_kappa_gmf_per_source_composition(v, k, REs, J_REs)
+                # compute kappa_gmf
+                kappa_gmf = deflections.get_kappa_gmf_per_source_composition(v, kap, REs, J_REs)
 
-            result, err = integrate.dblquad(
-                integrand,
-                0,
-                np.pi,
-                lambda phi: 0,
-                lambda phi: 2 * np.pi,
-                args=(v, kappa_gmf, self.params),
-            )
+                result, err = integrate.dblquad(
+                    integrand,
+                    0,
+                    np.pi,
+                    lambda phi: 0,
+                    lambda phi: 2 * np.pi,
+                    args=(v, kappa_gmf, self.params),
+                )
 
-            results.append(result)
+                results[k] = result
 
-        return indices, results
+            return indices, results
 
     def build_for_fit_parallel_gmf(self, kappa, Eex, A, Z, deflections, nthreads):
         """
