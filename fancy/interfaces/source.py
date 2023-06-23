@@ -50,6 +50,8 @@ class Source:
 
         self.unit_vector = coord_to_uv(self.coord)
         if self.N == 1:
+            self.distance = np.asarray([self.distance])
+            self.coord = np.asarray([self.coord])
             self.unit_vector = np.asarray([self.unit_vector])
 
     def _get_properties(self):
