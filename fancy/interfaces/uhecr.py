@@ -56,7 +56,7 @@ class Uhecr:
         return np.deg2rad(sig_omega)
 
     def from_data_file(
-        self, filename, label, ptype="p", gmf_model="JF12", exp_factor=1.0
+        self, filename, label, mass_group=1, gmf_model="JF12", exp_factor=1.0, ptype="p"
     ):
         """
         Define UHECR from data file of original information.
@@ -92,10 +92,11 @@ class Uhecr:
             self.period = self._find_period()
             self.A = self._find_area(exp_factor)
 
+            self.mass_group = mass_group
             self.ptype = ptype
             gmf_model = "JF12" if gmf_model == "None" else gmf_model
             if "kappa_gmf" in data:
-                self.kappa_gmf = data["kappa_gmf"][gmf_model][ptype]["kappa_gmf"][()]
+                self.kappa_gmf = data["kappa_gmf"][gmf_model][f"mg{mass_group}"]["kappa_gmf"][()]
 
     def _get_properties(self):
         """
@@ -109,7 +110,7 @@ class Uhecr:
         self.properties["energy"] = self.energy
         self.properties["A"] = self.A
         self.properties["zenith_angle"] = self.zenith_angle
-        self.properties["ptype"] = self.ptype
+        self.properties["mass_group"] = self.mass_group
         self.properties["kappa_gmf"] = self.kappa_gmf
 
         # Only if simulated UHECRs
@@ -134,7 +135,7 @@ class Uhecr:
         self.A = uhecr_properties["A"]
         self.kappa_gmf = uhecr_properties["kappa_gmf"]
 
-        # decode byte string if uhecr_properties is read from h5 file
+        # # decode byte string if uhecr_properties is read from h5 file
         ptype_from_file = uhecr_properties["ptype"]
         self.ptype = (
             ptype_from_file.decode("UTF-8")

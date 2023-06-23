@@ -305,29 +305,28 @@ class ExposureIntegralTable:
         """
 
         indices, v, kappa, REs, J_REs, deflections = args
+        print(indices)
         results = np.zeros(len(kappa))
-        # if no rigidities exist at this source distance, simply set the exposure to zero
-        if np.all(np.isnan(J_REs)):
-            return indices, results
 
-        else:
-            for k, kap in enumerate(kappa):
+        for k, kap in enumerate(kappa):
+            
+            # compute kappa_gmf
+            kappa_gmf = deflections.get_kappa_gmf_per_source_composition(v, kap, REs, J_REs)
+            # print("Computed kappa_gmf")
 
-                # compute kappa_gmf
-                kappa_gmf = deflections.get_kappa_gmf_per_source_composition(v, kap, REs, J_REs)
+            result, err = integrate.dblquad(
+                integrand,
+                0,
+                np.pi,
+                lambda phi: 0,
+                lambda phi: 2 * np.pi,
+                args=(v, kappa_gmf, self.params),
+            )
+            # print("Computed exposure")
 
-                result, err = integrate.dblquad(
-                    integrand,
-                    0,
-                    np.pi,
-                    lambda phi: 0,
-                    lambda phi: 2 * np.pi,
-                    args=(v, kappa_gmf, self.params),
-                )
+            results[k] = result
 
-                results[k] = result
-
-            return indices, results
+        return indices, results
 
     def build_for_fit_parallel_gmf(self, kappa, Eex, A, Z, deflections, nthreads):
         """
@@ -392,6 +391,7 @@ class ExposureIntegralTable:
 
         args = []
         # create argument list for 2d parallelization based on sources & alphas
+        print("Constructing arguments for precomputation")
         for indices in np.ndindex(len(alphas), len(self.varpi)):
             # unpack
             a, i = indices
@@ -400,6 +400,10 @@ class ExposureIntegralTable:
             v = self.varpi[i]
             REs = Rearths[a,i,:]
             J_REs = arr_spectrums[a,i,:]
+
+            # dont perform exposure calculation if arrival spectrum is nan
+            if np.all(np.isnan(J_REs)):
+                continue
 
             args.append(((a, i), v, self.kappa, REs, J_REs, deflections))
 
@@ -410,7 +414,7 @@ class ExposureIntegralTable:
                 progress_bar(
                     mpool.imap(self.eps_per_source_composition, args),
                     desc="Precomputing Exposure Integral & kappa_GMF",
-                    total=int(len(alphas) * len(self.varpi))
+                    total=len(args)
                 )
             )
 
@@ -418,38 +422,6 @@ class ExposureIntegralTable:
             for indices, vals in results:
                 a, i = indices
                 self.table[a,i,:] = vals
-
-
-        # print(self.table)
-        # # Cannot parallelise w/ imap due to magnetic lens pickling...
-        # for a, _ in enumerate(alphas):
-        #     args = []
-        #     for i, v in progress_bar(enumerate(self.varpi), total=len(self.varpi), desc="Precomputing kappa_gmf for each source"):
-
-        #         kappa_gmf = np.zeros((len(alphas), len(self.kappa)))
-                
-        #         REs = Rearths[a,i,:]
-        #         J_REs = arr_spectrums[a,i,:]
-        #         for j, k in enumerate(self.kappa):
-
-        #             k_gmf = deflections.get_kappa_gmf_per_source_composition(v, k, REs, J_REs)
-        #             kappa_gmf[a,j] = k_gmf
-
-        #         args.append((v, kappa_gmf))
-
-        #     print(v, self.varpi, kappa_gmf)
-
-        #     with Pool(nthreads) as mpool:
-        #         results = list(
-        #             progress_bar(
-        #                 mpool.imap(self.eps_per_source_gmf, args),
-        #                 total=len(self.varpi),
-        #                 desc="Precomputing exposure integral",
-        #             )
-        #         )
-        #         self.table[a,:,:] = np.asarray(results)
-        #         print()
-        # self.table = np.asarray(self.table)
 
     def init_from_file(self, input_filename):
         """
