@@ -321,6 +321,23 @@ class Analysis:
         else:
             self.tables = ExposureIntegralTable(input_filename=input_filename)
 
+    def use_composition_tables(self, input_filename):
+        '''
+        Read from tables containing composition data that have already been made
+        '''
+        if self.analysis_type == self.composition_type:
+            with h5py.File(input_filename, "r") as f:
+                self.Zdet = f["Zdet"][()]
+                self.Nalphas = f["Nalphas"][()]
+                self.NRsrcs = f["NRsrcs"][()]
+                self.alphas = f["alphas"][()]
+                self.Rsrcs = f["Rsrcs"][()]
+                self.log_wQs = f["log_wQs"][()]
+                self.Rexs = f["Rexs"][()]
+        else:
+            raise Exception(f"Analysis Type {self.analysis_type} not compatible with composition tables")
+
+
     def _get_zenith_angle(self, c_icrs, loc, time):
         """
         Calculate the zenith angle of a known point
@@ -872,10 +889,11 @@ class Analysis:
 
         # KW: due to multiprocessing appending,
         # collapse dimension from (1, 23, 50) -> (23, 50)
-        eps_fit.resize(self.Earr_grid.shape)
+        if self.analysis_type != self.composition_type:
+            eps_fit.resize(self.Earr_grid.shape)
 
         # handle selected sources
-        if self.data.source.N < len(eps_fit):
+        if self.data.source.N < eps_fit.shape[1]:
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
             Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
 
@@ -885,7 +903,8 @@ class Analysis:
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
-        D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
+        if self.analysis_type != self.composition_type:
+            D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
 
         # prepare fit inputs
         self.fit_input = {
@@ -909,20 +928,60 @@ class Analysis:
         ):
 
             self.fit_input["Edet"] = self.data.uhecr.energy
-            self.fit_input["Eth"] = self.model.Eth
+            self.fit_input["Eth"] = self.data.detector.Eth
             self.fit_input["Eerr"] = self.data.detector.energy_uncertainty
             self.fit_input["E_grid"] = E_grid
             self.fit_input["Earr_grid"] = Earr_grid
 
-            ptype = str(self.data.uhecr.ptype)
+            ptype = str(self.model.ptype)
             _, self.fit_input["Z"] = self.nuc_table[ptype]
 
-        if self.analysis_type == self.gmf_type:
+        if self.analysis_type == self.gmf_type or self.analysis_type == self.composition_type:
             self.fit_input["kappa_gmf"] = self.data.uhecr.kappa_gmf
             # self.fit_input["kappa_gmf"] = np.ones_like(
             #     self.data.uhecr.kappa_gmf) * self.data.detector.kappa_d
         else:
             self.fit_input["kappa_d"] = self.data.detector.kappa_d
+
+        if self.analysis_type == self.composition_type:
+            # add rigidity instead of energy
+            self.fit_input["Rdet"] = self.data.uhecr.energy / self.Zdet
+            self.fit_input["Rth"] = self.data.detector.Eth / self.Zdet
+            self.fit_input["Rerr"] = self.data.detector.energy_uncertainty
+
+            self.fit_input["Nalphas"] = self.Nalphas
+            self.fit_input["NRsrcs"] = self.NRsrcs
+            self.fit_input["alpha_grid"] = self.alphas
+            self.fit_input["Rsrc_grid"] = self.Rsrcs
+            self.fit_input["Rmax"] = np.max(self.Rsrcs)
+            self.fit_input["log_wQs"] = self.log_wQs
+            self.fit_input["Rex_grid"] = self.Rexs
+
+            # truncate any Rex values that are NaN, and the corresponding 
+            # source parameters too
+            if np.any(np.isnan(self.Rexs)):
+
+                Rexs_tmp = []
+                for a in range(self.Nalphas):
+                    Rex_isnan = np.isnan(self.Rexs[a,:])
+                    Rexs_tmp.append(self.Rexs[a,~Rex_isnan])
+                    # we assume that cutoff for sources are the same for all alphas
+                    # so we just do this once
+                    # in the case it is not, we have to think otherwise
+                    if a == 0:
+                        self.fit_input["D"] = self.fit_input["D"][~Rex_isnan]
+                        self.fit_input["varpi"] = self.fit_input["varpi"][~Rex_isnan]
+                        self.fit_input["Ns"] = len(self.fit_input["D"])
+
+                    self.fit_input["eps"] = self.fit_input["eps"][a,~Rex_isnan,:]
+
+                # set new Rex 
+                self.fit_input["Rex_grid"] = np.asarray(Rexs_tmp)
+
+            
+
+
+
 
     def save(self):
         """
