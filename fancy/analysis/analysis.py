@@ -260,6 +260,7 @@ class Analysis:
         num_points=50,
         table_file=None,
         parallel=True,
+        nthreads=int(cpu_count() * 0.75)
     ):
         """
         Build the energy interpolation tables.
@@ -270,11 +271,11 @@ class Analysis:
         )
         self.Earr_grid = []
 
-        if parallel and not isinstance(self.energy_loss, CRPropaApproxEnergyLoss):
+        if parallel and not isinstance(self.energy_loss, CRPropaApproxEnergyLoss) and not np.isscalar(self.data.source.distance):
 
             args_list = [(self.E_grid, d) for d in self.data.source.distance]
             # parallelize for each source distance
-            with Pool(self.nthreads) as mpool:
+            with Pool(nthreads) as mpool:
                 results = list(
                     progress_bar(
                         mpool.imap(self.energy_loss.get_arrival_energy_vec, args_list),
@@ -295,7 +296,7 @@ class Analysis:
                 )
 
         if table_file:
-            with h5py.File(table_file, "r+") as f:
+            with h5py.File(table_file, "a") as f:
                 E_group = f.create_group("energy")
                 E_group.create_dataset("E_grid", data=self.E_grid)
                 E_group.create_dataset("Earr_grid", data=self.Earr_grid)
