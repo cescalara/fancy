@@ -39,3 +39,11 @@ def f_theta_scalar(kappa, P=0.683):
 def f_theta(kappa, P=0.683):
     """vectorized version"""
     return np.vectorize(f_theta_scalar)(kappa, P)
+
+def theta_ex(Rex, B, D, lc=1):
+    '''theta(deg), Rex(EV), B(nG), D(Mpc), lc(Mpc)'''
+    return 2.3 * (50 / Rex) * B * np.sqrt(D / 10) * np.sqrt(lc)
+
+def kappa_ex(Rex, B, D, lc=1):
+    '''kappa, Rex(EV), B(nG), D(Mpc)'''
+    return 7552 / (2.3 * (50 / Rex) * B * np.sqrt(D / 10) * np.sqrt(lc))**2

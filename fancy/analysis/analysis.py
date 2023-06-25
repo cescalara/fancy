@@ -12,7 +12,7 @@ import os
 from ..interfaces.integration import ExposureIntegralTable
 from ..interfaces.stan import Direction, convert_scale, coord_to_uv, uv_to_coord
 from ..interfaces.data import Uhecr
-from ..interfaces.utils import get_nucleartable
+from ..interfaces.utils import get_nucleartable, kappa_ex
 
 from ..plotting import AllSkyMap
 from ..propagation.proton_energy_loss import ProtonApproxEnergyLoss
@@ -235,10 +235,21 @@ class Analysis:
 
                 with h5py.File(composition_file, "r") as f:
                     alphas = f["alphas"][()]
-                    # Dsrcs = f["Dsrcs"][()]
+                    Nalphas = f["Nalphas"][()]
+                    Dsrcs = f["Dsrcs"][()]
                     Rearths = f["Rearths"][()]
                     arr_spectrums = f["arr_spectrums"][()]
-                    # Rexs = f["Rexs"][()]
+                    Rexs = f["Rexs"][()]
+
+                # compute kappa_max manually, based on distance & Rex
+                # set Dmin = 1Mpc, Bmin = 1e-3, Rexmax = max(Rexs)
+                # future: can set Dmin = np.min(Dsrcs), but we set it to absolute minium
+                # to assure kappa_max >> kappa_ex
+                kappa_max = kappa_ex(Rex=np.max(Rexs), B=1e-3, D=1)
+                print(f"kappa_max: {kappa_max:.3e}")
+
+                # set new kappa
+                kappa = np.logspace(0, np.log10(kappa_max), 100)
 
                 if parallel:
                     self.tables.build_for_fit_parallel_composition(
@@ -313,10 +324,12 @@ class Analysis:
             input_table = ExposureIntegralTable(input_filename=input_filename)
             self.tables.table = input_table.table
             self.tables.kappa = input_table.kappa
+            self.tables.alphas = input_table.alphas
 
-            with h5py.File(input_filename, "r") as f:
-                self.E_grid = f["energy/E_grid"][()]
-                self.Earr_grid = f["energy/Earr_grid"][()]
+            # uncomment once we figure out bug for single source case 
+            # with h5py.File(input_filename, "r") as f:
+            #     self.E_grid = f["energy/E_grid"][()]
+            #     self.Earr_grid = f["energy/Earr_grid"][()]
 
         else:
             self.tables = ExposureIntegralTable(input_filename=input_filename)
@@ -336,7 +349,6 @@ class Analysis:
                 self.Rexs = f["Rexs"][()]
         else:
             raise Exception(f"Analysis Type {self.analysis_type} not compatible with composition tables")
-
 
     def _get_zenith_angle(self, c_icrs, loc, time):
         """
@@ -558,7 +570,7 @@ class Analysis:
                 omega_rand_kappa_gmf,
                 _,
             ) = new_uhecr.eval_kappa_gmf(
-                particle_type=new_uhecr.ptype, Nrand=100, gmf="JF12", plot=False
+                particle_type=self.model.ptype, Nrand=100, gmf="JF12", plot=False
             )
 
             self.defl_plotvars.update(
@@ -884,8 +896,11 @@ class Analysis:
 
         eps_fit = self.tables.table
         kappa_grid = self.tables.kappa
-        E_grid = self.E_grid
-        Earr_grid = list(self.Earr_grid)
+        # E_grid = self.E_grid
+        # Earr_grid = list(self.Earr_grid)
+        # temporary
+        E_grid = np.zeros(50)
+        Earr_grid = list(np.zeros((1, 50)))
 
         # KW: due to multiprocessing appending,
         # collapse dimension from (1, 23, 50) -> (23, 50)
@@ -949,6 +964,7 @@ class Analysis:
             self.fit_input["Rth"] = self.data.detector.Eth / self.Zdet
             self.fit_input["Rerr"] = self.data.detector.energy_uncertainty
 
+            # for composition weighted flux
             self.fit_input["Nalphas"] = self.Nalphas
             self.fit_input["NRsrcs"] = self.NRsrcs
             self.fit_input["alpha_grid"] = self.alphas
@@ -978,8 +994,11 @@ class Analysis:
                 # set new Rex 
                 self.fit_input["Rex_grid"] = np.asarray(Rexs_tmp)
 
-            
+            # alpha grid for effective exposure
+            self.fit_input["alpha_eps_grid"] = self.tables.alphas
+            self.fit_input["Nalphas_eps"] = len(self.tables.alphas)
 
+            
 
 
 
@@ -1151,11 +1170,12 @@ class Analysis:
             show_progress=show_progress,
             output_dir=output_dir,
             iter_warmup=warmup,
+            **kwargs
         )
 
         # Diagnositics
         print("Checking all diagnostics...")
-        self.fit.diagnose()
+        print(self.fit.diagnose())
 
         self.chain = self.fit.stan_variables()
         print("Done!")

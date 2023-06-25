@@ -129,14 +129,11 @@ class GMFDeflections:
         # Initialise lens (cannot initialize globally since CRPropa instance 
         # needs to be launched per thread)
         path_to_lens = str(get_path_to_lens(self.lens_name))
-        self.lens = crpropa.MagneticLens(path_to_lens)
-        self.lens.normalizeLens()
+        lens = crpropa.MagneticLens(path_to_lens)
+        lens.normalizeLens()
 
         omega_gb = sample_vMF(varpi, kappa_ex, N)
         coords_gb = uv_to_coord(omega_gb)
-        
-        # fine to set as EeV, input anyways needs to be energy
-        # rigidities_gb = np.tile(Rex, N) * crpropa.EeV  # UHECR energy at gal. boundary
 
         # sample from arrival rigidity distribution
         dR = np.abs(np.max(REs) - np.min(REs)) / len(REs)

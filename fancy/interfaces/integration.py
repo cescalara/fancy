@@ -2,6 +2,7 @@ from re import T
 from scipy import integrate, interpolate
 import h5py
 from tqdm import tqdm as progress_bar
+import time 
 
 from ..detector.exposure import *
 
@@ -33,6 +34,7 @@ class ExposureIntegralTable:
 
         self.table = []
         self.sim_table = []
+        self.alphas = []
 
         if input_filename != None:
             self.init_from_file(input_filename)
@@ -370,7 +372,7 @@ class ExposureIntegralTable:
             print()
         self.table = np.asarray(self.table)
 
-    def build_for_fit_parallel_composition(self, kappa, alphas, Rearths, arr_spectrums, deflections, nthreads):
+    def build_for_fit_parallel_composition(self, kappa, alpha_grid, Rearths, arr_spectrums, deflections, nthreads):
         """
         Build the tabulated integrals to be interpolated over in the fit.
         Save with filename given.
@@ -387,25 +389,35 @@ class ExposureIntegralTable:
         """
 
         self.kappa = kappa
-        self.table = np.zeros((len(alphas), len(self.varpi), len(kappa)))
+
+        # truncate alphas to smaller values
+        self.alphas = np.linspace(np.min(alpha_grid), np.max(alpha_grid), int(len(alpha_grid)//4))
+        self.table = np.zeros((len(self.alphas), len(self.varpi), len(kappa)))
 
         args = []
         # create argument list for 2d parallelization based on sources & alphas
         print("Constructing arguments for precomputation")
-        for indices in np.ndindex(len(alphas), len(self.varpi)):
+        for indices in np.ndindex(len(self.alphas), len(self.varpi)):
             # unpack
             a, i = indices
 
             # get values
             v = self.varpi[i]
-            REs = Rearths[a,i,:]
-            J_REs = arr_spectrums[a,i,:]
+            alpha = self.alphas[a]
+
+            # evaluate index corresponding to original alpha grid
+            aa = np.digitize(alpha, alpha_grid, right=True)
+            REs = Rearths[aa,i,:]
+            J_REs = arr_spectrums[aa,i,:]
 
             # dont perform exposure calculation if arrival spectrum is nan
             if np.all(np.isnan(J_REs)):
                 continue
 
             args.append(((a, i), v, self.kappa, REs, J_REs, deflections))
+
+        #  measure time it takes to run this part
+        t0 = time.perf_counter()
 
         # perform 2d paralleilization
         with Pool(nthreads) as mpool:
@@ -423,6 +435,10 @@ class ExposureIntegralTable:
                 a, i = indices
                 self.table[a,i,:] = vals
 
+        t1 = time.perf_counter()
+
+        print(f"Total time elapsed: {(t1 - t0) / 3600 :.5f} hrs")
+
     def init_from_file(self, input_filename):
         """
         Initialise the object from the given file.
@@ -434,6 +450,7 @@ class ExposureIntegralTable:
             self.params = f["params"][()]
             self.kappa = f["main"]["kappa"][()]
             self.table = f["main"]["table"][()]
+            self.alphas = f["main"]["alphas"][()]
 
             if f["simulation"]["kappa"][()] is not h5py.Empty("f"):
                 try:
@@ -469,6 +486,11 @@ class ExposureIntegralTable:
             else:
                 main.create_dataset("kappa", data=h5py.Empty("f"))
                 main.create_dataset("table", data=h5py.Empty("f"))
+
+            if self.alphas != []:
+                main.create_dataset("alphas", data=self.alphas)
+            else:
+                main.create_dataset("alphas", data=h5py.Empty("f"))
 
             # simulation table
             sim = f.create_group("simulation")
