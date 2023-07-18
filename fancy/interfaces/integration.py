@@ -1,5 +1,6 @@
 from re import T
 from scipy import integrate, interpolate
+from scipy.integrate import trapezoid
 import h5py
 from tqdm import tqdm as progress_bar
 import time 
@@ -306,14 +307,14 @@ class ExposureIntegralTable:
         :param: v : source unit vector
         """
 
-        indices, v, kappa, REs, J_REs, deflections = args
+        indices, v, kappa, REs, J_REs, dRearths, deflections = args
         print(indices)
         results = np.zeros(len(kappa))
 
         for k, kap in enumerate(kappa):
             
             # compute kappa_gmf
-            kappa_gmf = deflections.get_kappa_gmf_per_source_composition(v, kap, REs, J_REs)
+            kappa_gmf = deflections.get_kappa_gmf_per_source_composition(v, kap, REs, dRearths, J_REs)
             # print("Computed kappa_gmf")
 
             result, err = integrate.dblquad(
@@ -372,7 +373,7 @@ class ExposureIntegralTable:
             print()
         self.table = np.asarray(self.table)
 
-    def build_for_fit_parallel_composition(self, kappa, alpha_grid, Rearths, arr_spectrums, deflections, nthreads):
+    def build_for_fit_parallel_composition(self, kappa, alpha_grid, Rearths, dRearths, arr_spectrums, deflections, nthreads):
         """
         Build the tabulated integrals to be interpolated over in the fit.
         Save with filename given.
@@ -407,14 +408,16 @@ class ExposureIntegralTable:
 
             # evaluate index corresponding to original alpha grid
             aa = np.digitize(alpha, alpha_grid, right=True)
-            REs = Rearths[aa,i,:]
-            J_REs = arr_spectrums[aa,i,:]
+            J_REs = arr_spectrums[i,aa,:] 
+
+            # normalize
+            J_REs /= np.sum(J_REs * dRearths)
 
             # dont perform exposure calculation if arrival spectrum is nan
             if np.all(np.isnan(J_REs)):
                 continue
 
-            args.append(((a, i), v, self.kappa, REs, J_REs, deflections))
+            args.append(((a, i), v, self.kappa, Rearths, dRearths, J_REs, deflections))
 
         #  measure time it takes to run this part
         t0 = time.perf_counter()
@@ -450,7 +453,9 @@ class ExposureIntegralTable:
             self.params = f["params"][()]
             self.kappa = f["main"]["kappa"][()]
             self.table = f["main"]["table"][()]
-            self.alphas = f["main"]["alphas"][()]
+            
+            if f["main"]["alphas"][()] is not h5py.Empty("f"):
+                self.alphas = f["main"]["alphas"][()]
 
             if f["simulation"]["kappa"][()] is not h5py.Empty("f"):
                 try:

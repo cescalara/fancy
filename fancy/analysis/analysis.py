@@ -235,9 +235,9 @@ class Analysis:
 
                 with h5py.File(composition_file, "r") as f:
                     alphas = f["alphas"][()]
-                    Nalphas = f["Nalphas"][()]
                     Dsrcs = f["Dsrcs"][()]
                     Rearths = f["Rearths"][()]
+                    dRearths = f["dRearths"][()]
                     arr_spectrums = f["arr_spectrums"][()]
                     Rexs = f["Rexs"][()]
 
@@ -246,18 +246,19 @@ class Analysis:
                 # future: can set Dmin = np.min(Dsrcs), but we set it to absolute minium
                 # to assure kappa_max >> kappa_ex
                 kappa_max = kappa_ex(Rex=np.max(Rexs), B=1e-3, D=1)
-                print(f"kappa_max: {kappa_max:.3e}")
+                kappa_min = kappa_ex(Rex=np.min(Rexs), B=10, D=100)
+                print(f"kappa_min: {kappa_min:.3e}, kappa_max: {kappa_max:.3e}")
 
                 # set new kappa
-                kappa = np.logspace(0, np.log10(kappa_max), 100)
+                kappa = np.logspace(np.log10(kappa_min), np.log10(kappa_max), 100)
 
                 if parallel:
                     self.tables.build_for_fit_parallel_composition(
-                        kappa, alphas, Rearths, arr_spectrums, self.gmf_deflections, nthreads
+                        kappa, alphas, Rearths, dRearths, arr_spectrums, self.gmf_deflections, nthreads
                     )
                 else:
                     self.tables.build_for_fit_composition(
-                        kappa, alphas, Rearths, arr_spectrums, self.gmf_deflections
+                        kappa, alphas, Rearths, dRearths, arr_spectrums, self.gmf_deflections
                     )
 
             else:
@@ -342,11 +343,18 @@ class Analysis:
             with h5py.File(input_filename, "r") as f:
                 self.Zdet = f["Zdet"][()]
                 self.Nalphas = f["Nalphas"][()]
-                self.NRsrcs = f["NRsrcs"][()]
+                self.NRearths = f["NRearths"][()]
                 self.alphas = f["alphas"][()]
-                self.Rsrcs = f["Rsrcs"][()]
-                self.log_wQs = f["log_wQs"][()]
+                self.Rearths = f["Rearths"][()]
+                self.arr_spectrums = f["arr_spectrums"][()]
+                self.Rcutoffs = f["Rcutoffs"][()]
+                self.Qsrcs = f["Qsrcs"][()]
+                self.Qearths = f["Qearths"][()]
+                self.loss_factor = f["loss_factor"][()]
                 self.Rexs = f["Rexs"][()]
+                self.Zsrcs = f["Zsrcs"][()]
+
+
         else:
             raise Exception(f"Analysis Type {self.analysis_type} not compatible with composition tables")
 
@@ -964,14 +972,28 @@ class Analysis:
             self.fit_input["Rth"] = self.data.detector.Eth / self.Zdet
             self.fit_input["Rerr"] = self.data.detector.energy_uncertainty
 
-            # for composition weighted flux
+            # for BG model
+            self.fit_input["Zsrcs"] = self.Zsrcs
+            self.fit_input["NZsrcs"] = len(self.Zsrcs)
+
+            # for arrival spectrum
+            self.fit_input["Zdet"] = self.Zdet
             self.fit_input["Nalphas"] = self.Nalphas
-            self.fit_input["NRsrcs"] = self.NRsrcs
+            self.fit_input["NRearths"] = self.NRearths
             self.fit_input["alpha_grid"] = self.alphas
-            self.fit_input["Rsrc_grid"] = self.Rsrcs
-            self.fit_input["Rmax"] = np.max(self.Rsrcs)
-            self.fit_input["log_wQs"] = self.log_wQs
-            self.fit_input["Rex_grid"] = self.Rexs
+            self.fit_input["Rearth_grid"] = self.Rearths
+            self.fit_input["log_arr_spectrum_grid"] = np.log(self.arr_spectrums)
+            # self.fit_input["Rmax_grid"] = self.Rmaxs
+            
+            self.fit_input["Rcutoff"] = self.Rcutoffs[0,0]
+            self.fit_input["Qsrc_grid"] = self.Qsrcs
+            self.fit_input["log_Qsrc_grid"] = np.log10(self.Qsrcs)
+            self.fit_input["loss_factor_grid"] = self.loss_factor
+            self.fit_input["log_Qearth_grid"] = np.log10(self.Qearths)
+            self.fit_input["Rex_grid"] = self.Rexs 
+
+            # make eps into log scale 
+            self.fit_input["log_eps"] = np.log10(self.fit_input["eps"])
 
             # truncate any Rex values that are NaN, and the corresponding 
             # source parameters too
