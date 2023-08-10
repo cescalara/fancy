@@ -348,9 +348,9 @@ class Analysis:
                 self.Rearths = f["Rearths"][()]
                 self.arr_spectrums = f["arr_spectrums"][()]
                 self.Rcutoffs = f["Rcutoffs"][()]
-                self.Qsrcs = f["Qsrcs"][()]
+                self.qsrcs = f["qsrcs"][()]
                 self.Qearths = f["Qearths"][()]
-                self.loss_factor = f["loss_factor"][()]
+                self.surv_ratios = f["surv_ratios"][()]
                 self.Rexs = f["Rexs"][()]
                 self.Zsrcs = f["Zsrcs"][()]
 
@@ -985,10 +985,9 @@ class Analysis:
             self.fit_input["log_arr_spectrum_grid"] = np.log(self.arr_spectrums)
             # self.fit_input["Rmax_grid"] = self.Rmaxs
             
-            self.fit_input["Rcutoff"] = self.Rcutoffs[0,0]
-            self.fit_input["Qsrc_grid"] = self.Qsrcs
-            self.fit_input["log_Qsrc_grid"] = np.log10(self.Qsrcs)
-            self.fit_input["loss_factor_grid"] = self.loss_factor
+            self.fit_input["Rcutoff"] = self.Rcutoffs[0]
+            self.fit_input["log_qsrc_grid"] = np.log10(self.qsrcs)
+            self.fit_input["surv_ratio_grid"] = self.surv_ratios
             self.fit_input["log_Qearth_grid"] = np.log10(self.Qearths)
             self.fit_input["Rex_grid"] = self.Rexs 
 
