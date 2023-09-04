@@ -12,7 +12,7 @@ import os
 from ..interfaces.integration import ExposureIntegralTable
 from ..interfaces.stan import Direction, convert_scale, coord_to_uv, uv_to_coord
 from ..interfaces.data import Uhecr
-from ..interfaces.utils import get_nucleartable
+from ..interfaces.utils import get_nucleartable, kappa_ex
 
 from ..plotting import AllSkyMap
 from ..propagation.proton_energy_loss import ProtonApproxEnergyLoss
@@ -22,6 +22,8 @@ from ..detector.exposure import m_dec
 
 from fancy.interfaces.data import Data
 from fancy.interfaces.stan import Model
+
+from fancy.propagation.gmf import GMFDeflections
 
 try:
 
@@ -36,8 +38,6 @@ class Analysis:
     """
     To manage the running of simulations and fits based on Data and Model objects.
     """
-
-    nthreads = int(cpu_count() * 0.75)
 
     def __init__(
         self,
@@ -54,8 +54,8 @@ class Analysis:
         :param data: a Data object
         :param model: a Model object
         :param analysis_type: type of analysis
-        :param energy_loss_approx: Method used for energy loss approx, 
-            only relevant for ptype!="p". Can be "loss_length" or 
+        :param energy_loss_approx: Method used for energy loss approx,
+            only relevant for ptype!="p". Can be "loss_length" or
             "mean_sim_energy"
         """
 
@@ -103,13 +103,14 @@ class Analysis:
         self.E_loss_type = "energy_loss"
         self.joint_type = "joint"
         self.gmf_type = "joint_gmf"
+        self.composition_type = "joint_composition"
 
         if analysis_type == None:
             analysis_type = self.arr_dir_type
 
         self.analysis_type = analysis_type
 
-        if self.analysis_type.find("joint") != -1:
+        if self.analysis_type == self.joint_type or self.analysis_type == self.gmf_type:
 
             # find lower energy threshold for the simulation, given Eth and Eerr
             self.model.Eth_sim = self.energy_loss.get_Eth_sim(
@@ -121,6 +122,11 @@ class Analysis:
                 self.model.Eth_sim, self.data.source.distance
             )
 
+        if self.analysis_type == self.gmf_type or self.analysis_type == self.composition_type:
+
+            # Set up gmf deflections
+            self.gmf_deflections = GMFDeflections()
+
         # Set up integral tables
         params = self.data.detector.params
         varpi = self.data.source.unit_vector
@@ -130,7 +136,7 @@ class Analysis:
         self.nuc_table = get_nucleartable()
 
     def build_tables(
-        self, num_points=50, sim_only=False, fit_only=False, parallel=True
+        self, num_points=100, sim_only=False, fit_only=False, parallel=True, nthreads=int(cpu_count() * 0.75), composition_file=None,
     ):
         """
         Build the necessary integral tables.
@@ -155,6 +161,9 @@ class Analysis:
                 kappa_true = self.kappa_ex
 
             if self.analysis_type == self.gmf_type:
+
+                A, Z = self.nuc_table[self.model.ptype]
+
                 # shift by 0.02 to get kappa_ex at g.b.
                 D_src = self.data.source.distance - 0.02
                 self.Eex = self.energy_loss.get_Eex(self.Eth_src, self.model.alpha)
@@ -162,13 +171,19 @@ class Analysis:
                 self.kappa_ex = self.energy_loss.get_kappa_ex(
                     self.Eex, self.model.B, D_src
                 )
-                kappa_true = self.kappa_ex
 
-                # evaluate for kappa_d
+                # Find kappa_gmf for each source via lensing
+                varpi = self.data.source.unit_vector
+                kappa_gmf = []
+                for v, k, e in zip(varpi, self.kappa_ex, self.Eex):
+                    k_gmf = self.gmf_deflections.get_kappa_gmf_per_source(v, k, e, A, Z)
+                    kappa_gmf.append(k_gmf)
+
+                kappa_true = np.array(kappa_gmf)
 
             if parallel:
                 self.tables.build_for_sim_parallel(
-                    kappa_true, self.model.alpha, self.model.B, D_src
+                    kappa_true, self.model.alpha, self.model.B, D_src, nthreads
                 )
             else:
                 self.tables.build_for_sim(
@@ -178,30 +193,91 @@ class Analysis:
         if fit_only:
 
             # logarithmically spcaed array with 60% of points between KAPPA_MIN and 100
-            kappa_first = np.logspace(
-                np.log(1), np.log(10), int(num_points * 0.7), base=np.e
-            )
-            kappa_second = np.logspace(
-                np.log(10), np.log(100), int(num_points * 0.2) + 1, base=np.e
-            )
-            kappa_third = np.logspace(
-                np.log(100), np.log(1000), int(num_points * 0.1) + 1, base=np.e
-            )
-            kappa = np.concatenate(
-                (kappa_first, kappa_second[1:], kappa_third[1:]), axis=0
-            )
+            # kappa_first = np.logspace(
+            #     np.log(1), np.log(10), int(num_points * 0.7), base=np.e
+            # )
+            # kappa_second = np.logspace(
+            #     np.log(10), np.log(100), int(num_points * 0.2) + 1, base=np.e
+            # )
+            # kappa_third = np.logspace(
+            #     np.log(100), np.log(1000), int(num_points * 0.1) + 1, base=np.e
+            # )
+            # kappa = np.concatenate(
+            #     (kappa_first, kappa_second[1:], kappa_third[1:]), axis=0
+            # )
+            kappa = np.logspace(0, 5, num_points)
 
             # full table for fit
-            if parallel:
-                self.tables.build_for_fit_parallel(kappa)
+            if self.analysis_type == self.gmf_type:
+
+                kappa_gmf = []
+                alpha_approx = 2.5
+
+                # in the future, read Rex from the files
+                Eex = 2 ** (1 / (alpha_approx - 1)) * self.model.Eth
+
+                A, Z = self.nuc_table[self.model.ptype]
+
+                if parallel:
+                    self.tables.build_for_fit_parallel_gmf(
+                        kappa, Eex, A, Z, self.gmf_deflections, nthreads
+                    )
+                else:
+                    self.tables.build_for_fit_gmf(
+                        kappa, Eex, A, Z, self.gmf_deflections
+                    )
+
+            elif self.analysis_type == self.composition_type:
+                kappa_gmf = []
+
+                if not os.path.exists(composition_file):
+                    return OSError(f"File {composition_file} does not exist.")
+
+                with h5py.File(composition_file, "r") as f:
+                    alphas = f["alphas"][()]
+                    Dsrcs = f["Dsrcs"][()]
+                    Rearths = f["Rearths"][()]
+                    dRearths = f["dRearths"][()]
+                    arr_spectrums = f["arr_spectrums"][()]
+                    Rexs = f["Rexs"][()]
+
+                # compute kappa_max manually, based on distance & Rex
+                # set Dmin = 1Mpc, Bmin = 1e-3, Rexmax = max(Rexs)
+                # future: can set Dmin = np.min(Dsrcs), but we set it to absolute minium
+                # to assure kappa_max >> kappa_ex
+                # kappa_max = kappa_ex(Rex=np.max(Rexs), B=1e-3, D=1)
+                # kappa_min = kappa_ex(Rex=np.min(Rexs), B=10, D=100)
+                # print(f"kappa_min: {kappa_min:.3e}, kappa_max: {kappa_max:.3e}")
+                kappa_min = 0.1
+                kappa_max = 1e8
+
+                # set new kappa
+                # denser grid for small kappa
+                kappa_1 = np.logspace(np.log10(kappa_min), np.log10(kappa_min)+2, 200)
+                kappa_2 = np.logspace(np.log10(kappa_min)+2, np.log10(kappa_max), 200)
+                kappa = np.concatenate((kappa_1, kappa_2))
+
+                if parallel:
+                    self.tables.build_for_fit_parallel_composition(
+                        kappa, alphas, Rearths, dRearths, arr_spectrums, self.gmf_deflections, nthreads
+                    )
+                else:
+                    self.tables.build_for_fit_composition(
+                        kappa, alphas, Rearths, dRearths, arr_spectrums, self.gmf_deflections
+                    )
+
             else:
-                self.tables.build_for_fit(kappa)
+                if parallel:
+                    self.tables.build_for_fit_parallel(kappa, nthreads)
+                else:
+                    self.tables.build_for_fit(kappa)
 
     def build_energy_table(
         self,
         num_points=50,
         table_file=None,
         parallel=True,
+        nthreads=int(cpu_count() * 0.75)
     ):
         """
         Build the energy interpolation tables.
@@ -212,11 +288,11 @@ class Analysis:
         )
         self.Earr_grid = []
 
-        if parallel and not isinstance(self.energy_loss, CRPropaApproxEnergyLoss):
+        if parallel and not isinstance(self.energy_loss, CRPropaApproxEnergyLoss) and not np.isscalar(self.data.source.distance):
 
             args_list = [(self.E_grid, d) for d in self.data.source.distance]
             # parallelize for each source distance
-            with Pool(self.nthreads) as mpool:
+            with Pool(nthreads) as mpool:
                 results = list(
                     progress_bar(
                         mpool.imap(self.energy_loss.get_arrival_energy_vec, args_list),
@@ -237,7 +313,7 @@ class Analysis:
                 )
 
         if table_file:
-            with h5py.File(table_file, "r+") as f:
+            with h5py.File(table_file, "a") as f:
                 E_group = f.create_group("energy")
                 E_group.create_dataset("E_grid", data=self.E_grid)
                 E_group.create_dataset("Earr_grid", data=self.Earr_grid)
@@ -254,13 +330,38 @@ class Analysis:
             input_table = ExposureIntegralTable(input_filename=input_filename)
             self.tables.table = input_table.table
             self.tables.kappa = input_table.kappa
+            self.tables.alphas = input_table.alphas
 
-            with h5py.File(input_filename, "r") as f:
-                self.E_grid = f["energy/E_grid"][()]
-                self.Earr_grid = f["energy/Earr_grid"][()]
+            # uncomment once we figure out bug for single source case 
+            # with h5py.File(input_filename, "r") as f:
+            #     self.E_grid = f["energy/E_grid"][()]
+            #     self.Earr_grid = f["energy/Earr_grid"][()]
 
         else:
             self.tables = ExposureIntegralTable(input_filename=input_filename)
+
+    def use_composition_tables(self, input_filename):
+        '''
+        Read from tables containing composition data that have already been made
+        '''
+        if self.analysis_type == self.composition_type:
+            with h5py.File(input_filename, "r") as f:
+                self.Zdet = f["Zdet"][()]
+                self.Nalphas = f["Nalphas"][()]
+                self.NRearths = f["NRearths"][()]
+                self.alphas = f["alphas"][()]
+                self.Rearths = f["Rearths"][()]
+                self.arr_spectrums = f["arr_spectrums"][()]
+                self.Rcutoffs = f["Rcutoffs"][()]
+                self.qsrcs = f["qsrcs"][()]
+                self.Qearths = f["Qearths"][()]
+                self.surv_ratios = f["surv_ratios"][()]
+                self.Rexs = f["Rexs"][()]
+                self.Zsrcs = f["Zsrcs"][()]
+
+
+        else:
+            raise Exception(f"Analysis Type {self.analysis_type} not compatible with composition tables")
 
     def _get_zenith_angle(self, c_icrs, loc, time):
         """
@@ -482,7 +583,7 @@ class Analysis:
                 omega_rand_kappa_gmf,
                 _,
             ) = new_uhecr.eval_kappa_gmf(
-                particle_type=new_uhecr.ptype, Nrand=100, gmf="JF12", plot=False
+                particle_type=self.model.ptype, Nrand=100, gmf="JF12", plot=False
             )
 
             self.defl_plotvars.update(
@@ -499,6 +600,7 @@ class Analysis:
 
     def _simulate_deflections(self, kappas, Nrand=100, path_to_lens=None):
         """
+        TODO: move to separate class in propagation/gmf.py
         Simulate the forward propagation of UHECR in the galactic magnetic field using
         CRPropa healpix maps and galactic lensing. The simulation performs (in essence)
         the following:
@@ -641,7 +743,7 @@ class Analysis:
             raise ImportError("CRPropa3 must be installed to use this functionality")
 
         energies_gb = self.Earr * crpropa.EeV  # UHECR energy at gal. boundary
-        A, Z = self.nuc_table[self.ptype]
+        A, Z = self.nuc_table[self.model.ptype]
         pid = crpropa.nucleusId(A, Z)
 
         map_container = crpropa.ParticleMapsContainer()
@@ -807,15 +909,19 @@ class Analysis:
 
         eps_fit = self.tables.table
         kappa_grid = self.tables.kappa
-        E_grid = self.E_grid
-        Earr_grid = list(self.Earr_grid)
+        # E_grid = self.E_grid
+        # Earr_grid = list(self.Earr_grid)
+        # temporary
+        E_grid = np.zeros(50)
+        Earr_grid = list(np.zeros((1, 50)))
 
         # KW: due to multiprocessing appending,
         # collapse dimension from (1, 23, 50) -> (23, 50)
-        eps_fit.resize(self.Earr_grid.shape)
+        if self.analysis_type != self.composition_type:
+            eps_fit.resize(self.Earr_grid.shape)
 
         # handle selected sources
-        if self.data.source.N < len(eps_fit):
+        if self.data.source.N < eps_fit.shape[1]:
             eps_fit = [eps_fit[i] for i in self.data.source.selection]
             Earr_grid = [Earr_grid[i] for i in self.data.source.selection]
 
@@ -825,7 +931,8 @@ class Analysis:
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
-        D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
+        if self.analysis_type != self.composition_type:
+            D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
 
         # prepare fit inputs
         self.fit_input = {
@@ -849,20 +956,82 @@ class Analysis:
         ):
 
             self.fit_input["Edet"] = self.data.uhecr.energy
-            self.fit_input["Eth"] = self.model.Eth
+            self.fit_input["Eth"] = self.data.detector.Eth
             self.fit_input["Eerr"] = self.data.detector.energy_uncertainty
             self.fit_input["E_grid"] = E_grid
             self.fit_input["Earr_grid"] = Earr_grid
 
-            ptype = str(self.data.uhecr.ptype)
+            ptype = str(self.model.ptype)
             _, self.fit_input["Z"] = self.nuc_table[ptype]
 
-        if self.analysis_type == self.gmf_type:
+        if self.analysis_type == self.gmf_type or self.analysis_type == self.composition_type:
             self.fit_input["kappa_gmf"] = self.data.uhecr.kappa_gmf
             # self.fit_input["kappa_gmf"] = np.ones_like(
             #     self.data.uhecr.kappa_gmf) * self.data.detector.kappa_d
         else:
             self.fit_input["kappa_d"] = self.data.detector.kappa_d
+
+        if self.analysis_type == self.composition_type:
+            # interpolation grid for theta & kappa
+            self.fit_input["NthetaP"] = len(self.gmf_deflections._thetaP_grid)
+            self.fit_input["thetaP_grid"] = np.rad2deg(self.gmf_deflections._thetaP_grid)
+            self.fit_input["kappa_interp_grid"] = self.gmf_deflections._f_kappa(self.gmf_deflections._thetaP_grid)
+
+            # add rigidity instead of energy
+            self.fit_input["Rdet"] = self.data.uhecr.energy / self.Zdet
+            self.fit_input["Rth"] = self.data.detector.Eth / self.Zdet
+            self.fit_input["Rerr"] = self.data.detector.energy_uncertainty
+
+            # for BG model
+            self.fit_input["Zsrcs"] = self.Zsrcs
+            self.fit_input["NZsrcs"] = len(self.Zsrcs)
+
+            # for arrival spectrum
+            self.fit_input["Zdet"] = self.Zdet
+            self.fit_input["Nalphas"] = self.Nalphas
+            self.fit_input["NRearths"] = self.NRearths
+            self.fit_input["alpha_grid"] = self.alphas
+            self.fit_input["Rearth_grid"] = self.Rearths
+            self.fit_input["log_arr_spectrum_grid"] = np.log(self.arr_spectrums)
+            # self.fit_input["Rmax_grid"] = self.Rmaxs
+            
+            self.fit_input["Rcutoff"] = self.Rcutoffs[0]
+            self.fit_input["log_qsrc_grid"] = np.log10(self.qsrcs)
+            self.fit_input["surv_ratio_grid"] = self.surv_ratios
+            self.fit_input["log_Qearth_grid"] = np.log10(self.Qearths)
+            self.fit_input["Rex_grid"] = self.Rexs 
+
+            # make eps into log scale 
+            self.fit_input["log_eps"] = np.log10(self.fit_input["eps"])
+
+            # truncate any Rex values that are NaN, and the corresponding 
+            # source parameters too
+            if np.any(np.isnan(self.Rexs)):
+
+                Rexs_tmp = []
+                for a in range(self.Nalphas):
+                    Rex_isnan = np.isnan(self.Rexs[:,a])
+                    Rexs_tmp.append(self.Rexs[~Rex_isnan,a])
+                    # we assume that cutoff for sources are the same for all alphas
+                    # so we just do this once
+                    # in the case it is not, we have to think otherwise
+                    if a == 0:
+                        self.fit_input["D"] = self.fit_input["D"][~Rex_isnan]
+                        self.fit_input["varpi"] = self.fit_input["varpi"][~Rex_isnan]
+                        self.fit_input["Ns"] = len(self.fit_input["D"])
+
+                    self.fit_input["eps"] = self.fit_input["eps"][a,~Rex_isnan,:]
+
+                # set new Rex 
+                self.fit_input["Rex_grid"] = np.asarray(Rexs_tmp)
+
+            # alpha grid for effective exposure
+            self.fit_input["alpha_eps_grid"] = self.tables.alphas
+            self.fit_input["Nalphas_eps"] = len(self.tables.alphas)
+
+            
+
+
 
     def save(self):
         """
@@ -1032,11 +1201,12 @@ class Analysis:
             show_progress=show_progress,
             output_dir=output_dir,
             iter_warmup=warmup,
+            **kwargs
         )
 
         # Diagnositics
         print("Checking all diagnostics...")
-        self.fit.diagnose()
+        print(self.fit.diagnose())
 
         self.chain = self.fit.stan_variables()
         print("Done!")
