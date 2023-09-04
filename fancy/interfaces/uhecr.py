@@ -328,13 +328,14 @@ class Uhecr:
                     area.append(possible_areas_incl[p - 1] * exp_factor)
 
         elif self.label == "auger2022":
-            from ..detector.auger2022 import M, period_start
+            from ..detector.auger2022 import M, period_start, A
             
             # get period for each event - in years, taking into account days
             start_julianyear = period_start.year + period_start.day / 365.25
             deltats = (self.year + self.day / 365.25) - start_julianyear
 
             area = self.exposure / (M * deltats)
+            # area = np.tile(A, self.N)
 
         elif self.label == "TA2015":
             from ..detector.TA2015 import A1, A2

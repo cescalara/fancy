@@ -46,13 +46,14 @@ theta_m = np.deg2rad(55)
 
 # define observation period based on Abu-Zayyad et al. 2013 and Abbasi et al. 2018
 # assume no off-time
-period_1_start = date(2008, 5, 11)
+period_start = date(2008, 5, 11)  # first observation date
+period_1_start = period_start
 period_1_end = date(2012, 5, 20)
 period_2_start = date(2012, 5, 20)  # assuming no off-time
 period_2_end = date(2015, 5, 11)
 period_last_end = period_2_end  # last observation date
 
-# start year of observation
+# start year & date of observation
 start_year = 2008
 
 # find length of each period in units of years

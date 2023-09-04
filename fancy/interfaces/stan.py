@@ -60,8 +60,12 @@ class Model:
         Q: float = None,
         F0: float = None,
         alpha: float = None,
+        alpha_s: float = None,
+        alpha_b: float = None,
+        Nex: float=None,
         Eth: float = 50,
         ptype: str = "p",
+        mass_group: int = 1,
     ):
         """
         Get simulation inputs.
@@ -73,7 +77,8 @@ class Model:
         :param Q: Total Luminosity [yr^-1]
         :param alpha: source spectral index
         :param Eth: threshold energy of study [EeV]
-        :param ptype: element of composition
+        :param ptype: UHECR composition
+        :param mass_group: mass group based on lnA
         """
         self.F_T = F_T
         self.f = f
@@ -84,7 +89,14 @@ class Model:
         self.alpha = alpha
         self.Eth = Eth
         self.Eth_sim = None  # To be set by Analysis
+
+        # used for joint+composition
+        self.alpha_s = alpha_s
+        self.alpha_b = alpha_b
+        self.Nex = Nex
+
         self.ptype = ptype
+        self.mass_group = mass_group
 
     def _get_properties(self):
         """
@@ -98,10 +110,13 @@ class Model:
         self.properties["B"] = self.B
         self.properties["Q"] = self.Q
         self.properties["F0"] = self.F0
-        self.properties["F0"] = self.F0
         self.properties["alpha"] = self.alpha
         self.properties["Eth"] = self.Eth
         self.properties["Eth_sim"] = self.Eth_sim
+
+        self.properties["alpha_s"] = self.alpha_s
+        self.properties["alpha_b"] = self.alpha_b
+        self.properties["Nex"] = self.Nex
 
         self.properties["sim_filename"] = self.sim_filename
         self.properties["model_filename"] = self.model_filename

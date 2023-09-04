@@ -245,12 +245,17 @@ class Analysis:
                 # set Dmin = 1Mpc, Bmin = 1e-3, Rexmax = max(Rexs)
                 # future: can set Dmin = np.min(Dsrcs), but we set it to absolute minium
                 # to assure kappa_max >> kappa_ex
-                kappa_max = kappa_ex(Rex=np.max(Rexs), B=1e-3, D=1)
-                kappa_min = kappa_ex(Rex=np.min(Rexs), B=10, D=100)
-                print(f"kappa_min: {kappa_min:.3e}, kappa_max: {kappa_max:.3e}")
+                # kappa_max = kappa_ex(Rex=np.max(Rexs), B=1e-3, D=1)
+                # kappa_min = kappa_ex(Rex=np.min(Rexs), B=10, D=100)
+                # print(f"kappa_min: {kappa_min:.3e}, kappa_max: {kappa_max:.3e}")
+                kappa_min = 0.1
+                kappa_max = 1e8
 
                 # set new kappa
-                kappa = np.logspace(np.log10(kappa_min), np.log10(kappa_max), 100)
+                # denser grid for small kappa
+                kappa_1 = np.logspace(np.log10(kappa_min), np.log10(kappa_min)+2, 200)
+                kappa_2 = np.logspace(np.log10(kappa_min)+2, np.log10(kappa_max), 200)
+                kappa = np.concatenate((kappa_1, kappa_2))
 
                 if parallel:
                     self.tables.build_for_fit_parallel_composition(
@@ -967,6 +972,11 @@ class Analysis:
             self.fit_input["kappa_d"] = self.data.detector.kappa_d
 
         if self.analysis_type == self.composition_type:
+            # interpolation grid for theta & kappa
+            self.fit_input["NthetaP"] = len(self.gmf_deflections._thetaP_grid)
+            self.fit_input["thetaP_grid"] = np.rad2deg(self.gmf_deflections._thetaP_grid)
+            self.fit_input["kappa_interp_grid"] = self.gmf_deflections._f_kappa(self.gmf_deflections._thetaP_grid)
+
             # add rigidity instead of energy
             self.fit_input["Rdet"] = self.data.uhecr.energy / self.Zdet
             self.fit_input["Rth"] = self.data.detector.Eth / self.Zdet
