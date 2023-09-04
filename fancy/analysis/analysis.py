@@ -1010,8 +1010,8 @@ class Analysis:
 
                 Rexs_tmp = []
                 for a in range(self.Nalphas):
-                    Rex_isnan = np.isnan(self.Rexs[a,:])
-                    Rexs_tmp.append(self.Rexs[a,~Rex_isnan])
+                    Rex_isnan = np.isnan(self.Rexs[:,a])
+                    Rexs_tmp.append(self.Rexs[~Rex_isnan,a])
                     # we assume that cutoff for sources are the same for all alphas
                     # so we just do this once
                     # in the case it is not, we have to think otherwise
