@@ -95,6 +95,8 @@ class Uhecr:
             # check if we can extract exposure of UHECR (auger2022 dataset)
             if "exposure" in data:
                 self.exposure = data["exposure"][()]
+            else:
+                self.exposure = None
 
             self.unit_vector = coord_to_uv(self.coord)
             # self.period = self._find_period()
@@ -348,8 +350,10 @@ class Uhecr:
             start_julianyear = period_start.year + period_start.day / 365.25
             deltats = (self.year + self.day / 365.25) - start_julianyear
 
-            area = self.exposure / (M * deltats)
-            # area = np.tile(A, self.N)
+            if self.exposure != None:
+                area = self.exposure / (M * deltats)
+            else:
+                area = np.tile(A, self.N)
 
         elif self.label == "TA2015":
             from ..detector.TA2015 import A1, A2

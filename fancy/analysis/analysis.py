@@ -242,15 +242,16 @@ class Analysis:
                     arr_spectrums = f["arr_spectrums"][()]
                     Rexs = f["Rexs"][()]
 
-                # compute kappa_max manually, based on distance & Rex
-                # set Dmin = 1Mpc, Bmin = 1e-3, Rexmax = max(Rexs)
-                # future: can set Dmin = np.min(Dsrcs), but we set it to absolute minium
-                # to assure kappa_max >> kappa_ex
-                # kappa_max = kappa_ex(Rex=np.max(Rexs), B=1e-3, D=1)
-                # kappa_min = kappa_ex(Rex=np.min(Rexs), B=10, D=100)
-                # print(f"kappa_min: {kappa_min:.3e}, kappa_max: {kappa_max:.3e}")
-                kappa_min = 0.1
-                kappa_max = 1e8
+                # set kappa_min and kappa_max based on limits of theta
+                # theta should not exceed 180 so we set a hard limit for that
+                # and compute kappa_min based on the approximate formula
+
+                # for minimum we set it such that theta = 0.1, which is on the 
+                # order of the angular reconstruction uncertainty of the detectors
+                kappa_min = 7552.0 / (180.0)**2  # ~ 0.2
+                kappa_max = 7552.0 / (0.1)**2  # ~ 7.5e5
+
+                print(f"kappa_min: {kappa_min:.3e}, kappa_max: {kappa_max:.3e}")
 
                 # set new kappa
                 # denser grid for small kappa
@@ -1012,8 +1013,8 @@ class Analysis:
 
                 Rexs_tmp = []
                 for a in range(self.Nalphas):
-                    Rex_isnan = np.isnan(self.Rexs[:,a])
-                    Rexs_tmp.append(self.Rexs[~Rex_isnan,a])
+                    Rex_isnan = np.isnan(self.Rexs[a,:])
+                    Rexs_tmp.append(self.Rexs[a,~Rex_isnan])
                     # we assume that cutoff for sources are the same for all alphas
                     # so we just do this once
                     # in the case it is not, we have to think otherwise
