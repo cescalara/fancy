@@ -390,9 +390,10 @@ class ExposureIntegralTable:
         """
 
         self.kappa = kappa
+        self.alphas = alpha_grid
 
         # truncate alphas to smaller values
-        self.alphas = np.linspace(np.min(alpha_grid), np.max(alpha_grid), int(len(alpha_grid)//4))
+        # self.alphas = np.linspace(np.min(alpha_grid), np.max(alpha_grid), int(len(alpha_grid)//2))
         self.table = np.zeros((len(self.alphas), len(self.varpi), len(kappa)))
 
         args = []

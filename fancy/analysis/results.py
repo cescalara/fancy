@@ -43,7 +43,7 @@ class Results:
 
         return chain
 
-    def get_truths(self, list_of_keys):
+    def get_truths(self, list_of_keys, composition=False):
         """
         For the case where the analysis was based on simulated
         data, return input values or 'truths' for desired
@@ -61,11 +61,17 @@ class Results:
 
                         # reconstruct from other info
                         F0 = model["F0"][()]
-                        Q = model["Q"][()]
                         D = f["source/distance"][()]
                         D = [d * Mpc_to_km for d in D]
 
-                        Fs = sum([(q / (4 * np.pi * d**2)) for q, d in zip(Q, D)])
+                        if composition:
+                            L = model["L"][()]
+                            Fs = sum([(l / (4 * np.pi * d**2)) for l, d in zip(L, D)])
+                        else:
+                            Q = model["Q"][()]
+                            Fs = sum([(q / (4 * np.pi * d**2)) for q, d in zip(Q, D)])
+
+                        
                         f = Fs / (Fs + F0)
                         truths["f"] = f
 
