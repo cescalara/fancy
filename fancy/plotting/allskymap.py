@@ -1,6 +1,5 @@
 import numpy as np
 from matplotlib import pyplot as plt
-import ligo.skymap.plot
 from matplotlib.patches import PathPatch, Polygon
 from matplotlib.path import Path
 
@@ -10,6 +9,11 @@ from astropy.wcs import WCS
 from astropy.io.fits import Header
 
 from pyproj import Geod
+
+try:
+    import ligo.skymap.plot
+except ImportError:
+    raise ImportError("Cannot use ligo.skymap for < Python3.9. Please use AllSkyMapCartopy instead.")
 
 
 __all__ = ["AllSkyMap"]
