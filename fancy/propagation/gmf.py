@@ -224,8 +224,12 @@ class GMFDeflections:
 
         for i in range(N):
 
+            # convert to vector3d, flip due to initialisation in CRPropa for Vector3d -> lonlat
+            coord_xyz = coords[i].cartesian.xyz.value * (-1)
+            vector3d = crpropa.Vector3d(*coord_xyz)
+
             particles.addParticle(
-                pid, rigidities[i], coords[i].galactic.l.rad, coords[i].galactic.b.rad
+                pid, rigidities[i], vector3d
             )
 
         particles.applyLens(self.lens)
