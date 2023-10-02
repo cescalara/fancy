@@ -13,7 +13,7 @@ from pyproj import Geod
 try:
     import ligo.skymap.plot
 except ImportError:
-    raise ImportError("Cannot use ligo.skymap for < Python3.9. Please use AllSkyMapCartopy instead.")
+    pass
 
 
 __all__ = ["AllSkyMap"]
