@@ -1,9 +1,7 @@
 import numpy as np
 from pathlib import Path
 
-# KW; defect to cartopy for now, to incorporate python3.8 as well
-# from fancy.plotting import AllSkyMap
-from fancy.plotting import AllSkyMapCartopy as AllSkyMap
+from fancy.plotting import AllSkyMap
 
 from fancy.detector.auger2014 import detector_properties
 from fancy.detector.detector import Detector
@@ -47,11 +45,11 @@ def test_save(output_directory):
         pad_inches=0.5,
     )
 
-# KW: only available with AllSkyMap() from ligo.skymap
-# def test_detector_plotting():
 
-#     detector = Detector(detector_properties)
+def test_detector_plotting():
 
-#     for view, coord in zip(["map", "decplot"], ["gal", "eq"]):
+    detector = Detector(detector_properties)
 
-#         detector.show(view, coord)
+    for view, coord in zip(["map", "decplot"], ["gal", "eq"]):
+
+        detector.show(view, coord)
