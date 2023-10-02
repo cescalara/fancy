@@ -1,10 +1,17 @@
 import numpy as np
 from pathlib import Path
 
-try:
-    from fancy.plotting import AllSkyMap
-except:
-    from fancy.plotting import AllSkyMapCartopy as AllSkyMap
+# import sys
+# pyversion_info = sys.version_info
+
+# # deal with versions since ligo.skymap does not work for Python3.9
+# if pyversion_info.minor >= 9:
+#     from fancy.plotting import AllSkyMap
+# else:
+#     from fancy.plotting import AllSkyMapCartopy as AllSkyMap
+
+# defect to cartopy for now, to incorporate python3.8 as well
+from fancy.plotting import AllSkyMapCartopy as AllSkyMap
 
 from fancy.detector.auger2014 import detector_properties
 from fancy.detector.detector import Detector
