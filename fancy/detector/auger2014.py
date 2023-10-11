@@ -32,7 +32,8 @@ theta_m = np.deg2rad(80)
 
 # define periods 1 - 3 based on Abreu et al. 2010.
 # define period 4 based on Collaboration et al. 2014
-period_1_start = date(2004, 1, 1)
+period_start = date(2004, 1, 1)
+period_1_start = period_start
 period_1_end = date(2006, 5, 26)
 period_2_start = date(2006, 5, 27)
 period_2_end = date(2007, 8, 31)

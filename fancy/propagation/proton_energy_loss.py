@@ -17,7 +17,6 @@ class ProtonApproxEnergyLoss(EnergyLoss):
     """
 
     def get_Eth_src(self, Eth: float, D: List[float]):
-
         Eth_src = []
         for d in D:
             Eth_src.append(_proton_approx_get_source_threshold_energy(Eth, d)[0])
@@ -25,7 +24,6 @@ class ProtonApproxEnergyLoss(EnergyLoss):
         return Eth_src
 
     def get_arrival_energy(self, Esrc: float, D: float):
-
         Esrc = Esrc * 1.0e18
         integrator = integrate.ode(_dEdr).set_integrator("lsoda", method="bdf")
         integrator.set_initial_value(Esrc, 0)
@@ -39,7 +37,6 @@ class ProtonApproxEnergyLoss(EnergyLoss):
         return Earr
 
     def get_arrival_energy_vec(self, args: Tuple):
-
         Evec, D = args
 
         Earr_vec = []
@@ -88,8 +85,8 @@ NB: the forumla for beta_pi in de Domenico and Insolia (2013) is missing a minus
 @date July 2018
 """
 
-# ignore warnings
-np.warnings.filterwarnings("ignore")
+# ignore nan warnings
+np.seterr(all="ignore")
 
 
 def beta_pi(z, E):
@@ -145,7 +142,6 @@ def phi(xi):
         return np.pi / 12  # * (xi - 2)**4
 
     elif xi < 25:
-
         c = [0.8048, 0.1459, 1.137e-3, -3.879e-6]
         sum_term = 0
 
@@ -155,7 +151,6 @@ def phi(xi):
         return (np.pi / 12) * (xi - 2) ** 4 / (1 + sum_term)
 
     elif xi >= 25:
-
         phi_inf_term = phi_inf(xi)
         f = [2.910, 78.35, 1837]
         sum_term = sum([(f_i * xi ** (-(i + 1))) for i, f_i in enumerate(f)])

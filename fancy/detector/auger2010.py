@@ -31,7 +31,8 @@ auger_location = EarthLocation(lat = lat * u.rad, lon = lon * u.rad,
 theta_m = np.deg2rad(60)
 
 # define periods based on Abreu et al. 2010.
-period_1_start = date(2004, 1, 1)
+period_start = date(2004, 1, 1)
+period_1_start = period_start
 period_1_end = date(2006, 5, 26)
 period_2_start = date(2006, 5, 27)
 period_2_end = date(2007, 8, 31)
