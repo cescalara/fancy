@@ -1,10 +1,7 @@
 import numpy as np
 from pathlib import Path
 
-try:
-    from fancy.plotting import AllSkyMap
-except ImportError:
-    from fancy.plotting import AllSkyMapCartopy as AllSkyMap
+from fancy.plotting import AllSkyMap
 
 from fancy.detector.auger2014 import detector_properties
 from fancy.detector.detector import Detector
