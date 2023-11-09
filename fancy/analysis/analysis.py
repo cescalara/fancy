@@ -104,6 +104,7 @@ class Analysis:
         self.joint_type = "joint"
         self.gmf_type = "joint_gmf"
         self.composition_type = "joint_composition"
+        self.GMFdirection_type = "gmf_direction"
 
         if analysis_type == None:
             analysis_type = self.arr_dir_type
@@ -122,7 +123,7 @@ class Analysis:
                 self.model.Eth_sim, self.data.source.distance
             )
 
-        if self.analysis_type == self.gmf_type or self.analysis_type == self.composition_type:
+        if self.analysis_type == self.gmf_type or self.analysis_type == self.composition_type or self.analysis_type == self.GMFdirection_type:
 
             # Set up gmf deflections
             self.gmf_deflections = GMFDeflections()
@@ -345,7 +346,7 @@ class Analysis:
         '''
         Read from tables containing composition data that have already been made
         '''
-        if self.analysis_type == self.composition_type:
+        if self.analysis_type == self.composition_type or self.analysis_type == self.GMFdirection_type:
             with h5py.File(input_filename, "r") as f:
                 self.Zdet = f["Zdet"][()]
                 self.Nalphas = f["Nalphas"][()]
@@ -612,7 +613,7 @@ class Analysis:
         This then returns the simulated arrival directions and detected energies
         at Earth after deflection.
 
-        Composition is accounted for by using the rigidities instead of energies in the lensing process.
+        Composition is accounted for by using thy instead of energies in the lensing process.
 
         The corresponding coordinates at each point in the simulation is also recorded and written
         into a dictionary. This will be written to the corresponding simulation output file. One can
@@ -918,8 +919,8 @@ class Analysis:
 
         # KW: due to multiprocessing appending,
         # collapse dimension from (1, 23, 50) -> (23, 50)
-        if self.analysis_type != self.composition_type:
-            eps_fit.resize(self.Earr_grid.shape)
+        if self.analysis_type != self.composition_type and self.analysis_type != self.GMFdirection_type:
+            eps_fit.resize(Earr_grid.shape)
 
         # handle selected sources
         if self.data.source.N < eps_fit.shape[1]:
@@ -932,7 +933,7 @@ class Analysis:
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
-        if self.analysis_type != self.composition_type:
+        if self.analysis_type != self.composition_type and self.analysis_type != self.GMFdirection_type:
             D, alpha_T, eps_fit = convert_scale(D, alpha_T, eps_fit)
 
         # prepare fit inputs
@@ -942,12 +943,12 @@ class Analysis:
             "D": D,
             "N": self.data.uhecr.N,
             "arrival_direction": self.data.uhecr.unit_vector,
-            "A": self.data.uhecr.A,
+            # "A": self.data.uhecr.A,
             "alpha_T": alpha_T,
             "Ngrid": len(kappa_grid),
             "eps": eps_fit,
             "kappa_grid": kappa_grid,
-            "zenith_angle": self.data.uhecr.zenith_angle,
+            # "zenith_angle": self.data.uhecr.zenith_angle,
         }
 
         if (
@@ -965,22 +966,23 @@ class Analysis:
             ptype = str(self.model.ptype)
             _, self.fit_input["Z"] = self.nuc_table[ptype]
 
-        if self.analysis_type == self.gmf_type or self.analysis_type == self.composition_type:
+        if self.analysis_type == self.gmf_type or self.analysis_type == self.composition_type or self.analysis_type == self.GMFdirection_type:
             self.fit_input["kappa_gmf"] = self.data.uhecr.kappa_gmf
             # self.fit_input["kappa_gmf"] = np.ones_like(
-            #     self.data.uhecr.kappa_gmf) * self.data.detector.kappa_d
+            #     self.data.uhecr.kappa_gmf) * self.data.detector.kappa
         else:
             self.fit_input["kappa_d"] = self.data.detector.kappa_d
 
-        if self.analysis_type == self.composition_type:
+        if self.analysis_type == self.composition_type or self.analysis_type == self.GMFdirection_type:
             # interpolation grid for theta & kappa
             self.fit_input["NthetaP"] = len(self.gmf_deflections._thetaP_grid)
             self.fit_input["thetaP_grid"] = np.rad2deg(self.gmf_deflections._thetaP_grid)
             self.fit_input["kappa_interp_grid"] = self.gmf_deflections._f_kappa(self.gmf_deflections._thetaP_grid)
 
             # add rigidity instead of energy
-            self.fit_input["Rdet"] = self.data.uhecr.energy / self.Zdet
-            self.fit_input["Rth"] = self.data.detector.Eth / self.Zdet
+            rigs = self.data.uhecr.rigidity if self.analysis_type == self.GMFdirection_type else self.data.uhecr.energy / self.Zdet
+            self.fit_input["Rdet"] = rigs
+            self.fit_input["Rth"] = self.data.detector.Eth / self.Zdet  # should modify this for directional model?
             self.fit_input["Rerr"] = self.data.detector.energy_uncertainty
 
             # for BG model
