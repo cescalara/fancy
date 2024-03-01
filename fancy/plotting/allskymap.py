@@ -1,6 +1,13 @@
 import numpy as np
 from matplotlib import pyplot as plt
-import ligo.skymap.plot
+
+try:
+    import ligo.skymap.plot
+    ligo_plot_exists = True
+except:
+    ligo_plot_exists = False
+    pass
+
 from matplotlib.patches import PathPatch, Polygon
 from matplotlib.path import Path
 
@@ -53,6 +60,9 @@ class SphericalCircle(PathPatch):
     def __init__(
         self, center, radius, resolution=100, lon_0=0.0, vertex_unit=u.degree, **kwargs
     ):
+
+        if not ligo_plot_exists:
+            raise ImportError("ligo.skymap (>=py39) needs to be installed to use this functionality.")
 
         boundary = (lon_0 + 180) % 360
 
