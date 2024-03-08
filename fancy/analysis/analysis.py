@@ -1,5 +1,5 @@
 import numpy as np
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+from astropy.coordinates import SkyCoord, AltAz
 from astropy.time import Time
 from astropy import units as u
 from matplotlib import pyplot as plt
@@ -15,14 +15,8 @@ from ..interfaces.data import Uhecr
 from ..interfaces.utils import get_nucleartable
 
 from ..plotting import AllSkyMap
-from ..propagation.energy_loss import (
-    get_Eth_src,
-    get_kappa_ex,
-    get_Eex,
-    get_Eth_sim,
-    get_arrival_energy,
-    get_arrival_energy_vec,
-)
+from ..propagation.proton_energy_loss import ProtonApproxEnergyLoss
+from ..propagation.crpropa_energy_loss import CRPropaApproxEnergyLoss
 from ..detector.vMF.vmf import sample_vMF, sample_sphere
 from ..detector.exposure import m_dec
 
@@ -52,6 +46,7 @@ class Analysis:
         analysis_type=None,
         filename=None,
         summary=b"",
+        energy_loss_approx: str = "loss_length",
     ):
         """
         To manage the running of simulations and fits based on Data and Model objects.
@@ -59,6 +54,9 @@ class Analysis:
         :param data: a Data object
         :param model: a Model object
         :param analysis_type: type of analysis
+        :param energy_loss_approx: Method used for energy loss approx, 
+            only relevant for ptype!="p". Can be "loss_length" or 
+            "mean_sim_energy"
         """
 
         self.data = data
@@ -77,6 +75,22 @@ class Analysis:
 
         self.simulation = None
         self.fit = None
+
+        if not model.ptype:
+
+            raise ValueError("No particle type is defined!")
+
+        # Energy loss calculations
+        if model.ptype == "p":
+
+            self.energy_loss = ProtonApproxEnergyLoss()
+
+        else:
+
+            self.energy_loss = CRPropaApproxEnergyLoss(
+                ptype=model.ptype,
+                method=energy_loss_approx,
+            )
 
         # Simulation outputs
         self.source_labels = None
@@ -98,12 +112,14 @@ class Analysis:
         if self.analysis_type.find("joint") != -1:
 
             # find lower energy threshold for the simulation, given Eth and Eerr
-            self.model.Eth_sim = get_Eth_sim(
+            self.model.Eth_sim = self.energy_loss.get_Eth_sim(
                 self.data.detector.energy_uncertainty, self.model.Eth
             )
 
             # find correspsonding Eth_src
-            self.Eth_src = get_Eth_src(self.model.Eth_sim, self.data.source.distance)
+            self.Eth_src = self.energy_loss.get_Eth_src(
+                self.model.Eth_sim, self.data.source.distance
+            )
 
         # Set up integral tables
         params = self.data.detector.params
@@ -132,16 +148,20 @@ class Analysis:
 
             if self.analysis_type == self.joint_type:
                 D_src = self.data.source.distance
-                self.Eex = get_Eex(self.Eth_src, self.model.alpha)
-                self.kappa_ex = get_kappa_ex(self.Eex, self.model.B, D_src)
+                self.Eex = self.energy_loss.get_Eex(self.Eth_src, self.model.alpha)
+                self.kappa_ex = self.energy_loss.get_kappa_ex(
+                    self.Eex, self.model.B, D_src
+                )
                 kappa_true = self.kappa_ex
 
             if self.analysis_type == self.gmf_type:
                 # shift by 0.02 to get kappa_ex at g.b.
                 D_src = self.data.source.distance - 0.02
-                self.Eex = get_Eex(self.Eth_src, self.model.alpha)
+                self.Eex = self.energy_loss.get_Eex(self.Eth_src, self.model.alpha)
 
-                self.kappa_ex = get_kappa_ex(self.Eex, self.model.B, D_src)
+                self.kappa_ex = self.energy_loss.get_kappa_ex(
+                    self.Eex, self.model.B, D_src
+                )
                 kappa_true = self.kappa_ex
 
                 # evaluate for kappa_d
@@ -177,7 +197,12 @@ class Analysis:
             else:
                 self.tables.build_for_fit(kappa)
 
-    def build_energy_table(self, num_points=50, table_file=None, parallel=True):
+    def build_energy_table(
+        self,
+        num_points=50,
+        table_file=None,
+        parallel=True,
+    ):
         """
         Build the energy interpolation tables.
         """
@@ -187,14 +212,14 @@ class Analysis:
         )
         self.Earr_grid = []
 
-        if parallel:
+        if parallel and not isinstance(self.energy_loss, CRPropaApproxEnergyLoss):
 
             args_list = [(self.E_grid, d) for d in self.data.source.distance]
             # parallelize for each source distance
             with Pool(self.nthreads) as mpool:
                 results = list(
                     progress_bar(
-                        mpool.imap(get_arrival_energy_vec, args_list),
+                        mpool.imap(self.energy_loss.get_arrival_energy_vec, args_list),
                         total=len(args_list),
                         desc="Precomputing energy grids",
                     )
@@ -208,7 +233,7 @@ class Analysis:
             ):
                 d = self.data.source.distance[i]
                 self.Earr_grid.append(
-                    [get_arrival_energy(e, d)[0] for e in self.E_grid]
+                    [self.energy_loss.get_arrival_energy(e, d) for e in self.E_grid]
                 )
 
         if table_file:
@@ -312,9 +337,9 @@ class Analysis:
         # convert scale for sampling
         D = self.data.source.distance
         alpha_T = self.data.detector.alpha_T
-        L = self.model.L
+        Q = self.model.Q
         F0 = self.model.F0
-        D, alpha_T, eps, F0, L = convert_scale(D, alpha_T, eps, F0, L)
+        D, alpha_T, eps, F0, Q = convert_scale(D, alpha_T, eps, F0, Q)
 
         if (
             self.analysis_type == self.joint_type
@@ -339,7 +364,7 @@ class Analysis:
             "eps": eps,
         }
 
-        self.simulation_input["L"] = L
+        self.simulation_input["Q"] = Q
         self.simulation_input["F0"] = F0
         self.simulation_input["distance"] = self.data.source.distance
 
@@ -364,8 +389,7 @@ class Analysis:
             self.simulation_input["Eerr"] = self.data.detector.energy_uncertainty
 
             # get particle type we intialize simulation with
-            self.ptype = self.model.ptype
-            _, Z = self.nuc_table[self.ptype]
+            _, Z = self.nuc_table[self.model.ptype]
             self.simulation_input["Z"] = Z
 
         try:

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/cescalara/fancy/actions/workflows/tests.yml/badge.svg?branch=ta_updates)](https://github.com/cescalara/fancy/actions/workflows/tests.yml)
 
-`fancy` is a toolbox used for UHECR modelling, fitting, and plotting. The majority of the tools used in [uhecr-project/uhecr_model](https://github.com/uhecr-project/uhecr_model) 
+`fancy` is a toolbox used for source-UHECR association analyses using Bayesian hierarchical modelling. 
 
 The package is tested with Python 3.8/3.9 on the latest MacOS and Ubuntu linux. Installation via pip should take care of the dependencies (see below for more info). [`CRPropa3`](https://github.com/CRPropa/CRPropa3) is treated as an optional dependency.  
 
@@ -10,12 +10,17 @@ The package is tested with Python 3.8/3.9 on the latest MacOS and Ubuntu linux. 
 Installation is done via `pip`:
 
 ```
-pip install git+https://github.com/cescalara/fancy.git@ta_updates
+pip install git+https://github.com/cescalara/fancy.git
 ```
 
 There are two further steps one must take to get set up:
 * Run `install_cmdstan` to set up cmdstanpy (see [these instructions](https://cmdstanpy.readthedocs.io/en/v1.0.1/installation.html#function-install-cmdstan) for more information)
 * Run `init_config.sh` to set up plotting styles, nuclear tables and GMF model
+
+## Examples
+
+* [Joint fit of energies and arrival directions assuming proton composition](https://github.com/cescalara/uhecr_model) 
+* [WIP] Including the GMF and heavier compositions coming soon!
 
 ## License
 

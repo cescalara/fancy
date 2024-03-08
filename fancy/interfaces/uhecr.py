@@ -84,12 +84,18 @@ class Uhecr:
             glat = data["glat"][()]
             self.coord = self.get_coordinates(glon, glat)
 
+            # check if we can extract exposure of UHECR (auger2022 dataset)
+            if "exposure" in data:
+                self.exposure = data["exposure"][()]
+
             self.unit_vector = coord_to_uv(self.coord)
             self.period = self._find_period()
             self.A = self._find_area(exp_factor)
 
             self.ptype = ptype
-            self.kappa_gmf = data["kappa_gmf"][gmf_model][ptype]["kappa_gmf"][()]
+            gmf_model = "JF12" if gmf_model == "None" else gmf_model
+            if "kappa_gmf" in data:
+                self.kappa_gmf = data["kappa_gmf"][gmf_model][ptype]["kappa_gmf"][()]
 
     def _get_properties(self):
         """
@@ -319,6 +325,15 @@ class Uhecr:
                     area.append(possible_areas_vert[p - 1] * exp_factor)
                 if self.zenith_angle[i] > 60:
                     area.append(possible_areas_incl[p - 1] * exp_factor)
+
+        elif self.label == "auger2022":
+            from ..detector.auger2022 import M, period_start
+            
+            # get period for each event - in years, taking into account days
+            start_julianyear = period_start.year + period_start.day / 365.25
+            deltats = (self.year + self.day / 365.25) - start_julianyear
+
+            area = self.exposure / (M * deltats)
 
         elif self.label == "TA2015":
             from ..detector.TA2015 import A1, A2

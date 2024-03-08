@@ -9,7 +9,7 @@ from cmdstanpy import CmdStanModel
 from ..interfaces.stan import Direction, Mpc_to_km, convert_scale
 from ..detector.exposure import m_integrand
 from ..interfaces.integration import ExposureIntegralTable
-from ..propagation.energy_loss import get_Eth_src, get_Eex, get_kappa_ex
+from fancy.propagation.proton_energy_loss import ProtonApproxEnergyLoss
 
 from fancy.plotting import AllSkyMap
 
@@ -61,11 +61,11 @@ class Results:
 
                         # reconstruct from other info
                         F0 = model["F0"][()]
-                        L = model["L"][()]
+                        Q = model["Q"][()]
                         D = f["source/distance"][()]
                         D = [d * Mpc_to_km for d in D]
 
-                        Fs = sum([(l / (4 * np.pi * d ** 2)) for l, d in zip(L, D)])
+                        Fs = sum([(q / (4 * np.pi * d**2)) for q, d in zip(Q, D)])
                         f = Fs / (Fs + F0)
                         truths["f"] = f
 
@@ -82,14 +82,14 @@ class Results:
         Return mean values of all main fit parameters.
         """
 
-        list_of_keys = ["B", "alpha", "L", "F0", "lambda"]
+        list_of_keys = ["B", "alpha", "Q", "F0", "lambda"]
         chain = self.get_chain(list_of_keys)
 
         fit_parameters = {}
         fit_parameters["B"] = np.mean(chain["B"])
         fit_parameters["alpha"] = np.mean(chain["alpha"])
         fit_parameters["F0"] = np.mean(chain["F0"])
-        fit_parameters["L"] = np.mean(chain["L"])
+        fit_parameters["Q"] = np.mean(chain["Q"])
         try:
             fit_parameters["lambda"] = np.mean(np.transpose(chain["lambda"]), axis=1)
         except:
@@ -125,7 +125,7 @@ class Results:
         Run N posterior predictive simulations.
         """
 
-        keys = ["L", "F0", "alpha", "B"]
+        keys = ["Q", "F0", "alpha", "B"]
         fit_chain = self.get_chain(keys)
         input_data, detector, source = self.get_input_data()
 
@@ -159,6 +159,8 @@ class PPC:
         self.Nex_preds = []
         self.labels_preds = []
 
+        self.energy_loss = ProtonApproxEnergyLoss()
+
     def simulate(self, fit_chain, input_data, detector, source, seed=None, N=3):
         """
         Simulate from the posterior predictive distribution.
@@ -167,12 +169,12 @@ class PPC:
         self.alpha = fit_chain["alpha"]
         self.B = fit_chain["B"]
         self.F0 = fit_chain["F0"]
-        self.L = fit_chain["L"]
+        self.Q = fit_chain["Q"]
 
         self.arrival_direction = Direction(input_data["arrival_direction"])
         self.Edet = input_data["Edet"]
         self.Eth = input_data["Eth"]
-        self.Eth_src = get_Eth_src(self.Eth, source["distance"])
+        self.Eth_src = self.energy_loss.get_Eth_src(self.Eth, source["distance"])
         self.varpi = input_data["varpi"]
 
         # Get params from detector for exposure integral calculation
@@ -190,11 +192,13 @@ class PPC:
             alpha = np.random.choice(self.alpha)
             B = np.random.choice(self.B)
             F0 = np.random.choice(self.F0)
-            L = np.random.choice(self.L)
+            Q = np.random.choice(self.Q)
 
             # calculate eps integral
-            Eex = get_Eex(self.Eth_src, alpha)
-            kappa_ex = get_kappa_ex(Eex, np.mean(self.B), source["distance"])
+            Eex = self.energy_loss.get_Eex(self.Eth_src, alpha)
+            kappa_ex = self.energy_loss.get_kappa_ex(
+                Eex, np.mean(self.B), source["distance"]
+            )
             self.ppc_table = ExposureIntegralTable(varpi=self.varpi, params=self.params)
             self.ppc_table.build_for_sim(kappa_ex, alpha, B, source["distance"])
 
@@ -218,7 +222,7 @@ class PPC:
                 "eps": eps,
             }
             self.ppc_input["B"] = B
-            self.ppc_input["L"] = np.tile(L, input_data["Ns"])
+            self.ppc_input["Q"] = np.tile(Q, input_data["Ns"])
             self.ppc_input["F0"] = F0
             self.ppc_input["alpha"] = alpha
             self.ppc_input["Eerr"] = input_data["Eerr"]

@@ -149,12 +149,7 @@ def xi_dec(dec, p):
 
 def alpha_m_dec(dec, p):
     xi_val = xi_dec(dec, p)
-    if (xi_val > 1):
-        return 0
-    elif (xi_val < -1):
-        return np.pi
-    else:
-        return np.arccos(xi_val)
+    return np.where(xi_val > 1, 0, np.where(xi_val < -1, np.pi, np.arccos(xi_val)))
     
 def m_dec(dec, p):
     return (p[0] * np.cos(dec) * np.sin(alpha_m_dec(dec, p)) 
