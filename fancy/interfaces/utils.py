@@ -4,11 +4,18 @@ import numpy as np
 
 
 def get_nucleartable():
-    '''Read dictionary from nuclear_table.pkl'''
-    this_fpath = os.path.abspath(os.path.dirname(__file__))
-
-    with open(os.path.join(this_fpath, "nuclear_table.pkl"), "rb") as f:
-        nuc_table = pickle.load(f)
+    '''Read dictionary of nuclear tables'''
+    nuc_table = {
+        "p": (1, 1),
+        "H": (1, 1),
+        "He": (4, 2),
+        "Li": (7, 3),
+        "C": (12, 6),
+        "N": (14, 7),
+        "O": (16, 8),
+        "Si": (28, 14),
+        "Fe": (56, 26),
+    }
 
     return nuc_table
 

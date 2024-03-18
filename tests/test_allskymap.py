@@ -1,12 +1,21 @@
+import sys
 import numpy as np
 from pathlib import Path
+
+try:
+    import ligo.skymap.plot
+except ImportError:
+    pass
+
+import pytest
 
 from fancy.plotting import AllSkyMap
 
 from fancy.detector.auger2014 import detector_properties
 from fancy.detector.detector import Detector
 
-
+@pytest.mark.skipif('ligo.skymap' not in sys.modules,
+                    reason="requires ligo.skymap")
 def test_basic_plotting(random_seed):
 
     np.random.seed(random_seed)
@@ -27,6 +36,8 @@ def test_basic_plotting(random_seed):
         skymap.scatter(lon, lat, color="k", linewidth=5, alpha=0.5)
 
 
+@pytest.mark.skipif('ligo.skymap' not in sys.modules,
+                    reason="requires ligo.skymap")
 def test_save(output_directory):
 
     file_name = Path(output_directory, "test_allskymap_plot.png")
@@ -45,7 +56,8 @@ def test_save(output_directory):
         pad_inches=0.5,
     )
 
-
+@pytest.mark.skipif('ligo.skymap' not in sys.modules,
+                    reason="requires ligo.skymap")
 def test_detector_plotting():
 
     detector = Detector(detector_properties)

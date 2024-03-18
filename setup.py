@@ -1,10 +1,10 @@
 import setuptools
-import versioneer
+# import versioneer
 
 setuptools.setup(
     name="fancy",
     packages=setuptools.find_packages(),
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    # version=versioneer.get_version(),
+    # cmdclass=versioneer.get_cmdclass(),
     include_package_data=True,
 )
