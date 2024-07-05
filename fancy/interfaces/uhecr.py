@@ -72,14 +72,22 @@ class Uhecr:
         self.label = label
 
         with h5py.File(filename, "r") as f:
-
-            data = f[self.label]
+            
+            # gmf_model = "JF12" if gmf_model == "None" else gmf_model
+            # data = f[self.label][gmf_model][ptype]
+            data = f[self.label] if filename.find("GMF") < 0 else f[self.label][gmf_model][str(mass_group)]
 
             self.year = data["year"][()]
             self.day = data["day"][()]
             self.zenith_angle = np.deg2rad(data["theta"][()])
-            self.energy = data["energy"][()]
-            self.N = len(self.energy)
+            if "rigidity" in list(data.keys()):
+                self.energy = None
+                self.rigidity = data["rigidity"][()]
+            else:
+                self.energy = data["energy"][()]
+                self.rigidity = None
+            # self.energy = data["energy"][()]
+            self.N = len(self.year)
             glon = data["glon"][()]
             glat = data["glat"][()]
             self.coord = self.get_coordinates(glon, glat)
@@ -91,14 +99,17 @@ class Uhecr:
                 self.exposure = None
 
             self.unit_vector = coord_to_uv(self.coord)
-            self.period = self._find_period()
-            self.A = self._find_area(exp_factor)
+            # self.period = self._find_period()
+            # self.A = self._find_area(exp_factor)
 
             self.mass_group = mass_group
             self.ptype = ptype
-            gmf_model = "JF12" if gmf_model == "None" else gmf_model
-            if "kappa_gmf" in data:
-                self.kappa_gmf = data["kappa_gmf"][gmf_model][f"mg{mass_group}"]["kappa_gmf"][()]
+            if filename.find("GMF") != -1:
+                self.kappa_gmf = data["kappa_gmf"][()]
+            else:
+                gmf_model = "JF12" if gmf_model == "None" else gmf_model
+                if "kappa_gmf" in data and gmf_model != "None":
+                    self.kappa_gmf = data["kappa_gmf"][gmf_model][f"mg{mass_group}"]["kappa_gmf"][()]
 
     def _get_properties(self):
         """
@@ -109,8 +120,11 @@ class Uhecr:
         self.properties["label"] = self.label
         self.properties["N"] = self.N
         self.properties["unit_vector"] = self.unit_vector
-        self.properties["energy"] = self.energy
-        self.properties["A"] = self.A
+        if np.all(self.energy != None):
+            self.properties["energy"] = self.energy
+        if np.all(self.rigidity != None):
+            self.properties["rigidity"] = self.rigidity
+        # self.properties["A"] = self.A
         self.properties["zenith_angle"] = self.zenith_angle
         self.properties["mass_group"] = self.mass_group
         self.properties["kappa_gmf"] = self.kappa_gmf
@@ -134,7 +148,7 @@ class Uhecr:
         self.unit_vector = uhecr_properties["unit_vector"]
         self.energy = uhecr_properties["energy"]
         self.zenith_angle = uhecr_properties["zenith_angle"]
-        self.A = uhecr_properties["A"]
+        # self.A = uhecr_properties["A"]
         self.kappa_gmf = uhecr_properties["kappa_gmf"]
 
         # # decode byte string if uhecr_properties is read from h5 file
