@@ -223,6 +223,16 @@ class AllSkyMapCartopy:
                                 vals,
                                 transform=self.transform,
                                 **kwargs)
+    
+    def annotate(self, txt : str, lon, lat, **kwargs):
+        """
+        Add annotation to the skymap.
+
+        :param txt : the text to add to the skymap
+        :param lons: longitudes of each point ([-180, 180])
+        :param lats: latitudes of each point ([-90, 90])
+        """
+        return self.ax.annotate(txt, xy=(lon, lat), transform=self.transform, **kwargs)
 
     def exposure_limit(self,
                        limiting_dec,

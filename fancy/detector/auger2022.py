@@ -81,3 +81,4 @@ detector_properties['A'] = A
 detector_properties['alpha_T'] = alpha_T
 detector_properties['Eth'] = Eth
 detector_properties["start_year"] = start_year
+detector_properties["period_start"] = period_start

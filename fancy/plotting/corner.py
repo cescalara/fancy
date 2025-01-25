@@ -43,8 +43,8 @@ class Corner:
         )
 
         # find index to modify xlims etc for
-        if "$B$ / $\\mathrm{nG}$" in data_frame.columns:  # B-field
-            b_idx = np.argwhere(data_frame.columns == "$B$ / $\\mathrm{nG}$")[0][0]
+        if r'$B\sqrt{l_C}$ / $\mathrm{nG} \: \mathrm{Mpc}^{1/2}$' in data_frame.columns:  # B-field
+            b_idx = np.argwhere(data_frame.columns == r'$B\sqrt{l_C}$ / $\mathrm{nG} \: \mathrm{Mpc}^{1/2}$')[0][0]
         else:
             b_idx = None
 
@@ -55,9 +55,9 @@ class Corner:
 
         f_idx = np.argwhere(data_frame.columns == r"$f$")[0][0]  # f
 
-        if r"$L$ / $10^{38}$ $\mathrm{yr}^{-1}$" in data_frame.columns:
+        if r"$L$ / $10^{{42}}$ $\mathrm{erg}$ $\mathrm{s}^{{-1}}$" in data_frame.columns:
             L_idx = np.argwhere(
-                data_frame.columns == r"$L$ / $10^{38}$ $\mathrm{yr}^{-1}$"
+                data_frame.columns == r"$L$ / $10^{{42}}$ $\mathrm{erg}$ $\mathrm{s}^{{-1}}$"
             )[0][
                 0
             ]  # L
@@ -65,8 +65,8 @@ class Corner:
             L_idx = None
 
         if end_label == "tight_B" or end_label == "limitL":
-            B_lim = [0, 10]
-            B_ticks = [0, 5.0, 10.0]
+            B_lim = [5, 10]
+            B_ticks = [5, 7.5, 10.0]
         else:
             B_lim = [0, 50]
             B_ticks = [0, 25, 50]
@@ -138,15 +138,13 @@ class Corner:
                                         pairgrid.axes[i, k].set_ylim(0, 1)
                                         pairgrid.axes[i, k].set_yticks([0, 0.5, 1])
 
-                                    # if i == L_idx:
-                                    #     pairgrid.axes[i, k].set_xlim(0, 20)
-                                    #     pairgrid.axes[i, k].set_xticks(
-                                    #         [0, 10, 20])
+                                if i == L_idx:
+                                    pairgrid.axes[i, k].set_xlim(0, 10)
+                                    pairgrid.axes[i, k].set_xticks([0, 5, 10])
 
-                                    # if k == L_idx:
-                                    #     pairgrid.axes[i, k].set_ylim(0, 20)
-                                    #     pairgrid.axes[i, k].set_yticks(
-                                    #         [0, 10, 20])
+                                if k == L_idx:
+                                    pairgrid.axes[i, k].set_ylim(0, 10)
+                                    pairgrid.axes[i, k].set_yticks([0, 5, 10])
         else:
             N = np.shape(data_frame)[1]
             for i in range(N):
@@ -191,13 +189,13 @@ class Corner:
                                     pairgrid.axes[i, k].set_ylim(0, 1)
                                     pairgrid.axes[i, k].set_yticks([0, 0.5, 1])
 
-                                # if i == L_idx:
-                                #     pairgrid.axes[i, k].set_xlim(0, 20)
-                                #     pairgrid.axes[i, k].set_xticks([0, 10, 20])
+                                if i == L_idx:
+                                    pairgrid.axes[i, k].set_xlim(0, 10)
+                                    pairgrid.axes[i, k].set_xticks([0, 5, 10])
 
-                                # if k == L_idx:
-                                #     pairgrid.axes[i, k].set_ylim(0, 20)
-                                #     pairgrid.axes[i, k].set_yticks([0, 10, 20])
+                                if k == L_idx:
+                                    pairgrid.axes[i, k].set_ylim(0, 10)
+                                    pairgrid.axes[i, k].set_yticks([0, 5, 10])
 
         # Tidy axes
         sns.despine(ax=pairgrid.axes[0, 0], left=True)

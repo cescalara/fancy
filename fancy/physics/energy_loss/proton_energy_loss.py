@@ -1,12 +1,19 @@
 import numpy as np
+import os
 from scipy import integrate
 from matplotlib import pyplot as plt
 from astropy.constants import c
 from astropy import units as u
 from typing import List, Tuple
+from scipy import stats, optimize
 
-from fancy.propagation.energy_loss import EnergyLoss
-from fancy.propagation.cosmology import H0, Om, Ol, DH
+from joblib import Parallel, delayed
+from tqdm import tqdm
+import h5py
+
+from fancy import Data
+from fancy.physics.energy_loss.energy_loss import EnergyLoss
+from fancy.physics.energy_loss.cosmology import H0, Om, Ol, DH
 
 
 class ProtonApproxEnergyLoss(EnergyLoss):
@@ -16,45 +23,190 @@ class ProtonApproxEnergyLoss(EnergyLoss):
     Wrapper class to update code below for new interface.
     """
 
-    def get_Eth_src(self, Eth: float, D: List[float]):
-        Eth_src = []
-        for d in D:
-            Eth_src.append(_proton_approx_get_source_threshold_energy(Eth, d)[0])
+    def __init__(self, data: Data, verbose=False):
 
-        return Eth_src
+        super().__init__(data, verbose)
 
-    def get_arrival_energy(self, Esrc: float, D: float):
-        Esrc = Esrc * 1.0e18
+        # raise exception if mass group != 1
+        if self.mass_group != 1:
+            raise ValueError(
+                f"Mass Group {self.mass_group} not valid with this approach. Use Nuclei Energy Loss Model isntead."
+            )
+
+    def initialise_grid(
+        self,
+        matrix_dir: str = "./resources/composition_weights_PSB.h5",
+        alpha_min=-3,
+        alpha_max=10,
+        Nalphas=50,
+    ):
+        """
+        Initalise our grid using composition weights
+
+        :param matrix_dir: directory to composition weights
+        :param alpha_min, alpha_max, Nalphas: the min / max and density of spectral index grid
+        :param Emax, NEs: the maximum energy (in EeV) and density of the log-spaced source energy grid
+        """
+        super().initialise_grid(matrix_dir, alpha_min, alpha_max, Nalphas)
+
+        self.Rarr_grid = np.zeros((self.Ndistances, self.NRs))
+
+    def get_arrival_rigidity(self, Rsrc: float, D: float):
+        """
+        Get the arrival rigidity for a given initial rigidity.
+        Takes into account all propagation affects.
+
+        :param Rsrc: Source rigidity in EV
+        :param D: Source distance in Mpc
+        """
+        Rsrc = Rsrc * 1.0e18
         integrator = integrate.ode(_dEdr).set_integrator("lsoda", method="bdf")
-        integrator.set_initial_value(Esrc, 0)
+        integrator.set_initial_value(Rsrc, 0)
         r1 = D
         dr = min(D / 10, 10)
 
         while integrator.successful() and integrator.t < r1:
             integrator.integrate(integrator.t + dr)
 
-        Earr = integrator.y / 1.0e18
-        return Earr
+        Rarr = integrator.y / 1.0e18
+        return Rarr
 
-    def get_arrival_energy_vec(self, args: Tuple):
-        Evec, D = args
+    def get_arrival_rigidity_vec(self, args: Tuple):
+        """
+        Get the arrival rigidity for a given initial rigidity.
+        Takes into account all propagation affects.
+        Version for parallelisation.
 
-        Earr_vec = []
-        for E in Evec:
-            E = E * 1.0e18
+        :param args: Tuple containing source energies in EeV
+            and source distances in Mpc
+        """
+        didx, Rvec, D = args
+
+        print(f"Current source distance: {D:.2f} Mpc")
+
+        Rarr_vec = np.zeros_like(Rvec)
+        for i, R in enumerate(Rvec):
+            R = R * 1.0e18
             integrator = integrate.ode(_dEdr).set_integrator("lsoda", method="bdf")
-            integrator.set_initial_value(E, 0)
+            integrator.set_initial_value(R, 0)
             r1 = D
             dr = min(D / 10, 10)
 
             while integrator.successful() and integrator.t < r1:
                 integrator.integrate(integrator.t + dr)
 
-            Earr = integrator.y / 1.0e18
+            Rarr = integrator.y / 1.0e18
 
-            Earr_vec.append(Earr[0])
+            Rarr_vec[i] = Rarr[0]
 
-        return Earr_vec
+        return didx, Rarr_vec
+
+    def p_gt_Rth(self, delta, d=5):
+        """
+        Probability that arrival energy is anove threshold for some distance
+
+        :param delta: Uncertainty in energy reconstruction (%)
+        """
+        delta = self.delta if delta == None else delta
+        didx = np.digitize(d * u.Mpc, self.distances_grid, right=True)
+        return 1 - np.array(
+            [
+                stats.norm.cdf(self.Rth, Rarr, delta * Rarr)
+                for Rarr in self.Rarr_grid[didx, :]
+            ]
+        )
+
+    def compute_arrival_rigidities(self, parallel=True, njobs=4):
+        """
+        Compute arrival rigidities to make the tables
+
+        :param parallel: to enable parallel calculation or not (default True)
+        :param njobs: number of jobs to parallelise (default 4)
+        """
+
+        if parallel:
+
+            args_list = [
+                (i, self.rigidities_grid.value, d)
+                for i, d in enumerate(self.distances.value)
+            ]
+            # parallelize for each source distance
+            results = Parallel(n_jobs=njobs)(
+                delayed(self.get_arrival_rigidity_vec)(arg) for arg in args_list
+            )
+
+            for didx, Rarr_vec in results:
+                self.Rarr_grid[didx, :] = Rarr_vec
+
+        else:
+            for i in tqdm(
+                range(len(self.distances)), desc="Precomputing rigidity grids"
+            ):
+                d = self.distances[i].value
+                for j, r in enumerate(self.rigidities_grid):
+                    self.Rarr_grid[i, j] = self.get_arrival_rigidity(r, d)
+
+    def compute_Eexs(self):
+        """Compute expected energies for all distance and energies"""
+        for i, d in enumerate(self.distances.value):
+            Rth_src = _proton_approx_get_source_threshold_energy(self.Rth, d)[0]
+            # NB: here force unit of EeV since its the expected energy
+            self.Eexs[i, :] = 2 ** (1 / (self.alpha_grid - 1)) * Rth_src * u.EeV
+
+        # limit to some smaller value
+        self.Eexs[self.Eexs.value > self.Rmax.value] = self.Rmax.value * u.EeV
+
+    def compute_Rth_srcs(self):
+        """Compute source threshold energies"""
+        self.Rth_srcs = np.zeros(self.Ndistances)
+        for i, d in enumerate(self.distances.value):
+            self.Rth_srcs[i] = _proton_approx_get_source_threshold_energy(self.Rth, d)[
+                0
+            ]
+
+    def save(self, outfile):
+        """Save to h5py output file"""
+        with h5py.File(outfile, "a") as f:
+            config_label = f"{self.detector_type}_mg{self.mass_group}"
+            if config_label in f.keys():
+                del f[config_label]
+            config_gr = f.create_group(config_label)
+
+            config_gr.create_dataset("distances_grid", data=self.distances)
+            config_gr.create_dataset("alpha_grid", data=self.alpha_grid)
+            config_gr.create_dataset(
+                "log10_rigidities", data=np.log10(self.rigidities_grid.to_value(u.EV))
+            )
+            config_gr.create_dataset("Rarr_grid", data=self.Rarr_grid)
+            config_gr.create_dataset("Rth_src_grid", data=self.Rth_srcs)
+            config_gr.create_dataset(
+                "log10_Eexs_grid", data=np.log10(self.Eexs.to_value(u.EeV))
+            )
+
+    # def p_gt_Eth(self, Earr: float, Eerr: float, Eth: float):
+    #     """
+    #     Probability that arrival energy is anove threshold.
+
+    #     :param Earr: Arrival energy in EeV
+    #     :param Eerr: Uncertainty in energy reconstruction (%)
+    #     :param Eth: Threshold energy in EeV
+    #     """
+
+    #     return 1 - stats.norm.cdf(Eth, Earr, Eerr * Earr)
+
+    # def get_Eth_sim(self, Eerr: float, Eth: float):
+    #     """
+    #     Get a sensible threshold energy for the simulation
+    #     given the threshold energy and uncertainty in the
+    #     energy reconstruction.
+
+    #     :param Eerr: Uncertainty in energy reconstruction (%)
+    #     :param Eth: Threshold energy in EeV
+    #     """
+
+    #     E = optimize.fsolve(self.p_gt_Eth, Eth, args=(Eerr, Eth))
+
+    #     return round(E[0])
 
 
 """

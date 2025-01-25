@@ -6,10 +6,9 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm as progress_bar
 from cmdstanpy import CmdStanModel
 
-from ..interfaces.stan import Direction, Mpc_to_km, convert_scale
+from ..interfaces.model import Direction, Mpc_to_km, convert_scale
 from ..detector.exposure import m_integrand
 from ..interfaces.integration import ExposureIntegralTable
-from fancy.propagation.proton_energy_loss import ProtonApproxEnergyLoss
 
 from fancy.plotting import AllSkyMap
 
@@ -43,7 +42,7 @@ class Results:
 
         return chain
 
-    def get_truths(self, list_of_keys):
+    def get_truths(self, list_of_keys, composition=False):
         """
         For the case where the analysis was based on simulated
         data, return input values or 'truths' for desired
@@ -61,11 +60,17 @@ class Results:
 
                         # reconstruct from other info
                         F0 = model["F0"][()]
-                        Q = model["Q"][()]
                         D = f["source/distance"][()]
                         D = [d * Mpc_to_km for d in D]
 
-                        Fs = sum([(q / (4 * np.pi * d**2)) for q, d in zip(Q, D)])
+                        if composition:
+                            L = model["L"][()]
+                            Fs = sum([(l / (4 * np.pi * d**2)) for l, d in zip(L, D)])
+                        else:
+                            Q = model["Q"][()]
+                            Fs = sum([(q / (4 * np.pi * d**2)) for q, d in zip(Q, D)])
+
+                        
                         f = Fs / (Fs + F0)
                         truths["f"] = f
 
@@ -159,7 +164,7 @@ class PPC:
         self.Nex_preds = []
         self.labels_preds = []
 
-        self.energy_loss = ProtonApproxEnergyLoss()
+        # self.energy_loss = ProtonApproxEnergyLoss()
 
     def simulate(self, fit_chain, input_data, detector, source, seed=None, N=3):
         """

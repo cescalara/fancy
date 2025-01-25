@@ -4,7 +4,7 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 import h5py
 
-from fancy.interfaces.stan import coord_to_uv, uv_to_coord
+from fancy.interfaces.model import coord_to_uv, uv_to_coord
 
 from fancy.plotting import AllSkyMap
 
@@ -41,9 +41,12 @@ class Source:
 
             if self.label != "cosmo_150" and self.label != "VCV_AGN":
                 # Get names
-                self.name = []
-                for i in range(self.N):
-                    self.name.append(data["name"][i])
+                if self.N == 1:
+                    self.name = [data["name"][()]]
+                else:
+                    self.name = []
+                    for i in range(self.N):
+                        self.name.append(data["name"][i])
 
         self.unit_vector = coord_to_uv(self.coord)
 

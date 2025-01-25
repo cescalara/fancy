@@ -13,6 +13,7 @@ grey = '#BEC1C2'
 lightgrey = '#F9F9F9'
 darkgrey = '#464747'
 white = '#FFFFFF'
+lightgreen = '#befc31'
 
 # KW: added new colors for contour kdes for pairgrids
 midblue_contour = "#88bdc7"

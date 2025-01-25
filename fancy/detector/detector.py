@@ -16,11 +16,12 @@ class Detector:
     UHECR observatory information and instrument response.
     """
 
-    def __init__(self, detector_properties):
+    def __init__(self, detector_properties, deltaR=None):
         """
         UHECR observatory information and instrument response.
 
         :param detector_properties: dict of properties.
+        :param deltaR: manually configure the rigidity uncertainty if not None
         """
 
         self.properties = detector_properties
@@ -50,6 +51,7 @@ class Detector:
         self.coord_uncertainty = np.sqrt(7552.0 / self.kappa_d)
 
         self.energy_uncertainty = detector_properties["f_E"]
+        self.rigidity_uncertainty = detector_properties["f_E"] if deltaR == None else deltaR
 
         self.num_points = 500
 
@@ -71,8 +73,11 @@ class Detector:
         self.params.append(self.M)
 
         self.start_year = detector_properties["start_year"]
+        self.period_start = detector_properties["period_start"]
 
         self.Eth = detector_properties["Eth"]
+
+        self.mass_group = 1  # default value of 1
 
     def exposure(self):
         """
@@ -98,6 +103,18 @@ class Detector:
         # PAO only sees until dec ~ +45 deg
         declim_index = -1 if self.label.find("TA") != -1 else 0
         self.limiting_dec = Angle((self.declination[m == 0])[declim_index], "rad")
+
+    def get_rigidity_data(self, ZGSF_file, mass_group=1, Rth_max=250):
+
+        # get mean charge to compute Rth
+        gsf_fit_vals = np.genfromtxt(ZGSF_file, skip_header=1, dtype=np.float64)
+        self.meanZ = gsf_fit_vals[int(mass_group - 1),1]
+
+        self.Rth = self.Eth / self.meanZ
+        self.Rth_max = Rth_max  # (relatively arbitrary) maximum that we set in arrival spectrum calculation
+
+        self.mass_group = mass_group
+        
 
     def show(
         self,
@@ -199,6 +216,8 @@ class Detector:
         """
 
         for key, value in self.properties.items():
+            if key == "period_start":
+                continue
             file_handle.create_dataset(key, data=value)
 
     def _exposure_colorbar(self, cmap):

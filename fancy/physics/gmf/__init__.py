@@ -2,6 +2,9 @@ import os
 import requests
 import shutil
 
+from .gmf_lensing import GMFLensing
+from .gmf_backpropagation import GMFBackPropagation
+
 def install_gmflens():
     '''Install GMFlens from CRPropa database'''
     dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "gmf_lens")
@@ -29,4 +32,3 @@ def install_gmflens():
     # verify that the lens is fully loaded
     assert "JF12full_Gamale" in os.listdir(dir_path), "tarball not properly unpacked!"
     assert "lens.cfg" in os.listdir(os.path.join(dir_path, "JF12full_Gamale")), "lens does not contain lens.cfg"
-
